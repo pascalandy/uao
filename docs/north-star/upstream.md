@@ -4,7 +4,7 @@ This file says how uao relates to `HazAT/ultimate`: the fork point, the differen
 
 ## Fork point
 
-At the snapshot, uao is upstream `33c05e9` plus one commit, `7698625`, which adds one line to `README.md`. In Pascal's clone, the remote `origin` is `pascalandy/uao` and the remote `upstream` is `HazAT/ultimate` (local git configuration, not in the repository).
+uao forked from upstream `33c05e9` on 2026-10-23. Its first own commit, `7698625`, adds one line to `README.md`. In Pascal's clone, the remote `origin` is `pascalandy/uao` and the remote `upstream` is `HazAT/ultimate` (local git configuration, not in the repository).
 
 ## Differences
 
