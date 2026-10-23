@@ -6,6 +6,8 @@
 > I go, fundamental ones included, without migration paths or regard for anyone building on top. Whether that works
 > for you is your call. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+`uao` stands for the Ultimate Agent Orchestrator.
+
 A coding agent you specialize for the project you work on. Start it in your repository and it is Pi's coding agent in a
 web UI. Then build what this project needs into it, such as custom tools, panels, subagents, skills, or whole screens,
 and keep them in the project's `.ultimate/` folder. Everyone who works on the project boots the same specialized agent,
