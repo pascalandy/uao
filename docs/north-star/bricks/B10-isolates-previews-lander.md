@@ -6,7 +6,7 @@ Each branch works in its own isolate, a git worktree, so several features run in
 
 ## How it works
 
-`workspaces` gives a conversation an isolate when the project has a Git branch and a first commit. `workspace submit` puts the tip in a queue. Code merges, checks, fast-forwards, and pushes, and the lander's model only diagnoses or fixes a failure. `.ultimate/settings.json` sets the checks and the push target of this repository. `instance` starts a clean preview on the configured models. [Worktrees and integration](../../../docs/worktrees.md) holds the mechanics.
+`workspaces` gives a conversation an isolate when the project has a Git branch and a first commit. An isolate separates files, not processes. It is not a sandbox for the shell (`extensions/subagents/README.md`). `workspace submit` puts the tip in a queue. Code merges, checks, fast-forwards, and pushes, and the lander's model only diagnoses or fixes a failure. `.ultimate/settings.json` sets the checks and the push target of this repository. `instance` starts a clean preview on the configured models. [Worktrees and integration](../../../docs/worktrees.md) holds the mechanics.
 
 ## Where it lives
 

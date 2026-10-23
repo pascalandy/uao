@@ -2,11 +2,11 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-The user picks a model and a thinking level for each conversation, and can change the model in the middle of a run (post, section "It Rebuilds Itself while it Runs"). Ultimate uses Pi's providers and logins, so any Pi provider works. A small summary model writes titles, summaries, and abstracts, so that the main model keeps its tokens for the work (post, section "Just Getting Started").
+The user picks a model and a thinking level for each conversation. The user can change the model in the middle of a run (post, section "It Rebuilds Itself while it Runs"). Ultimate uses Pi's providers and logins, so any Pi provider works. A small summary model writes titles, summaries, and abstracts, so that the main model keeps its tokens for the work (post, section "Just Getting Started").
 
 ## How it works
 
-The `models` extension holds the picker, the provider login, and markers where a response setting changed. Logins live in `~/.pi/agent`, and each machine logs in alone. `claude-code` adds models through the Claude Code CLI, as an experimental provider. `fast` runs chosen OpenAI models on the priority tier. `health` records which providers work, from real responses. [Discovery and settings](../../../docs/settings.md) holds `summaryModel` and `fastModels`.
+The `models` extension holds the picker, the provider login, and markers where a response setting changed. Logins live in `~/.pi/agent`, and each machine logs in alone. `claude-code` adds models through the Claude Code CLI, as an experimental provider. No commit records a live smoke test of this provider (`787b454`). `fast` runs chosen OpenAI models on the priority tier. `health` records which providers work, from real responses. [Discovery and settings](../../../docs/settings.md) holds `summaryModel` and `fastModels`.
 
 ## Where it lives
 

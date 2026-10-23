@@ -5,6 +5,7 @@ This file says how Pascal wants changes made in uao. It applies where `AGENTS.md
 ## How a change lands
 
 - An outside agent, such as Claude Code or Codex, sends its work through a pull request on `pascalandy/uao`
+- The push permission in `AGENTS.md` is for Ultimate's top-level agent. It does not let an outside agent push to `pascalandy/uao`
 - Ultimate lands its own work through its lander, as `AGENTS.md` describes. The lander pushes to `origin`, which is `pascalandy/uao` (see [upstream.md](upstream.md#what-still-points-at-hazat))
 - A commit uses `pascalandy@users.noreply.github.com` as the author and committer email
 - Before a commit, run `pnpm check` and the tests that cover the change (`AGENTS.md`)

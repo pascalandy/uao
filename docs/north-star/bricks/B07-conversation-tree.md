@@ -12,7 +12,7 @@ A project keeps one tree of conversations. The root runs no turns, and it keeps 
 
 - `extensions/lineage/`: roots, branches, tally, memory, and catch-up
 - `extensions/conversations/`: titles, summaries, abstracts, conclude, and resume
-- `extensions/plan/`: the epic and task ledger
+- `extensions/plan/`: the plan ledger of each conversation
 - `extensions/sidebar/`: the tree in the sidebar
 
 ## Decisions

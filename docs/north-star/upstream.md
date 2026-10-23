@@ -11,7 +11,7 @@ At the snapshot, uao is upstream `33c05e9` plus one commit, `7698625`, which add
 - `README.md`: the line "`uao` stands for the Ultimate Agent Orchestrator." (`7698625`)
 - `docs/north-star/` and one line in `AGENTS.md`: this map ([D033](decisions/D033-one-north-star.md))
 
-`README.md` and `AGENTS.md` are the only upstream files that uao changes. A merge can conflict only in these two files today.
+`README.md` and `AGENTS.md` are the only upstream files that uao changes. These two lines are the current exceptions to the sync rule. Additive places decrease the risk of a merge conflict, but they do not prevent all conflicts.
 
 ## What still points at HazAT
 
@@ -21,6 +21,7 @@ uao does not change these files ([D034](decisions/D034-follow-upstream.md)). Rea
 - `docs/worktrees.md` gives an example path under `/home/haza/`, the home folder of Daniel's machine
 - `AGENTS.md`, `agents/ultimate.md`, and `extensions/cloud/README.md` say that the backup Worker lives in the private repository `HazAT/ultimate-fleet`. The Worker code is not in this repository (`67caeb6`), so a backup from uao needs a Worker that uao does not ship (inferred)
 - `docs/running.md` says that a scratch server is "for Daniel to open remotely"
+- `CONTRIBUTING.md` keeps the upstream policy: a personal project, with no review of issues or pull requests
 - `extensions/update/` compares the clone with `origin`. In uao, it follows `pascalandy/uao`, not upstream (inferred from `extensions/update/README.md` and the remotes)
 - `.ultimate/settings.json` sets `"push": "origin"`, so the lander pushes to `pascalandy/uao` (inferred from the remotes)
 

@@ -2,6 +2,8 @@
 
 Each decision records a choice with lasting effect, its reason, and its evidence. The rule itself lives in the file that owns it, such as `AGENTS.md` or an extension README, and the decision links to that file.
 
+A `Source: uao` decision cites Pascal's answer as its evidence. The fork commit `7698625` shows only the fork point. It does not prove a uao rule.
+
 ## Add a decision
 
 1. Take the next free number. The numbers follow the dates of the decisions

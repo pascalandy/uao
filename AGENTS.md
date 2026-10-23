@@ -68,6 +68,7 @@ guide to writing extensions, and copy the closest existing one (`status-line`, `
 
 ## Developer reference — read when needed
 
+- [North star](docs/north-star/README.md): before you plan a new capability, change a design rule, or ask why the system works the way it does.
 - [Running the server](docs/running.md): before starting, debugging or testing a server or core swap.
 - [Worktrees and integration](docs/worktrees.md): before previewing an isolate, landing or recovering a rejected push.
 - [Discovery and settings](docs/settings.md): before changing configuration, trust, resources or `summaryModel` (titles, summaries, reply summaries, question extraction and tree abstracts).
@@ -75,7 +76,6 @@ guide to writing extensions, and copy the closest existing one (`status-line`, `
 - [Extension mechanics and introspection](docs/extensions.md): before wiring facets, documents, events or runtime inspection.
 - [Subagents](docs/subagents.md): before delegating, changing definitions or configuring the review team.
 - [Borrowed from Pi](docs/pi-upstream.md): on Pi upgrades or changes to upstream couplings; includes upstream references.
-- [North star](docs/north-star/README.md): before you plan a new capability, change a design rule, or ask why the system works the way it does.
 
 ## Push permission
 

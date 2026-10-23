@@ -39,14 +39,15 @@ Source: uao ([D035](decisions/D035-adopt-blog-direction.md)). Pascal adopts the 
 7. **The real problem.** Agents solve the problem that the user explains, "not build exactly my first, limited solution" ("Just Getting Started")
 8. **Speed.** With a tight loop and a codebase that is ready for agents, "the limiting factor really becomes tokens per second" ("Just Getting Started")
 
-### Open items in the post
+### The examples of the post at the snapshot
 
-The post names two things as not done:
-
-- A better flow timeline. The Agent Lanes view exists in `extensions/system/`, and the post says that the view "isn't ideal yet" ([B14](bricks/B14-everything-on-record.md))
-- Design polish. The design is "functional, but not super nice" ("Just Getting Started")
-
-The post also tells of side chats, steering of branches in parallel, and messages between instances. All three exist at the snapshot: `extensions/side-chat/`, and `steer` and `ultimate.tell` in `extensions/messages/README.md`.
+| Example in the post                 | State at the snapshot | Evidence                                                                                                                       |
+| ----------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Side chats                          | shipped               | `extensions/side-chat/`                                                                                                        |
+| Steering of branches from @ultimate | shipped               | `steer` in `extensions/messages/README.md`                                                                                     |
+| Messages between instances          | shipped               | `ultimate.tell` in `extensions/messages/README.md`                                                                             |
+| A better flow timeline              | open                  | Agent Lanes in `extensions/system/`. The post says that the view "isn't ideal yet" ([B14](bricks/B14-everything-on-record.md)) |
+| Design polish                       | open                  | The design is "functional, but not super nice" ("Just Getting Started")                                                        |
 
 ## Non-goals
 
