@@ -1,6 +1,15 @@
 # Bricks
 
-A brick is one capability of the system, at the level of a person who decides what to build next. The bricks go in a logical order, from the foundation up. Each status is true at the [snapshot](../README.md#snapshot), and the [status legend](../README.md#status-legend) defines each status.
+A brick is one capability of the system, at the level of a person who decides what to build next. The bricks go in a logical order, from the foundation up. Each status is true at the [snapshot](../upstream.md#snapshot).
+
+## Status legend
+
+- **shipped**: the capability works at the snapshot
+- **partial**: a part of the capability works at the snapshot
+- **planned**: a source states the capability as a plan, and the code does not have it
+- **dropped**: the code had the capability, and a later commit removed it
+
+Each brick has a source: **upstream** for Daniel's project, or **uao** for Pascal's direction.
 
 ## Add a brick
 

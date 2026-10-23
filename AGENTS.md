@@ -66,9 +66,27 @@ A surface is a full-screen app the user switches to (header, ⌘K, `mod+1…9`);
 New UI is a new extension folder, not a change to `web/`: follow [extensions/README.md](extensions/README.md), the
 guide to writing extensions, and copy the closest existing one (`status-line`, `coding-tools`).
 
+## North star
+
+[docs/north-star/](docs/north-star/) is the map of this fork: what the system is for, what it can do, why it works this way, and how changes land in uao. Read the files in the first three rows at the start of a session. When another row applies, read its file.
+
+| Question                                                   | File                                                       | Read it when                          | Update it when                                    |
+| ---------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------- | ------------------------------------------------- |
+| What is uao, and where does it go?                         | [vision.md](docs/north-star/vision.md)                     | You start a session                   | The purpose or the direction changes              |
+| Which rules shape every design choice?                     | [principles.md](docs/north-star/principles.md)             | You start a session                   | A principle changes, with its decision            |
+| Can I push? How do changes land?                           | [dev-preferences.md](docs/north-star/dev-preferences.md)   | You start a session                   | Pascal states a new preference                    |
+| What can the system do, and what comes next?               | [bricks/](docs/north-star/bricks/README.md)                | You plan a new capability             | A brick changes status, or a source states a plan |
+| Why does the system work this way?                         | [decisions/](docs/north-star/decisions/README.md)          | You ask why a rule exists             | A choice with lasting effect is made              |
+| What does a word mean?                                     | [glossary.md](docs/north-star/glossary.md)                 | A word is unclear                     | Before the first use of a new term                |
+| Where does each part live?                                 | [architecture.md](docs/north-star/architecture.md)         | You change code                       | A process, a layer, or a folder changes           |
+| How does uao follow upstream? Is the map current?          | [upstream.md](docs/north-star/upstream.md)                 | You merge, or see HazAT               | After a merge of upstream                         |
+| What did Daniel ask for first?                             | [first-prompt.md](docs/north-star/sources/first-prompt.md) | The original intent is unclear        | Never. It is a source                             |
+| What survives a crash?                                     | [Durability](docs/durability.md)                           | You change persistence or replay      | Not from the north-star                           |
+| What does a project control, and when does its setup load? | [Discovery and settings](docs/settings.md)                 | You change a setting or project trust | Not from the north-star                           |
+| What must an extension do?                                 | [Writing extensions](extensions/README.md)                 | You write an extension                | Not from the north-star                           |
+
 ## Developer reference — read when needed
 
-- [North star](docs/north-star/README.md): before any change in uao. It says what the system is for, why it works this way, and how changes land in this fork.
 - [Running the server](docs/running.md): before starting, debugging or testing a server or core swap.
 - [Worktrees and integration](docs/worktrees.md): before previewing an isolate, landing or recovering a rejected push.
 - [Discovery and settings](docs/settings.md): before changing configuration, trust, resources or `summaryModel` (titles, summaries, reply summaries, question extraction and tree abstracts).
