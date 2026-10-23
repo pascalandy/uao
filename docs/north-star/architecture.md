@@ -36,8 +36,8 @@ The layers go from the foundation up. A layer depends only on the layers below i
 1. **Pi and Pi Durable.** Durable conversations, tasks, hooks, and providers. The packages are pinned, and `patches/` holds local patches ([Borrowed from Pi](../pi-upstream.md))
 2. **Core.** `server/` holds the harness, the storage, the HTTP API, discovery, and the Vite hookup. `shared/protocol.ts` holds the contracts between server and browser
 3. **Web core.** `web/` holds the surface host and its primitives, the SDK, the transcript, the composer, and the palette
-4. **Core tier.** 15 extensions that are always on: `agent`, `coding-tools`, `conversations`, `documents`, `lineage`, `messages`, `models`, `notices`, `onboarding`, `prompt`, `secrets`, `sidebar`, `subagents`, `theme`, and `workspaces`. Each depends only on the core tier ([Core tier](../extensions.md#core-tier))
-5. **Optional built-ins.** The other 33 built-ins. They reach the core tier through points or events. Eight ship off (`shared/extension-api.ts`)
+4. **Core tier.** The extensions that are always on. Each depends only on the core tier. [Core tier](../extensions.md#core-tier) names them
+5. **Optional built-ins.** The other built-ins. They reach the core tier through points or events
 6. **Personal and project extensions.** Folders in `~/.ultimate/extensions/`, and in `<project>/.ultimate/extensions/` for a trusted project. A later folder with the same name replaces an earlier one
 
 Three folders sit beside the layers. `lib/` holds helpers that extensions share and imports no extension. `agents/` and `skills/` hold definitions that Ultimate reads at each use.
@@ -58,22 +58,7 @@ Three folders sit beside the layers. `lib/` holds helpers that extensions share 
 
 ## How a change goes live
 
-[The layer table](../../AGENTS.md#layers-and-how-they-reload) gives the path for each folder. In short:
-
-- `web/` and `web.tsx` facets: Vite hot reload, with no page reload
-- `server.ts` facets: a reinstall on save. A running tool call finishes on the old code
-- `agents/`: a read at each use
-- `server/` and `shared/`: a swap through the `restart` tool
-- `bin/`: a human restart with `pnpm start`
-
-A swap goes in four steps ([Running the server](../running.md)):
-
-1. The supervisor type-checks the server and prepares a new generation with no storage
-2. The old generation records the restart result and releases its storage lock
-3. The new generation opens storage and resumes each run
-4. If a step fails, the old generation keeps serving and reports the error
-
-A core change from an isolate must land in the running clone first. The restart then needs that clone clean at the landed commit (`extensions/self/README.md`).
+[The layer table](../../AGENTS.md#layers-and-how-they-reload) and [Running the server](../running.md) say how a change to each folder goes live.
 
 ## Code map
 
@@ -91,7 +76,7 @@ A core change from an isolate must land in the running clone first. The restart 
 | `lib/`                    | Shared helpers: exec, git, JSON files, settings, secrets, and chapters   | `AGENTS.md`                                       |
 | `web/src/`                | The app shell, the surface host, and the extension registry              | [Writing extensions](../../extensions/README.md)  |
 | `web/src/sdk/`            | The SDK that web facets import as `@/sdk`                                | [SDK](../../extensions/README.md#sdk-sdk)         |
-| `extensions/`             | The 48 built-ins, each with a README                                     | [Writing extensions](../../extensions/README.md)  |
+| `extensions/`             | The built-ins, each with a README                                        | [Writing extensions](../../extensions/README.md)  |
 | `agents/`                 | Built-in agent definitions                                               | [Subagents](../subagents.md)                      |
 | `skills/`                 | Built-in skills, `integrate-ultimate` at the snapshot                    | [Discovery and settings](../settings.md)          |
 | `.ultimate/`              | The project setup of this repository: checks, push target, review team   | [.ultimate/README.md](../../.ultimate/README.md)  |

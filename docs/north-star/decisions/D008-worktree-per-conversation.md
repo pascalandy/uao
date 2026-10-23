@@ -2,9 +2,9 @@
 
 Decided 2026-10-02. Source: upstream. Status: active.
 
-A worker, a designer, and each coordinator branch work in their own isolate, a git worktree. An isolate separates files only, so it is not a sandbox.
+A worker, a designer, and each coordinator branch work in their own isolate, a git worktree.
 
-**Why.** Parallel edits stay away from the user's checkout (`1c10440`). In the post, "Every feature gets its own worktree", so features can change the same UI components at the same time (section "A Team, not an Agent").
+**Why.** Parallel edits stay away from the user's checkout (`1c10440`). The post says that "Every feature gets its own worktree" (section "A Team, not an Agent"). Thus, features can change the same UI components at the same time.
 
 **Rejected.** Workers that edit the shared checkout (`1c10440`).
 

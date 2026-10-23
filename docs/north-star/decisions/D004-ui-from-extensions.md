@@ -6,4 +6,4 @@ The web core stays small: a surface host, a typed SDK in `web/src/sdk`, the tran
 
 **Why.** Each facet loads alone, so a broken facet shows an error card while the rest keeps running. The user can delete an extension, and the shell stays up (`fff6d4b`).
 
-**Evidence.** `fff6d4b` adds the web core and the facet registry. `1b48020` moves agent definitions out of the server core into the `subagents` extension.
+**Evidence.** `fff6d4b` adds the web core and the facet registry.

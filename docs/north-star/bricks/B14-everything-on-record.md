@@ -2,11 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-Every action of every conversation stays readable, so Ultimate can study its own behavior. The user and the agents see tasks, events, traces, the model context, and failures. The post says that "The agent can read any action of any conversation of any subagent".
-
-## How it works
-
-`server/trace.ts` links nested calls by parent. `system` shows events and calls, with Agent Lanes, a timeline of who worked when. `activity` is a feed of events with filters. `tasks` shows the durable task graph and the tasks that a crash loop parked. `context` shows what the model received. `debug` gives agents a read-only view of events and traces. [Tracing](../../../docs/extensions.md#tracing) holds the mechanics.
+Conversations stay on record, so Ultimate can study its own behavior (`docs/durability.md`). The user and the agents see tasks, events, traces, the model context, and failures. Call traces are diagnostics with a limit of seven days and 200,000 rows (`server/trace.ts`). "Everything on record" is the intent of the post, not a promise to keep each record without a limit. The post says that "The agent can read any action of any conversation of any subagent".
 
 ## Where it lives
 
@@ -17,14 +13,6 @@ Every action of every conversation stays readable, so Ultimate can study its own
 - `extensions/context/`: the model context
 - `extensions/debug/`: the read-only debug tool
 - `extensions/info/`: runtime facts
-
-## Decisions
-
-- None recorded
-
-## Next
-
-- A better flow timeline. The post says that the timeline "isn't ideal yet" (section "An Example: Side Chats")
 
 ## Evidence
 

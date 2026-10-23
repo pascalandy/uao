@@ -2,11 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-Each branch works in its own isolate, a git worktree, so several features run in parallel on the same code. A coordinator previews its work in a separate Ultimate instance on its own port. When the work is ready, the lander merges it, runs every check, and lands only a green result.
-
-## How it works
-
-`workspaces` gives a conversation an isolate when the project has a Git branch and a first commit. An isolate separates files, not processes. It is not a sandbox for the shell (`extensions/subagents/README.md`). `workspace submit` puts the tip in a queue. Code merges, checks, fast-forwards, and pushes, and the lander's model only diagnoses or fixes a failure. `.ultimate/settings.json` sets the checks and the push target of this repository. `instance` starts a clean preview on the configured models. [Worktrees and integration](../../../docs/worktrees.md) holds the mechanics.
+Each branch works in its own isolate, a git worktree, so several features run in parallel on the same code. An isolate separates files, not processes, so it is not a sandbox for the shell (`extensions/subagents/README.md`). A coordinator previews its work in a separate Ultimate instance on its own port. When the work is ready, the lander merges it, runs every check, and lands only a green result.
 
 ## Where it lives
 
@@ -21,10 +17,6 @@ Each branch works in its own isolate, a git worktree, so several features run in
 - [D010](../decisions/D010-push-without-asking.md) Push landed work without asking again
 - [D011](../decisions/D011-lander-queue.md) Land through a durable queue
 - [D030](../decisions/D030-previews-on-real-models.md) Preview on the configured models
-
-## Next
-
-- Nothing stated
 
 ## Evidence
 

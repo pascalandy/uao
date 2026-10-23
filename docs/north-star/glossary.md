@@ -50,7 +50,7 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 
 ## Change and landing
 
-- **Isolate**: a git worktree that belongs to one conversation. It separates files, not processes, so it is not a sandbox (`extensions/subagents/README.md`). Code: the extension `workspaces` and the tool `workspace`
+- **Isolate**: a git worktree that belongs to one conversation (`extensions/subagents/README.md`). Code: the extension `workspaces` and the tool `workspace`
 - **Submission**: a request to land the tip of an isolate, made with `workspace submit`. The lander takes submissions one at a time (`docs/worktrees.md`)
 - **Landing**: a submission that passed every check and reached the target branch. The tally records each landing (`extensions/lineage/README.md`)
 - **Preview**: a separate Ultimate instance that runs one checkout on its own port with the configured models. Code: the extension `instance` (`extensions/instance/README.md`)
@@ -62,7 +62,7 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 ## Extensions
 
 - **Extension**: a folder that adds agent behavior, UI, or both. A later folder with the same name replaces an earlier one (`extensions/README.md`)
-- **Built-in**: an extension in the `extensions/` folder of the clone. Eight built-ins ship off, and the others ship on (`shared/extension-api.ts`)
+- **Built-in**: an extension in the `extensions/` folder of the clone (`docs/settings.md`)
 - **Facet**: one side of an extension. `server.ts` holds agent behavior, and `web.tsx` holds UI. Each facet loads and fails alone (`fff6d4b`)
 - **Core tier**: the extensions that settings cannot turn off. A core-tier extension depends only on other core-tier extensions (`docs/extensions.md`). Code: `tier = 'core'` in `api.ts`
 - **Extension API**: a typed contract that one extension provides and another uses, with `need` when it is required or `want` when it is optional (`docs/extensions.md`)
@@ -78,8 +78,8 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 
 ## Messages and the user
 
-- **Message**: a durable delivery from one conversation to another. It wakes an idle recipient (`extensions/messages/README.md`). Code: the extension `messages`, with events named `board.*`
-- **Note**: a message that does not start a turn. The recipient reads it when its next turn starts. Code: the tool `note` (`AGENTS.md`)
+- **Message**: a durable delivery from one conversation to another. It wakes an idle recipient, except a subagent's one-way update to its parent, which is a note (`extensions/messages/README.md`). Code: the extension `messages`, with events named `board.*`
+- **Note**: context in another conversation that starts no turn. The recipient reads it when its next turn starts. Code: the tool `note` (`AGENTS.md`), and a subagent's one-way update to its parent (`304e47e`). Not: another one-way message, which wakes its recipient (`extensions/messages/README.md`)
 - **Notify**: a request to know when another conversation finishes. Code: the tool `notify` (`AGENTS.md`)
 - **Steer**: a message that enters a run in progress, after the current tool calls (`extensions/messages/README.md`)
 - **Question**: a message that expects a reply from the user. An answer card stays open until the user answers or dismisses it (`extensions/questions/README.md`)

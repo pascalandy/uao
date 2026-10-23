@@ -2,11 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-Every conversation, tool call, subagent, and document reaches SQLite before the UI shows it. A restart or a crash resumes each run from its last checkpoint, so no work and no context is lost. All other bricks stand on this one. The agent can change its own code because its state does not live in the process.
-
-## How it works
-
-Ultimate opens a Pi Durable harness on the SQLite database of the active chapter in the project home. Pi Durable runs an interrupted tool again only when the tool is replay-safe. Any other interrupted tool reports "interrupted" to the model. A durable event commits in the same transaction as its cause, so a reactor writes exactly once. [Durability](../../../docs/durability.md) explains the guarantees, and [Borrowed from Pi](../../../docs/pi-upstream.md) lists the local couplings to Pi.
+Every conversation, tool call, subagent, and document reaches SQLite before the UI shows it. Committed conversation state survives a restart or a crash. A run resumes from its last checkpoint. An interrupted tool runs again only when it is marked replay-safe ([Durability](../../../docs/durability.md)). An effect outside the transaction is not rolled back ([Durability](../../../docs/durability.md), `extensions/codemode/README.md`). All other bricks stand on this one. The agent can change its own code because its state does not live in the process.
 
 ## Where it lives
 
@@ -17,10 +13,6 @@ Ultimate opens a Pi Durable harness on the SQLite database of the active chapter
 ## Decisions
 
 - [D002](../decisions/D002-pi-durable-sqlite.md) Build on Pi Durable over SQLite
-
-## Next
-
-- Drop each local coupling and patch when Pi exports or fixes the capability (`docs/pi-upstream.md`)
 
 ## Evidence
 

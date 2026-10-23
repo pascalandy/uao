@@ -68,7 +68,7 @@ guide to writing extensions, and copy the closest existing one (`status-line`, `
 
 ## Developer reference — read when needed
 
-- [North star](docs/north-star/README.md): before you plan a new capability, change a design rule, or ask why the system works the way it does.
+- [North star](docs/north-star/README.md): before any change in uao. It says what the system is for, why it works this way, and how changes land in this fork.
 - [Running the server](docs/running.md): before starting, debugging or testing a server or core swap.
 - [Worktrees and integration](docs/worktrees.md): before previewing an isolate, landing or recovering a rejected push.
 - [Discovery and settings](docs/settings.md): before changing configuration, trust, resources or `summaryModel` (titles, summaries, reply summaries, question extraction and tree abstracts).

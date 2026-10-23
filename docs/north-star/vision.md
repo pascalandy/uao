@@ -41,13 +41,13 @@ Source: uao ([D035](decisions/D035-adopt-blog-direction.md)). Pascal adopts the 
 
 ### The examples of the post at the snapshot
 
-| Example in the post                 | State at the snapshot | Evidence                                                                                                                       |
-| ----------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Side chats                          | shipped               | `extensions/side-chat/`                                                                                                        |
-| Steering of branches from @ultimate | shipped               | `steer` in `extensions/messages/README.md`                                                                                     |
-| Messages between instances          | shipped               | `ultimate.tell` in `extensions/messages/README.md`                                                                             |
-| A better flow timeline              | open                  | Agent Lanes in `extensions/system/`. The post says that the view "isn't ideal yet" ([B14](bricks/B14-everything-on-record.md)) |
-| Design polish                       | open                  | The design is "functional, but not super nice" ("Just Getting Started")                                                        |
+| Example in the post                 | State at the snapshot | Evidence                                           |
+| ----------------------------------- | --------------------- | -------------------------------------------------- |
+| Side chats                          | shipped               | `extensions/side-chat/`                            |
+| Steering of branches from @ultimate | shipped               | `steer` in `extensions/messages/README.md`         |
+| Messages between instances          | shipped               | `ultimate.tell` in `extensions/messages/README.md` |
+
+The post also names a better flow timeline and design polish. [Next](bricks/README.md#next) lists them.
 
 ## Non-goals
 

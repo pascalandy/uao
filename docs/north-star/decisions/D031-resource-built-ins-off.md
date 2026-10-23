@@ -4,7 +4,7 @@ Decided 2026-10-23. Source: upstream. Status: active.
 
 Eight built-ins that need a resource of their own ship off: `cloud`, `parallel`, `tailscale`, `update`, `health`, `classify`, `phase`, and `sounds`. The user or the project turns one on with `extensions.enable`.
 
-**Why.** A personal switch must not write to a committed project settings file (`5323967`).
+**Why.** Each one needs something of its own, such as an API key, a backup Worker, or Tailscale (`docs/settings.md`). The commit gives no reason (`5323967`).
 
 **Rejected.** Every built-in on by default (`3da36b9`).
 

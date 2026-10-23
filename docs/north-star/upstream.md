@@ -31,16 +31,16 @@ Pascal merges `upstream/main` when he wants its changes ([D034](decisions/D034-f
 
 After each merge:
 
-1. Run `pnpm check` and the tests
-2. Check each brick status against the new code
+1. Run `python3 docs/north-star/check_links.py` and the other checks in [How a change lands](dev-preferences.md#how-a-change-lands)
+2. Check each brick status, and each item of [Known drift in upstream docs](#known-drift-in-upstream-docs), against the new code
 3. Update the bricks and the decisions that changed
-4. Add the new upstream decisions in date order
+4. Only when the merge changes a principle or the status of a brick, add a decision
 5. Move the snapshot in [README.md](README.md#snapshot)
 
 ## Known drift in upstream docs
 
 These upstream texts disagree with the code at the snapshot. uao records them and does not fix them:
 
-- The README says that every built-in is on by default. `5323967` ships eight built-ins off (`shared/extension-api.ts`)
+- The README says that every built-in is on by default, but some built-ins ship off ([D031](decisions/D031-resource-built-ins-off.md))
 - `AGENTS.md` calls a project "a forest of conversation trees", and it also says "A project has one root" (`86ed900`)
 - `extensions/README.md` says that `lib/` "holds no state", but `lib/chapters.ts` reads SQLite and writes journal files

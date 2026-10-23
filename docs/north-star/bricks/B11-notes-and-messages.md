@@ -2,11 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-Conversations talk to each other without the user. A note gives another conversation context for its next turn and wakes nobody. A message wakes its recipient, can steer a run in progress, and can expect a reply. The @ultimate of one project can tell the @ultimate of another project what changed.
-
-## How it works
-
-`lineage` holds `note`, `notify`, and catch-up. `messages` holds durable messages, replies, steering, and one-hop messages between projects. `lib/remote.ts` finds the other project on loopback or on the tailnet. Only @ultimate may message the user, and a subagent may message only its parent. The [messages README](../../../extensions/messages/README.md) holds the mechanics.
+Conversations talk to each other without the user. A note gives another conversation context for its next turn and wakes nobody. A message wakes its recipient, can steer a run in progress, and can expect a reply. The exception is a subagent's one-way update to its parent, which arrives as a note ([messages README](../../../extensions/messages/README.md)). The @ultimate of one project can tell the @ultimate of another project what changed. Messages to a project on another machine need the user's own backup Worker, which uao does not ship (`lib/remote.ts`, [upstream.md](../upstream.md#what-still-points-at-hazat)). Tailscale alone does not let Ultimate find a project on another machine.
 
 ## Where it lives
 
@@ -16,12 +12,8 @@ Conversations talk to each other without the user. A note gives another conversa
 
 ## Decisions
 
-- [D021](../decisions/D021-updates-are-notes.md) Send updates as notes
-- [D022](../decisions/D022-talk-to-ultimate.md) Let the user talk only to @ultimate
-
-## Next
-
-- Nothing stated
+- [D021](../decisions/D021-updates-are-notes.md) Send subagent updates as notes
+- [D022](../decisions/D022-route-through-ultimate.md) Route agent messages for the user through @ultimate
 
 ## Evidence
 

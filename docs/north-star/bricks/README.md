@@ -10,8 +10,10 @@ A brick is one capability of the system, at the level of a person who decides wh
 4. Create the file `B<nn>-<slug>.md`
 5. Copy the sections of [B01](B01-durable-conversations.md) into it
 6. Fill each section
-7. For a planned brick, cite the source that states the plan. Without such a source, do not add the brick
-8. Link to the decisions behind the brick, and to the docs that hold its mechanics
+7. Omit a section that has nothing to record
+8. For a planned brick, cite the source that states the plan. Without such a source, do not add the brick
+9. Link to the decisions behind the brick, and to the docs that hold its mechanics
+10. Put each next item in [Next](#next), not in the brick
 
 ## Index
 
@@ -33,5 +35,16 @@ A brick is one capability of the system, at the level of a person who decides wh
 | [B14](B14-everything-on-record.md)         | Everything on record                 | shipped | upstream |
 | [B15](B15-dreams-and-chapters.md)          | Dreams and chapters                  | shipped | upstream |
 | [B16](B16-remote-backup-update.md)         | Remote access, backups, and updates  | shipped | upstream |
-| [B17](B17-canvas-map.md)                   | Canvas map                           | dropped | upstream |
-| [B18](B18-cloud-fleet.md)                  | Cloud fleet                          | dropped | upstream |
+
+Dropped: the Canvas map ([D014](../decisions/D014-remove-canvas.md)) and the cloud fleet ([D028](../decisions/D028-cloud-only-backs-up.md)).
+
+## Next
+
+Each item below is a gap or a wish that a source states. The code does not cover it at the snapshot:
+
+- A better flow timeline. The post says that the timeline "isn't ideal yet" (section "An Example: Side Chats"). See [B14](B14-everything-on-record.md)
+- Design polish. The post says that the design is "functional, but not super nice" (section "Just Getting Started")
+- Subscriptions that move into a new chapter. At the snapshot, a dream turns each user subscription into a to-do to create it again (`74f38c9`, `extensions/dream/README.md`). See [B15](B15-dreams-and-chapters.md)
+- The removal of the local Pi patches and couplings when Pi exports or fixes what they replace (`docs/pi-upstream.md`). See [B01](B01-durable-conversations.md)
+
+uao has no plan of its own yet. A planned brick with `Source: uao` comes only from Pascal.
