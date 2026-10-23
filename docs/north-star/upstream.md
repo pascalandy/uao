@@ -1,6 +1,15 @@
 # Upstream
 
-This file says how uao relates to `HazAT/ultimate`: the fork point, the differences, what still points at HazAT, and the sync rule.
+This file says how uao relates to `HazAT/ultimate`: the snapshot, the fork point, the differences, what still points at HazAT, and the sync rule.
+
+## Snapshot
+
+Each status in the north-star is true at this commit:
+
+- Upstream: `HazAT/ultimate` at `33c05e9`, 2026-10-23
+- Fork: `pascalandy/uao` at `7698625`, 2026-10-23
+
+`git log --oneline 33c05e9..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
 
 ## Fork point
 
@@ -35,7 +44,7 @@ After each merge:
 2. Check each brick status, and each item of [Known drift in upstream docs](#known-drift-in-upstream-docs), against the new code
 3. Update the bricks and the decisions that changed
 4. Only when the merge changes a principle or the status of a brick, add a decision
-5. Move the snapshot in [README.md](README.md#snapshot)
+5. Move the [snapshot](#snapshot)
 
 ## Known drift in upstream docs
 

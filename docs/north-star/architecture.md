@@ -85,4 +85,4 @@ Three folders sit beside the layers. `lib/` holds helpers that extensions share 
 | `test/`                   | Fast in-process tests, and process tests in `test/e2e/`                  | [Running the server](../running.md)               |
 | `patches/`                | Pinned patches to Pi packages                                            | [Borrowed from Pi](../pi-upstream.md)             |
 | `docs/`                   | Mechanics for agents that change the code                                | `AGENTS.md`                                       |
-| `docs/north-star/`        | This map                                                                 | [README.md](README.md)                            |
+| `docs/north-star/`        | This map                                                                 | [North star](../../AGENTS.md#north-star)          |

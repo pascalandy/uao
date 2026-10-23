@@ -105,7 +105,7 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 
 - **Brick**: one capability of the system, with its status at the snapshot. See [bricks](bricks/README.md)
 - **Decision**: one choice with lasting effect, with its reason and its evidence. See [decisions](decisions/README.md)
-- **Snapshot**: the commit that the north-star describes. See [README.md](README.md)
+- **Snapshot**: the commit that the north-star describes. See [upstream.md](upstream.md#snapshot)
 - **Source**: the owner of an intent. `upstream` is Daniel's project, and `uao` is Pascal's direction
 
 ## Retired names
