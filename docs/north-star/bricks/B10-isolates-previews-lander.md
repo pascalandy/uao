@@ -26,3 +26,4 @@ Each branch works in its own isolate, a git worktree, so several features run in
 - `b40b9c2` shares the folder until a project can have isolates
 - `4a6d393` previews other projects
 - `f23e291` runs previews on the configured models
+- `a4843af` makes `instance.model` control every agent in a preview ([D030](../decisions/D030-previews-on-real-models.md))

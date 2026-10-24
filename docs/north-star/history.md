@@ -1,19 +1,19 @@
 # History
 
-This file says how upstream reached the [snapshot](upstream.md#snapshot): its eras, the life of a change unit, and how the rules and the team changed. [upstream.md](upstream.md#fork-point) says what uao added after the snapshot. The [bricks](bricks/README.md) say what each part does, and the [decisions](decisions/README.md) say why.
+This file says how upstream reached the [snapshot](upstream.md#snapshot): its eras, the life of a change unit, and how the rules and the team changed. [upstream.md](upstream.md#differences) records uao's additions since the fork. The [bricks](bricks/README.md) say what each part does, and the [decisions](decisions/README.md) say why.
 
-Each date is an author date, as `git log --date=short` shows it. Each count is for upstream at `33c05e9`.
+Each date is an author date, as `git log --date=short` shows it. Each count is for upstream at `11d1d4c`.
 
 ## Summary
 
-- Upstream has 1,395 commits from 2026-10-01 to 2026-10-23 (`git rev-list --count [--merges] 33c05e9`). 289 are merges and 1,106 are work commits
-- Daniel Griesser authored all but one commit, `ca2348d` (`git shortlog -sne 33c05e9`)
-- 791 work commits carry the trailer that the `bash` tool of Ultimate adds (`git log --no-merges --grep='^Ultimate-Conversation:'`). So Ultimate's agents made most of the work (inferred)
-- A change unit is the work of one conversation. The trailers name 365 change units, and 212 of them have one commit
+- Upstream has 1,481 commits from 2026-10-01 to 2026-10-24 (`git rev-list --count 11d1d4c`). Of these commits, 310 are merges (`git rev-list --count --merges 11d1d4c`). The other 1,171 are work commits (`git rev-list --count --no-merges 11d1d4c`)
+- Daniel Griesser authored all but one commit, `ca2348d` (`git shortlog -sne 11d1d4c`)
+- 855 work commits carry Ultimate's conversation trailer (`git log --no-merges --grep='^Ultimate-Conversation:' --oneline 11d1d4c | wc -l`). Thus, Ultimate's agents made most of the work (inferred)
+- A change unit is the work of one conversation. The trailers name 393 change units, and 228 have one commit (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' 11d1d4c | sed '/^$/d' | sort | uniq -c`)
 
 ## Eras
 
-Upstream went through eight eras. An era is a span of days with one main theme. `git log --format=%ad --date=short 33c05e9 | sort | uniq -c` gives the commits of each day. A landing merge puts a change unit on `main` ([Life of a change unit](#life-of-a-change-unit)). A change unit counts in the era of its first work commit. Commits before 2026-10-14 have no trailer, so the table counts no change unit for them.
+Upstream went through eight eras. An era is a span of days with one main theme. `git log --format=%ad --date=short 11d1d4c | sort | uniq -c` gives the commits of each day. A landing merge puts a change unit on `main` ([Life of a change unit](#life-of-a-change-unit)). A change unit counts in the era of its first work commit. `git log --no-merges --format='%ad %(trailers:key=Ultimate-Conversation,valueonly)' --date=short 11d1d4c` gives each unit and its dates. Commits before 2026-10-14 have no trailer, so the table counts no change unit for them. `git log --merges --format='%ad %s' --date=short 11d1d4c` gives the dates of the landing shapes defined below.
 
 | Era                  | Dates (2026)   | Commits | Landing merges | Change units | Decisions    |
 | -------------------- | -------------- | ------: | -------------: | -----------: | ------------ |
@@ -24,7 +24,7 @@ Upstream went through eight eras. An era is a span of days with one main theme. 
 | 5 One front door     | 10-17 to 10-18 |     289 |             21 |          121 | D016 to D024 |
 | 6 Boundaries         | 10-19          |     168 |             14 |           44 | D025, D026   |
 | 7 Memory and backups | 10-20 to 10-21 |     172 |             15 |           53 | D027 to D029 |
-| 8 Recoverable work   | 10-22 to 10-23 |     208 |             24 |           71 | D030, D031   |
+| 8 Recoverable work   | 10-22 to 10-24 |     294 |             37 |           99 | D030, D031   |
 
 ### Era 1: Foundation
 
@@ -154,51 +154,67 @@ Background work gets supervision and recovery. The history of a home gets chapte
   - project subscriptions (`8cc313c`)
   - side chats (`34c3633`)
   - dreams and chapters (`34c001a`, `4c94093`, [B15](bricks/B15-dreams-and-chapters.md))
+  - structured questions on messages, including a note field on each answer card (`de87bde`, [B12](bricks/B12-human-in-the-loop.md))
+  - built-in skills for extensions, UI previews, and UI verification (`bc3a786`, [B06](bricks/B06-project-specialization.md))
+  - event and context triggers for automations (`a7f32b5`, [B13](bricks/B13-background-work.md))
+  - user grants for dreams, compaction, and chapter switches (`d6c9628`, [B13](bricks/B13-background-work.md), [B15](bricks/B15-dreams-and-chapters.md))
+  - server records of context use (`ed0bb8a`, [B14](bricks/B14-everything-on-record.md))
 - Reworked:
   - Pi moves to 1.4.0 (`d7dd683`)
   - Board extension becomes `messages` (`28d657a`)
   - a project keeps one root (`86ed900`)
   - eight built-ins are off by default (`5323967`, [D031](decisions/D031-resource-built-ins-off.md))
-- Removed: root tools `new_root`, `seed_tally`, and `compact_tally` (`86ed900`), and faux mode (`f23e291`, [D030](decisions/D030-previews-on-real-models.md))
+  - subscriptions become script triggers in automations, under one ledger and UI (`e099781`, `9dd221c`, [B13](bricks/B13-background-work.md))
+  - the branch tool applies the coordinator definition's model and thinking level (`8ff34aa`, [B09](bricks/B09-coordinators-and-subagents.md))
+  - previews use the `instance.model` setting (`a4843af`, [D030](decisions/D030-previews-on-real-models.md))
+  - agents avoid repeated tests on an unchanged tree (`1c8a97e`, [B09](bricks/B09-coordinators-and-subagents.md))
+  - messages become separate modules, and a message to an agent can answer its earlier request (`2941024`, `b956232`, [B11](bricks/B11-notes-and-messages.md))
+  - retryable rate limits pause the host (`a63e2fb`, `787fa1a`, [B12](bricks/B12-human-in-the-loop.md))
+  - the title bar and conversation transitions change (`09d1ae5`, `7113b4f`)
+- Removed:
+  - root tools `new_root`, `seed_tally`, and `compact_tally` (`86ed900`)
+  - faux mode (`f23e291`, [D030](decisions/D030-previews-on-real-models.md))
+  - the separate subscriptions extension and agent definition (`e099781`, [B13](bricks/B13-background-work.md))
+  - question extraction from prose and the summary model (`de87bde`, [B12](bricks/B12-human-in-the-loop.md))
 
 ## Life of a change unit
 
 Since era 5, a change unit reaches `main` in these steps:
 
-1. @ultimate starts a coordinator branch with the `branch` tool (`extensions/messages/server.ts:1327`)
-2. The workspaces extension makes an isolate on Git branch `ultimate/<hash>-<n>`. `<n>` is the conversation ID. `<hash>` comes from the home path (`extensions/workspaces/workspaces.ts:914`)
+1. @ultimate starts a coordinator branch with the `branch` tool (`extensions/messages/branch.ts:15`)
+2. The workspaces extension makes an isolate on Git branch `ultimate/<hash>-<n>` (`extensions/workspaces/workspaces.ts:927`). `<n>` is the conversation ID (`extensions/workspaces/workspaces.ts:927`). `<hash>` comes from the home path (`extensions/workspaces/workspaces.ts:927`)
 3. A Git hook of the `bash` tool adds the trailer `Ultimate-Conversation: <n>` to each commit (`extensions/coding-tools/server.ts:59`)
 4. Workers commit in their isolates. The coordinator merges their Git branches and `main` into its own
 5. The coordinator calls `workspace submit`. Code of the landing queue merges the tip, then runs checks from `.ultimate/settings.json`
-6. The code sets `main` to the merge result, then pushes it. Lineage records a landing note in the tally when the landing event arrives (`extensions/lineage/server.ts:1450`). Resumed branches get a catch-up. The lander agent acts only when a step fails ([D011](decisions/D011-lander-queue.md))
+6. The code sets `main` to the merge result, then pushes it. Lineage records each landing in the tally (`extensions/lineage/server.ts:1437`). Resumed branches get a catch-up. The lander agent acts only when a step fails ([D011](decisions/D011-lander-queue.md))
 
 The landing queue uses `git merge` defaults (`extensions/workspaces/lander.ts:769`). Git makes a landing merge only if it cannot fast-forward. Its message is `Merge <sha> from #<n> into main` (`extensions/workspaces/lander.ts:819`).
 
-The 81 landing merges with `#<n>` name 79 conversations. 75 of these conversations are among the 365 change units, and no work commit carries the trailer of the other 4. Their commits carry the trailer of a child conversation. The other change units landed by a fast-forward, or in the Git branch of another unit (inferred).
+The 94 landing merges with `#<n>` name 90 conversations (`git log --merges --format=%s 11d1d4c`). Of these conversations, 86 appear in the work trailers (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' 11d1d4c`). The other 4 do not appear in those trailers (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' 11d1d4c`). Their landings contain work from other conversations, as `0eb16c0` shows below. The other units reached `main` by a fast-forward or through another unit, given those merge subjects and trailers (inferred).
 
 Landings and their commit trailers can name different conversations. `0eb16c0` names `#209732`. Its commit `8c44921` has trailer `216060`.
 
 ### Commit shapes
 
-`git log --merges --format=%s 33c05e9` shows 289 merges in six shapes:
+`git log --merges --format=%s 11d1d4c` shows 310 merges in six shapes:
 
 | Shape                         | Subject                                       | Merges |
 | ----------------------------- | --------------------------------------------- | -----: |
-| Landing merge                 | `Merge <sha> from #<n> into main`             |     81 |
+| Landing merge                 | `Merge <sha> from #<n> into main`             |     94 |
 | Landing merge, old name       | `Merge <sha> from W<n> into main`             |     15 |
-| Merge of `main` into a branch | `Merge branch 'main' into ultimate/...`       |     73 |
-| Merge of a child              | `Merge branch 'ultimate/<hash>-<m>' into ...` |     72 |
+| Merge of `main` into a branch | `Merge branch 'main' into ultimate/...`       |     79 |
+| Merge of a child              | `Merge branch 'ultimate/<hash>-<m>' into ...` |     73 |
 | Merge by hand                 | `chore(integration): ...`                     |     24 |
-| Other                         | Free text                                     |     24 |
+| Other                         | Free text                                     |     25 |
 
-The catch-up row also counts merges of `origin/main` or of a local path. 91 landing merges have no trailer. The other 5 list conflicts and carry the trailer of conversation 30726, such as `23f26ba`. That conversation is the lander, which fixed the conflicts (inferred).
+The row for merges of `main` also counts subjects that start with `Merge main`, and merges of `origin/main` or a local path. Of the landing merges, 104 have no trailer (`git log --merges --format='%s %(trailers:key=Ultimate-Conversation,valueonly)' 11d1d4c`). The other 5 list conflicts and carry the trailer of conversation 30726, such as `23f26ba`. That conversation is the lander, which fixed the conflicts in `23f26ba` (inferred).
 
 ### How the process changed
 
 - Eras 1 and 2: each commit went to `main` directly. No merge predates 2026-10-12
 - Era 3: on 2026-10-12, 20 `chore(integration)` merges, such as `d37887a`, put work on `main`. Git does not show which agent made them. The landing queue began on 2026-10-13 (`5c36dcd`). `1d94cbc6` is the first landing merge, and it names `W25966`
 - Era 4: `2166faa` is the first work commit with a trailer, on 2026-10-14. `19f960d` changed the label `W<n>` to `#<n>`, and `930d33e` is the first `#<n>` landing merge. 32 work commits on 2026-10-14 and 2026-10-15 have no trailer
-- Eras 5 to 8: each work commit has a trailer. @ultimate starts branches (`c685a27`)
+- Eras 5 to 8: each work commit except `ce2d46ab` has a trailer (`git log --no-merges --format='%ad %h %(trailers:key=Ultimate-Conversation,valueonly)' --date=short 11d1d4c`). @ultimate starts branches (`c685a27`)
 
 ### Find the commits of one conversation
 
@@ -213,12 +229,12 @@ Change unit 59981 has both landing shapes. Landing merge `a03d554` put its first
 
 ## How the rules and the team changed
 
-Up to era 5, most rule changes went to `AGENTS.md`. After era 5, most went to the agent definitions. `git log --no-merges --format=%ad --date=short 33c05e9 -- <path>` gives these counts:
+Up to era 5, most rule changes went to `AGENTS.md`. After era 5, most went to the agent definitions. `git log --no-merges --format=%ad --date=short 11d1d4c -- <path>` gives these counts:
 
 | Path                              |   1 |   2 |   3 |   4 |   5 |   6 |   7 |   8 |
 | --------------------------------- | --: | --: | --: | --: | --: | --: | --: | --: |
-| `AGENTS.md`                       |  21 |  12 |  21 |  29 |  23 |   4 |   7 |   4 |
-| `agents/` and `.ultimate/agents/` |   3 |   0 |   7 |   9 |  22 |  12 |  21 |  19 |
+| `AGENTS.md`                       |  21 |  12 |  21 |  29 |  23 |   4 |   7 |   7 |
+| `agents/` and `.ultimate/agents/` |   3 |   0 |   7 |   9 |  22 |  12 |  21 |  29 |
 
 Behavior rules live in prompts ([Principle 11](principles.md), `6b8477d`). These are the main changes:
 
@@ -228,6 +244,6 @@ Behavior rules live in prompts ([Principle 11](principles.md), `6b8477d`). These
 - Era 5: `c685a27` adds @ultimate. `a410963` adds the coordinator. `e7a77ac` moves details to `docs/`, cutting `AGENTS.md` from 234 lines to 101. `30af13a` and `9d455ec` add @cloudflare and @sync
 - Era 6: `9d764b6` names reviewers by their checks. `44bc478` removes @cloudflare
 - Era 7: `63da866` restores the scout, adds the designer, and pins the worker to GPT-6.1 Sol
-- Era 8: `556eb4c` keeps previews with the coordinator. `2f68182` lets @ultimate restart after core landings without asking. `8883ef7` sets Claude Code Opus 5.5 in the project coordinator definition. But `branch` does not use that model ([Known drift](upstream.md#known-drift-in-upstream-docs))
+- Era 8: `556eb4c` keeps previews with the coordinator. `2f68182` lets @ultimate restart after core landings without asking. `8883ef7` sets Claude Code Opus 5.5 in the project coordinator definition. `8ff34aa` makes `branch` apply that model. `ce2d46ab` temporarily sets OpenRouter models, and `50930ec` restores the Claude Code and Codex models. `bc3a786` moves procedures into skills and removes the coordinator's check before submission. `1c8a97e` tells agents to reuse passed tests on an unchanged tree
 
-[Subagents](../subagents.md) describes the team at the snapshot. A definition can set a model. Without one, the agent uses the model of its parent (`lib/agents.ts:49`).
+[Subagents](../subagents.md) describes the team at the snapshot. Outside previews, an unpinned definition uses its parent's model (`lib/agents.ts:63`). [D030](decisions/D030-previews-on-real-models.md) records the preview override.

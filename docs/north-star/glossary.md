@@ -39,6 +39,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 
 - **Agent definition**: a Markdown file with frontmatter that sets the model, thinking level, tools, and instructions of an agent. Built-in agent definitions are in `agents/` (`docs/subagents.md`). Early commits call it a "profile" (`703b104`)
 - **Overlay**: an agent definition with the name of an earlier definition and an `addTools` key. It can change settings, add tools, and append text, but it keeps the earlier instructions (`docs/subagents.md`, `9d40a9b`)
+- **Skill**: instructions that an agent reads for a task, stored in `SKILL.md`. A `/skill:name` command adds the named skill to user input (`server/skills.ts`)
 - **Top-level agent**: the agent of a conversation that is not a subagent, such as @ultimate or a coordinator (inferred). Only a top-level agent pushes (`docs/worktrees.md`). Not: a subagent
 - **@ultimate**: the standing agent that the user talks to. It starts and steers branches, and it relays their questions (`agents/ultimate.md`). Code: definition `ultimate`
 - **Standing agent**: an agent with one permanent conversation in a project. Nobody concludes it, so it keeps what it learned (`8a1c100`). Code: `resident: true`. Examples: @ultimate and @lander
@@ -47,6 +48,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Worker**: a subagent that does one bounded task in its own isolate and makes one focused commit (`agents/worker.md`)
 - **Scout**: a read-only subagent for one code question (`agents/scout.md`)
 - **Designer**: a subagent for front-end work (`agents/designer.md`)
+- **Watcher**: the agent that writes and repairs one script trigger of an automation (`agents/watcher.md`)
 - **Reviewer**: a read-only subagent that reviews one fixed commit range. Here, it leads three specialist reviewers (`.ultimate/README.md`)
 - **Landing queue**: the durable queue of submissions. Its code lands them one at a time, in order ([D011](decisions/D011-lander-queue.md))
 - **Lander**: the standing agent that owns the landing queue. The code of the landing queue does the merge, the checks, the fast-forward, and the push. The model works only on a failure or a message (`agents/lander.md`). UI: @lander
@@ -61,7 +63,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Trailer**: a `Key: value` line at the end of a commit message. The `bash` tool of Ultimate adds `Ultimate-Conversation: <n>` (`extensions/coding-tools/server.ts:59`)
 - **Landing note**: the entry that the tally records for each landing (`extensions/lineage/README.md`)
 - **Landing merge**: the merge commit that the landing queue makes when Git cannot fast-forward the target. Its message is `Merge <sha> from #<n> into main`. Before `19f960d`, the message named `W<n>` (`extensions/workspaces/lander.ts`). Not: a merge of `main` into a Git branch
-- **Preview**: a separate Ultimate instance that runs one checkout on its own port with the configured models. Code: the extension `instance` (`extensions/instance/README.md`)
+- **Preview**: a separate Ultimate instance that runs one checkout on its own port. Code: the extension `instance` (`extensions/instance/README.md`). [D030](decisions/D030-previews-on-real-models.md) records its model setting
 - **Supervisor**: the small process in `bin/ultimate.ts` that holds the port and the lock, and starts each generation (`docs/running.md`)
 - **Generation**: one core process that the supervisor starts. `ULTIMATE_GENERATION` labels it (`docs/running.md`)
 - **Swap**: the change from one generation to the next. The supervisor prepares and type-checks the new generation first. If the new generation fails to boot, the supervisor keeps the old generation (`docs/running.md`)
@@ -90,7 +92,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Note**: context in another conversation. A note starts no turn. A note from the tool `note` reaches the model of the recipient with its next input (`extensions/lineage/README.md`). A subagent's one-way update reaches its parent with the next model request, also during a run (`extensions/messages/README.md`). Code: the tool `note` (`AGENTS.md`), and a subagent's one-way update to its parent (`304e47e`). Not: another one-way message, which can wake its recipient (`extensions/messages/README.md`)
 - **Notify**: a request to know when another conversation finishes. Code: the tool `notify` (`AGENTS.md`)
 - **Steer**: a message that enters a run in progress, after the current tool calls (`extensions/messages/README.md`)
-- **Question**: a message that expects a reply from the user. An answer card stays open until the user answers or dismisses it (`extensions/questions/README.md`)
+- **Question**: one structured request for a user answer, carried by a message (`extensions/messages/questions.ts`). Its answer card stays open until the user answers or dismisses the message (`extensions/questions/README.md`)
 - **To-do**: an open item for the user or for @ultimate, in one short list for each project (`extensions/todos/README.md`)
 - **Side chat**: a temporary fork of @ultimate for a tangent. The user discards it, or injects a summary into the main conversation (`extensions/side-chat/README.md`)
 - **Project trust**: the user's choice to load a project's `.ultimate/` folder. Until the user chooses, Ultimate uses only the global setup. Code: decision `local` or `global` (`docs/settings.md`)
@@ -99,8 +101,9 @@ This file defines the names in uao. Each thing has one name, and each name has o
 
 - **Task**: a unit of work that Pi Durable runs and checkpoints, such as a model request or a tool call ([Pi Durable](https://earendil.com/posts/pi-durable/)). Not: a task in a plan of `extensions/plan/`
 - **Replay-safe**: a tool that can run again after a crash with no harm. Pi Durable runs an interrupted tool again only when it has this mark (`docs/durability.md`)
-- **Automation**: a schedule that runs an agent prompt as its own conversation (`extensions/automations/README.md`)
-- **Subscription**: a supervised script that wakes a conversation when its output says `FIRE` (`extensions/subscriptions/README.md`)
+- **Automation**: a rule for background work that acts when its trigger fires. Code: the tool `automation` (`extensions/automations/README.md`)
+- **Trigger**: the condition that fires an automation. A trigger uses a schedule, a script, a domain event, or a context threshold (`extensions/automations/README.md`)
+- **Grant**: the user's approval for named actions after an automation fires. Only the user can set or withdraw a grant (`extensions/automations/server.ts`)
 - **Pause**: a hold on new tasks for the whole host. Current work finishes, and Play releases the queue (`extensions/pause/README.md`)
 - **Trace**: the record of nested calls of services, actions, reactors, and tools, together with the parents of those calls (`docs/extensions.md`)
 - **Summary model**: the small model for titles, summaries, and abstracts. Code: `summaryModel` (`docs/settings.md`)
@@ -128,3 +131,4 @@ Do not use these names for current things:
 - **Machine home**: the home of @sync on each machine. `1708844` removed it
 - **Faux mode**: a demo mode without tokens that `f23e291` removed. Tests still use Pi's faux provider
 - **Exclusive commands**: an extension that `89676a2` removed
+- **Subscription**: the old name for a supervised script. `e099781` replaced subscriptions with script triggers in automations

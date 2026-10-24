@@ -22,3 +22,5 @@ Conversations exchange information without the user. A note gives another conver
 - `aa15369` limits subagents to their parent
 - `3b95632` adds messages between projects
 - `28d657a` renames Board to messages
+- `b956232` makes a message answer the recipient's earlier request when the sender owes that answer
+- `2941024` separates the branch tool, admission, delivery, triage, routing, and remote messages into modules
