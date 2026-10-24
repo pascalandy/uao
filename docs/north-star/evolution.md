@@ -11,9 +11,11 @@ Each row is one kind of change. The columns have these meanings:
 - **Layer**: a number from [Layers](architecture.md#layers). "Beside" means next to the layers. "None" means outside them
 - **Goes live**: short for the [layer table](../../AGENTS.md#layers-and-how-they-reload) and [Discovery and settings](../settings.md)
 - **Checks**: "Base" is `pnpm check` and the tests that cover the change ([Conventions](../../AGENTS.md#conventions)). After a submission, the landing queue runs the checks of `.ultimate/settings.json`: `pnpm check`, then `pnpm test` and `pnpm test:e2e` in parallel. `pnpm check` covers only the repository (`extensions/README.md`)
-- **Risk**: upstream commits that touch the path, from `git log --no-merges --oneline 33c05e9 -- <path> | wc -l`. High is 100 or more, medium is 20 to 99, and low is 1 to 19. "None" means outside the repository. Frequent upstream edits to a path increase the risk of merge conflicts when uao also edits it (inferred)
+- **Merge risk**: upstream commits that touch the path, from `git log --no-merges --oneline 33c05e9 -- <path> | wc -l`. High is 100 or more, medium is 20 to 99, and low is 1 to 19. "None" means outside the repository. Frequent upstream edits to a path increase the risk of merge conflicts when uao also edits it (inferred)
 
-| Change              | Place                             | Layer  | Goes live              | Checks                 | Risk            |
+The runtime risk follows the layer, not the count. A broken web facet shows an error card. A core change goes live only after a checked swap. Only a human restart applies a change to the supervisor ([the layer table](../../AGENTS.md#layers-and-how-they-reload)).
+
+| Change              | Place                             | Layer  | Goes live              | Checks                 | Merge risk      |
 | ------------------- | --------------------------------- | ------ | ---------------------- | ---------------------- | --------------- |
 | Web facet           | `extensions/<name>/web.tsx`       | 4 or 5 | Hot reload             | Base                   | High, 312       |
 | Server facet        | `extensions/<name>/server.ts`     | 4 or 5 | Reinstall on save      | Base                   | High, 509       |
@@ -36,7 +38,7 @@ Each row is one kind of change. The columns have these meanings:
 
 Notes:
 
-1. A new folder has no upstream history. Only a later upstream folder with the same name can conflict (inferred). The guide requires a README (`extensions/README.md`). A web facet that imports a `.ts` file needs a line in `tsconfig.web.json`. That file has 39 commits, 37 also touching `extensions/`
+1. A new folder has no upstream history. Only a later upstream folder with the same name can conflict (inferred). The guide requires a README (`extensions/README.md`). A web facet that imports a `.ts` file needs a line in `tsconfig.web.json`. That file has 39 commits, and 37 of these commits also change `extensions/`
 2. A project extension loads after the user trusts the project ([D009](decisions/D009-trust-before-project-setup.md)). Its code requires a coordinator branch ([D027](decisions/D027-project-code-through-branches.md)). Then it goes live like a built-in's facets (`extensions/README.md`)
 3. A new conversation reads the new text. At its next input, @ultimate also gets a note naming changed definition and instruction files. Other agents keep their initial instructions (`extensions/prompt/server.ts:80`). But a standing agent reads its definition again before a message reaches it (`extensions/messages/server.ts:350`). Skills enter the system prompt (`extensions/prompt/server.ts:264`)
 4. An overlay extends a built-in definition, not its copy ([Subagents](../subagents.md)). A new file has no upstream history. An edit to an upstream file in `.ultimate/agents/` meets 28 upstream commits
@@ -46,26 +48,26 @@ Notes:
 
 Most changes affect the conversation lifecycle, web app, and agent definitions. Core contracts and the supervisor are stable. `git log --no-merges --format=%ad --date=short 33c05e9 -- <path>` gives each count. "Last 3 days" counts 2026-10-21 to 2026-10-23.
 
-| Path                            | Commits | Last 3 days | Reading                      |
-| ------------------------------- | ------: | ----------: | ---------------------------- |
-| `test/`                         |     813 |         152 | Changes with most features   |
-| `extensions/conversations`      |     136 |          14 | Changes often                |
-| `extensions/subagents`          |     134 |          21 | Changes often                |
-| `extensions/lineage`            |     130 |          36 | Changes often, also recently |
-| `extensions/workspaces`         |     128 |          16 | Changes often                |
-| `web/src/app`                   |     129 |          24 | Changes often                |
-| `AGENTS.md`                     |     121 |           8 | Fewer changes now            |
-| `agents/`                       |      74 |          30 | Receives the behavior rules  |
-| `lib/`                          |      44 |          23 | Many new helpers             |
-| `extensions/self`               |      35 |           1 | Stable                       |
-| `shared/protocol.ts`            |      34 |           1 | Stable                       |
-| `bin/`                          |      22 |           4 | Stable                       |
-| `shared/extension-api.ts`       |       5 |           1 | Stable                       |
-| `server/supervisor-protocol.ts` |       4 |           0 | Stable since 2026-10-12      |
+| Path                            | Commits | Last 3 days | Reading                           |
+| ------------------------------- | ------: | ----------: | --------------------------------- |
+| `test/`                         |     813 |         152 | Changes with almost every feature |
+| `extensions/conversations`      |     136 |          14 | Changes often                     |
+| `extensions/subagents`          |     134 |          21 | Changes often                     |
+| `extensions/lineage`            |     130 |          36 | Changes often, also recently      |
+| `extensions/workspaces`         |     128 |          16 | Changes often                     |
+| `web/src/app`                   |     129 |          24 | Changes often                     |
+| `AGENTS.md`                     |     121 |           8 | Fewer changes now                 |
+| `agents/`                       |      74 |          30 | Receives the behavior rules       |
+| `lib/`                          |      44 |          23 | Many new helpers                  |
+| `extensions/self`               |      35 |           1 | Stable                            |
+| `shared/protocol.ts`            |      34 |           1 | Stable                            |
+| `bin/`                          |      22 |           4 | Stable                            |
+| `shared/extension-api.ts`       |       5 |           1 | New since 2026-10-18              |
+| `server/supervisor-protocol.ts` |       4 |           0 | Stable since 2026-10-12           |
 
 A count covers 23 days. A low count can mean a new path rather than a stable one. For example, `extensions/side-chat` exists only since 2026-10-22 (`34c3633`). A rename starts a new count. Thus, `extensions/messages` has 8 commits. Before the rename, the Board extension's folder had 94 (`28d657a`).
 
-Nine extension folders left `extensions/` before the snapshot. Upstream deleted eight, such as `canvas` (`deb65f8`), `sync` (`67caeb6`), and `faux` (`f23e291`). The ninth, the Board extension, became `extensions/messages` (`28d657a`). [history.md](history.md#eras) lists removals by era.
+Nine extension folders left `extensions/` before the snapshot. Upstream deleted eight, such as `canvas` (`deb65f8`), `sync` (`67caeb6`), and `faux` (`f23e291`). The ninth, the Board extension, became `extensions/messages` (`28d657a`). [history.md](history.md#eras) lists the main removals by era.
 
 ### Areas that change together
 
@@ -85,7 +87,7 @@ A seam permits new behavior without edits to upstream files. Each seam below is 
 - **Extension APIs and points.** A new extension uses an upstream contract through `host.need` or `host.want`. Alternatively, it fills a core-tier point ([Extension APIs](../extensions.md#extension-apis), [Core tier](../extensions.md#core-tier))
 - **Durable events.** A reactor reads the events of upstream extensions in order, across crashes ([Durable events](../extensions.md#durable-events))
 - **Web contributions.** A web facet adds slots, panels, surfaces, renderers, and commands. It can also wrap the composer ([Contributions](../../extensions/README.md#contributions))
-- **Hooks.** A server facet adds a hook such as `beforeInput` (`extensions/lineage/server.ts:1506`). Its transactional form comes from a local Pi patch ([Borrowed from Pi](../pi-upstream.md))
+- **Hooks.** A server facet adds a hook such as `beforeInput` (`extensions/lineage/server.ts:1506`). The transactional form of `beforeInput` comes from a local Pi patch ([Borrowed from Pi](../pi-upstream.md))
 - **Agent definitions.** A new definition, an overlay, or a new `reviewer-<name>.md` in `.ultimate/agents/` or `~/.ultimate/agents/` ([Subagents](../subagents.md))
 - **Personal setup** in `~/.ultimate/`: `settings.json`, `skills/`, and `AGENTS.md` ([Discovery and settings](../settings.md))
 - **Project subscriptions** in `.ultimate/subscriptions/<slug>/`. These subscriptions load stopped (`8cc313c`)
@@ -97,8 +99,8 @@ Two limits apply. Lander checks and the push target live in upstream file `.ulti
 These areas changed most on 2026-10-22 and 2026-10-23, the last two days before the snapshot. Upstream made 158 non-merge commits in those days. Counts come from `git log --no-merges --format=%ad --date=short 33c05e9 -- <path> | grep -c '2026-10-2[23]'`:
 
 - **Dreams and chapters**: `extensions/dream` 23 and `lib/chapters.ts` 6. Both are new on 2026-10-23 (`34c001a`, `4c94093`). Subscriptions do not move into a new chapter yet ([B15](bricks/B15-dreams-and-chapters.md))
-- **The conversation tree**: `extensions/lineage` 22. A project keeps one root (`86ed900`). A branch starts with a title (`6c37b8f`). Catch-up waits for a ready checkout (`13cac20`) ([B07](bricks/B07-conversation-tree.md))
-- **Subscriptions**: `extensions/subscriptions` 19. Projects commit subscriptions (`8cc313c`). A panel shows subscriptions (`cc54171`) ([B13](bricks/B13-background-work.md))
+- **The conversation tree**: `extensions/lineage` 22. A project keeps one root (`86ed900`). A branch starts with a title (`6c37b8f`). Catch-up reads only a ready checkout (`13cac20`) ([B07](bricks/B07-conversation-tree.md))
+- **Subscriptions**: `extensions/subscriptions` 19. Projects commit subscriptions (`8cc313c`). A panel shows subscriptions (`e919617`) ([B13](bricks/B13-background-work.md))
 - **The team**: `extensions/subagents` 16 and `agents/ultimate.md` 13. Tool denials (`556eb4c`), the watchdog (`fb51fea`), and the coordinator model (`8883ef7`) changed. The `branch` tool does not apply that model yet ([Known drift](upstream.md#known-drift-in-upstream-docs)) ([B09](bricks/B09-coordinators-and-subagents.md))
 - **Messages**: 17 commits touch the Board extension or `extensions/messages`, around the rename (`28d657a`) ([B11](bricks/B11-notes-and-messages.md))
 - **Isolates**: `extensions/workspaces` 12. The removal and the preparation of isolates changed (`9a0d246`, `3fcffd5`) ([B10](bricks/B10-isolates-previews-lander.md))

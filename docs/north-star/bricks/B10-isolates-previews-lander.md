@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-Each branch works in its own isolate, a git worktree, so several features run in parallel on the same code. An isolate separates files, not processes, so it is not a sandbox for the shell (`extensions/subagents/README.md`). A coordinator previews its work in a separate Ultimate instance on its own port. When the work is ready, the lander merges it, runs every check, and lands only a result that passes every check.
+Each branch works in its own isolate, a git worktree, so several features run in parallel on the same code. An isolate separates files, not processes, so it is not a sandbox for the shell (`extensions/subagents/README.md`). A coordinator previews its work in a separate Ultimate instance on its own port. When the work is ready, the landing queue merges it, runs every check, and lands only a result that passes every check.
 
 ## Where it lives
 
