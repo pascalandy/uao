@@ -682,11 +682,13 @@ function lineage(host: ExtensionHost) {
           (await (await host.harness().submission(result.submissionId, ctx))?.wait(ctx))
         const placed = result.entryId !== undefined || (written && written.status === 'done')
         // Keyed by the compaction, so a rerun after a crash finds the input it already submitted.
+        const ultimate =
+          (await host.harness().snapshot(Standing, ROOT_CONVERSATION_ID, ctx))?.ultimate === id
         if (placed)
           await (await host.harness().conversation(id, ctx))!.submit(
             {
               type: 'input',
-              content: WOKEN_TEXT,
+              content: ultimate ? WOKEN_TEXT : WOKEN_OTHER_TEXT,
               whenBusy: 'followUp',
               requestId: `lineage:woken:${compaction}`,
               entry: { kind: 'lineage.woken', data: {} },
@@ -704,6 +706,9 @@ function lineage(host: ExtensionHost) {
 
 const WOKEN_TEXT =
   'Your context was just compacted. Read the summary above and your project memory, then check what is open: unanswered questions, running branches and to-dos. Tell the user in one or two lines that you are back and what is open.'
+/** The wake-up of any other conversation that compacted itself with the tool. */
+const WOKEN_OTHER_TEXT =
+  'Your context was just compacted. Read the summary above, then continue where you left off.'
 
 /** The note a landing leaves in its submitter's tree root: what landed, how it diverged, and the card's data. */
 function landingNote(landing: LandedData) {
@@ -1646,18 +1651,28 @@ export default function lineageExtension(host: ExtensionHost) {
           'Compact your own context: older turns become a summary, recent ones stay verbatim, full history stays in storage. Use instructions to guide the summary. It runs after this turn; end the turn, and you are woken once it is done.',
         parameters: Type.Object({ instructions: Type.Optional(Type.String()) }),
         async execute({ instructions }, api, ctx) {
-          const standing = await host.harness().snapshot(Standing, ROOT_CONVERSATION_ID, ctx)
-          if (standing?.ultimate !== api.conversationId)
-            throw new Error('Only @ultimate compacts itself with compact')
-          if (
-            await api.commit(
-              (tx) => liveTask(tx, api.conversationId, CompactionTask.definition.name),
-              ctx,
-            )
-          )
-            throw new Error('Already compacting')
-          const conversation = await host.harness().conversation(api.conversationId, ctx)
-          const taskId = await conversation!.compact(instructions, ctx)
+          const id = api.conversationId
+          // The compaction and its wake-up commit together, so no crash leaves one without the other. @ultimate's own
+          // hook wakes it after any manual compaction; anyone else is woken here.
+          const taskId = await host.harness().commit(async (tx) => {
+            // A subagent's report is its run's answer: a wake-up after the compaction would start a run whose answer
+            // never reaches its parent. Its automatic compaction continues the run instead.
+            if ((await tx.conversation(id))?.owner)
+              throw new Error(
+                'A subagent does not compact itself: its automatic compaction continues the run. Finish and report instead.',
+              )
+            if (await liveTask(tx, id, CompactionTask.definition.name))
+              throw new Error('Already compacting')
+            const ultimate = (await tx.doc(Standing, ROOT_CONVERSATION_ID)).ultimate === id
+            const created = await admitCompaction(tx, id, instructions)
+            if (!ultimate)
+              (await tx.doc(WokenReceipt, id, String(created), null)).task = await tx.createTask(
+                Woken,
+                { id, compaction: created },
+                { conversationId: id, ownership: { kind: 'conversation' }, background: true },
+              )
+            return created
+          }, ctx)
           return { output: [{ type: 'text', text: JSON.stringify({ taskId }) }] }
         },
       }),
