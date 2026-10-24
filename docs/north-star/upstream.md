@@ -56,5 +56,5 @@ These upstream texts disagree with the code at the snapshot. uao records these d
 - `AGENTS.md` calls a project "a forest of conversation trees", and it also says "A project has one root" (`86ed900`)
 - `extensions/README.md` says that `lib/` "holds no state", but `lib/chapters.ts` reads SQLite and writes journal files
 - `docs/subagents.md` says that only `scout`, `worker`, and `designer` pin their models. `agents/subscription.md` and `agents/dream-pass.md` pin models too
-- `.ultimate/agents/coordinator.md` sets Claude Code Opus 5.5 for coordinators (`8883ef7`). The `branch` tool applies only the instructions of the definition, so a coordinator keeps the model of @ultimate (`extensions/messages/server.ts:1374`)
+- `.ultimate/agents/coordinator.md` sets Claude Code Opus 5.5 for coordinators (`8883ef7`). The `branch` tool applies only the instructions of the definition, so a coordinator keeps the model of the root that it forks from (`extensions/messages/server.ts:1374`, `extensions/lineage/server.ts:901`)
 - `docs/settings.md` says that `health` reports provider health with backups. `69a367a` stopped sending provider health with backups

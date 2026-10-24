@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-Conversations exchange information without the user. A note gives another conversation context for its next turn and wakes nobody. A message wakes its recipient, can steer a run in progress, and can expect a reply. The exception is a subagent's one-way update to its parent, which arrives as a note ([messages README](../../../extensions/messages/README.md)). The @ultimate of one project can tell the @ultimate of another project what changed. Messages to a project on another machine need the user's own backup Worker, which uao does not ship (`lib/remote.ts`, [upstream.md](../upstream.md#what-still-points-at-hazat)). Tailscale alone does not let Ultimate find a project on another machine.
+Conversations exchange information without the user. A note gives another conversation context for its next turn and wakes nobody. A message wakes its recipient, can steer a run in progress, and can expect a reply. The exception is a subagent's one-way update to its parent, which arrives as a note ([messages README](../../../extensions/messages/README.md)). Also, @ultimate's triage can keep a one-way message from a conversation as context, with no wake ([triage](../../../extensions/messages/README.md#triage-for-the-primary-agent)). The @ultimate of one project can tell the @ultimate of another project what changed. Messages to a project on another machine need the user's own backup Worker, which uao does not ship (`lib/remote.ts`, [upstream.md](../upstream.md#what-still-points-at-hazat)). Tailscale alone does not let Ultimate find a project on another machine.
 
 ## Where it lives
 
