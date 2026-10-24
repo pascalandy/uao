@@ -116,10 +116,13 @@ export function Transcript({ dock }: { dock?: boolean }) {
     )
     return () => fade.cancel()
   }, [loading, placeholder])
-  // Rows on screen come into focus from the bottom up, unless there are none or a resumed reload already shows them.
-  // Opacity and blur only: a moving row would suspend the browser's scroll anchoring while older rows render above.
+  // Rows on screen come in from the bottom up when a conversation first loads: not when there are none, when a resumed
+  // reload already shows them, or when this tab showed them before (`restored`), which opens as it was.
+  // Opacity only: a moving row would suspend the browser's scroll anchoring while older rows render above.
+  const restored = useStore((state) => state.restored)
   const reveal = useEffectEvent((scroll: HTMLElement, content: HTMLElement) => {
-    if (!messages || covered() || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (!messages || restored || covered()) return
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
     // Rows settle shorter as they finish rendering, pulling rows from above into view: animate a screen of those too.
     const view = scroll.getBoundingClientRect()
     const rows = [...content.children].filter((row) => {
@@ -127,18 +130,12 @@ export function Transcript({ dock }: { dock?: boolean }) {
       return box.height > 0 && box.bottom > view.top - view.height && box.top < view.bottom
     })
     rows.toReversed().forEach((row, index) =>
-      row.animate(
-        [
-          { opacity: 0, filter: 'blur(4px)' },
-          { opacity: 1, filter: 'none' },
-        ],
-        {
-          delay: index * 30,
-          duration: 450,
-          easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
-          fill: 'backwards',
-        },
-      ),
+      row.animate([{ opacity: 0 }, { opacity: 1 }], {
+        delay: index * 14,
+        duration: 260,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        fill: 'backwards',
+      }),
     )
   })
   // Paint a newly shown conversation at its newest row; sticking to the bottom only scrolls a frame later.
@@ -152,7 +149,10 @@ export function Transcript({ dock }: { dock?: boolean }) {
     // Reuse its follow lock so resizing never pulls someone away from older messages.
     const resize = new ResizeObserver(() => {
       // oxlint-disable-next-line typescript/no-floating-promises -- use-stick-to-bottom's frame loop resolves a boolean; it performs no rejecting async work.
-      void stick.current?.scrollToBottom({ animation: 'instant', preserveScrollPosition: true })
+      void stick.current?.scrollToBottom({
+        animation: 'instant',
+        preserveScrollPosition: true,
+      })
     })
     resize.observe(scroll)
     return () => resize.disconnect()
@@ -253,7 +253,10 @@ function TranscriptEntries() {
       if (left()) stopScroll()
       seenTop.current = scroll.scrollTop
     }
-    scroll.addEventListener('scroll', onScroll, { capture: true, passive: true })
+    scroll.addEventListener('scroll', onScroll, {
+      capture: true,
+      passive: true,
+    })
     return () => scroll.removeEventListener('scroll', onScroll, { capture: true })
   }, [scrollRef, stopScroll])
   // Retain already displayed rows when a live compaction replaces the active context, or a fresh window moves past them.
@@ -740,7 +743,11 @@ function QuietRow({
   onOpenChange: (open: boolean) => void
   busy: boolean
   summary:
-    | { extension: string; version: number; component: ComponentType<CompactSummaryProps> }
+    | {
+        extension: string
+        version: number
+        component: ComponentType<CompactSummaryProps>
+      }
     | undefined
   children: ReactNode
 }) {
@@ -803,7 +810,8 @@ function WorkRow({
   return (
     <Collapsible className="group/work" onOpenChange={onOpenChange} open={open}>
       <CollapsibleTrigger className="flex cursor-pointer items-center gap-1.5 font-mono text-[11px] text-muted-foreground/70 hover:text-muted-foreground">
-        {working ? 'working' : 'worked'} · {run.steps} step{run.steps === 1 ? '' : 's'}
+        {working ? 'working' : 'worked'} · {run.steps} step
+        {run.steps === 1 ? '' : 's'}
         <ChevronRightIcon className="size-3 transition-transform group-data-[state=open]/work:rotate-90" />
       </CollapsibleTrigger>
       {!open && (
@@ -1070,7 +1078,11 @@ function coreEntry(
       }
       return (
         <ToolCallBlock
-          call={toolCallView(call, { result: results.get(call.id), streaming: false, busy })}
+          call={toolCallView(call, {
+            result: results.get(call.id),
+            streaming: false,
+            busy,
+          })}
         />
       )
     }

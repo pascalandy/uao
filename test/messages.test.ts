@@ -14,6 +14,7 @@ import {
   defineExtension,
   defineTask,
   defineTool,
+  LiveDoc,
   ROOT_CONVERSATION_ID,
 } from '@earendil-works/pi-durable'
 import type { ConversationId, Task, TaskId } from '@earendil-works/pi-durable'
@@ -75,6 +76,8 @@ async function fixture(
     afterMemo: boolean
     entered: boolean
     taskId?: TaskId
+    /** Only this conversation's calls wait at the gate. */
+    conversation?: () => number
   },
   /** Triage's verdict for messages to @ultimate; without one there is no summary model, so nothing is gated. */
   triage?: (text: string) => string | Promise<string>,
@@ -169,6 +172,8 @@ async function fixture(
               ...api,
               memo: async (name: string, value: JsonValue | Context, memoContext?: Context) => {
                 if (memoContext === undefined) return api.memo(name, value as Context)
+                if (sendGate.conversation && sendGate.conversation() !== api.conversationId)
+                  return api.memo(name, value as JsonValue, memoContext)
                 sendGate.taskId = api.taskId
                 if (!sendGate.afterMemo) {
                   sendGate.entered = true
@@ -466,26 +471,97 @@ it('still wakes a parent for a worker question and returns its typed reply', asy
   })
   view.dispose()
 })
-it('refuses messaging a sender while answering, then allows it after the answer', async () => {
+/** The recipient's tool results, as text. */
+async function toolResults(f: Awaited<ReturnType<typeof fixture>>) {
+  const view = await f.recipient.viewState(context)
+  const results = view.value.entries
+    .filter((e) => e.kind === 'pi.tool-result')
+    .map((e) => JSON.stringify(e.model))
+  view.dispose()
+  return results
+}
+it('turns a message to a sender it owes an answer into that answer, once, with images', async () => {
+  const f = await fixture()
+  const command = 'SEND ' + JSON.stringify({ to: '#1', text: 'Ready', images: 'latest' })
+  await submitWithImages(
+    f,
+    'SEND ' + JSON.stringify({ to: '@scout', text: command, images: 'latest' }),
+    2,
+  )
+  await until(async () => (await replies(f)).length === 1)
+  await f.recipient.waitForIdle(context)
+  await f.opened.root.waitForIdle(context)
+  const [asked, answer] = (await f.log())!.messages
+  expect((await f.log())!.messages).toHaveLength(2)
+  expect(asked).toMatchObject({ from: 1, to: f.recipient.id, state: 'answered' })
+  expect(answer).toMatchObject({
+    from: f.recipient.id,
+    to: 1,
+    text: 'Ready',
+    re: asked.id,
+    reply: false,
+    state: 'delivered',
+    images: { count: 2 },
+  })
+  const [reply] = await replies(f)
+  expect(reply.data).toMatchObject({ id: answer.id, re: asked.id, text: 'Ready', images: 2 })
+  expect(imagesIn(reply)).toEqual([png(0), png(1)])
+  // The tool result ends the run: no final answer restates it, and delivery sends nothing more.
+  expect((await toolResults(f)).at(-1)).toContain(`Sent as your answer to message ${asked.id}.`)
+  const view = await f.recipient.viewState(context)
+  expect(view.value.entries.at(-1)?.kind).toBe('pi.tool-result')
+  view.dispose()
+  expect(f.observed.filter((t) => t.startsWith('Reply from'))).toHaveLength(1)
+})
+it('refuses @ultimate messaging the user it owes an answer', async () => {
   const f = await fixture()
   await f.opened.harness.commit(async (tx) => {
-    ;(await tx.doc(Standing, ROOT_CONVERSATION_ID)).ultimate = ROOT_CONVERSATION_ID
+    const log = await tx.doc(Messages, ROOT_CONVERSATION_ID)
+    log.messages.push({
+      id: log.next++,
+      from: 'user',
+      to: 1,
+      text: 'Q',
+      at: 0,
+      reply: true,
+      state: 'delivered',
+    })
   }, context)
-  await f.send('@scout', 'SEND ' + JSON.stringify({ to: '#1', text: 'Duplicate' }))
+  await f.send('user', 'Restated')
+  expect(f.observed.join('\n')).toContain(
+    "Your answer to user's message 1 is sent back automatically. Answer instead of messaging.",
+  )
+  expect((await f.log())!.messages).toHaveLength(1)
+})
+it.each([false, true])('replays a converted answer once (afterMemo: %s)', async (afterMemo) => {
+  const sendGate = { gate: gate(), afterMemo, entered: false, conversation: () => 0 }
+  const f = await fixture(undefined, sendGate)
+  sendGate.conversation = () => f.recipient.id
+  await f.opened.root.submit(
+    {
+      type: 'input',
+      content: 'SEND ' + JSON.stringify({ to: '@scout', text: 'SEND {"to":"#1","text":"Ready"}' }),
+    },
+    context,
+  )
+  await until(() => sendGate.entered)
+  await f.opened.close()
+  await f.open()
+  sendGate.gate.release()
   await until(async () => (await replies(f)).length === 1)
-  expect(f.observed).toEqual(
-    expect.arrayContaining([
-      expect.stringContaining(
-        "Your answer to #1 (@ultimate)'s message 1 is sent back automatically. Answer instead of messaging.",
-      ),
-    ]),
-  )
-  expect((await f.log())!.messages).toHaveLength(2)
-  expect(f.observed).toContain(
-    'Message from #1 (@ultimate):\nSEND ' +
-      JSON.stringify({ to: '#1', text: 'Duplicate' }) +
-      '\nAnswer here; your answer is sent to #1 (@ultimate) automatically. Do not use message to reply.',
-  )
+  await (await f.opened.harness.conversation(f.recipient.id, context))!.waitForIdle(context)
+  await f.opened.root.waitForIdle(context)
+  expect((await f.log())!.messages).toMatchObject([
+    { id: 1, state: 'answered' },
+    { id: 2, re: 1, text: 'Ready', state: 'delivered' },
+  ])
+  expect((await f.log())!.next).toBe(3)
+  expect(await replies(f)).toHaveLength(1)
+})
+it('lets an agent ask the sender again once its answer went back', async () => {
+  const f = await fixture()
+  await f.send('@scout')
+  await until(async () => (await replies(f)).length === 1)
   await (
     await f.recipient.submit(
       { type: 'input', content: 'SEND ' + JSON.stringify({ to: '#1', text: 'After answer' }) },
@@ -568,6 +644,23 @@ it('resolves a standing address and returns unanswered inputs as failure replies
   expect(await actions.addresses({}, f.action())).toMatchObject({
     agents: [{ name: 'scout', description: 'Search', id: f.recipient.id }],
   })
+})
+it('tells the sender a Stop as stopped, not failed', async () => {
+  const f = await fixture()
+  await f.send(`#${f.recipient.id}`, 'HOLD')
+  await until(f.holding)
+  // The person presses Stop in the recipient: its run is aborted before it answers.
+  const run = (await f.opened.harness.snapshot(LiveDoc, f.recipient.id, context))!.run!.taskId
+  await f.opened.harness.abortTask(run, context)
+  await until(async () => (await replies(f)).length === 1)
+  expect((await f.log())!.messages).toMatchObject([
+    { to: f.recipient.id, state: 'stopped', error: 'was stopped by the user before it answered' },
+    { from: f.recipient.id, to: 1, re: 1, state: 'stopped' },
+  ])
+  expect((await replies(f))[0].data).toMatchObject({ failed: true, stopped: true })
+  expect(f.observed).toContainEqual(
+    expect.stringContaining(`to your message 1 (stopped):\nwas stopped by the user`),
+  )
 })
 it('delivers to a retired standing agent by id without refreshing it', async () => {
   const f = await fixture()
@@ -1368,6 +1461,8 @@ function pauser(f: Awaited<ReturnType<typeof fixture>>) {
       return resources.get(key) as T
     },
     onOpen: () => {},
+    onClose: () => {},
+    onRelease: () => {},
     // Pause fills Messages’ `messages.gate` point; the fixture's `want` hands it to Messages.
     implement: (api: { name: string }, value: unknown) => void f.provided.set(api.name, value),
     conversations: () => [],

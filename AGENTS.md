@@ -22,7 +22,7 @@ A project is a forest of conversation trees, like commit histories.
 - **A branch** is a feature, a fix, an experiment. @ultimate picks a root by reading its tally, then starts a
   coordinator branch that starts from its memory brief (or, without memories, its tally) before its prompt. A branch is never a subagent.
 - **Talk to @ultimate in its conversation.** The user's standing agent starts and steers branches and relays their answers there.
-  The top-bar **@ultimate** button or first sidebar row opens it; its messages and questions to you appear in that transcript.
+  The first sidebar row (on phones, the top-bar **@ultimate** button) opens it; its messages and questions to you appear in that transcript.
   Conversations and roots are not created by hand.
 - **Coordinators carry the work.** A branch is the conversation; the coordinator is the agent that runs it, so the UI
   labels it `branch · coordinator`. A branch plans, decides and verifies; subagents are for bounded execution and
@@ -37,9 +37,8 @@ A project is a forest of conversation trees, like commit histories.
 - **Conclude** a conversation when its work is done; it stays readable and can be resumed. A branch whose submission
   lands is concluded for you once its report run is idle, unless it still waits on a reply or a subagent runs.
 - **UI polish lands when the user says so.** For small look-and-feel work (an animation, a loading state, spacing,
-  a card), keep a preview of the branch's checkout running (`instance start`: a clean instance on the configured
-  models, which you seed by prompting it like a user), give the user its URL, and iterate there: commit each round in the branch, but do not `workspace submit` until the user has
-  clicked around and approved it. Larger UI features and anything with behaviour behind it land as usual.
+  a card), run preview rounds (the `ui-preview-round` skill) and do not `workspace submit` until the user has clicked
+  around and approved it. Larger UI features and anything with behaviour behind it land as usual.
 
 `extensions/lineage/README.md` has the mechanics.
 
@@ -63,8 +62,8 @@ machine.
 Put behaviour in `extensions/` rather than `server/` whenever you can: it reloads without a restart.
 A surface is a full-screen app the user switches to (header, ⌘K, `mod+1…9`); the conversation itself is the built-in
 `agent` surface, and a project's apps go in `<project>/.ultimate/extensions/` (see "Surfaces" in the guide).
-New UI is a new extension folder, not a change to `web/`: follow [extensions/README.md](extensions/README.md), the
-guide to writing extensions, and copy the closest existing one (`status-line`, `coding-tools`).
+New UI is a new extension folder, not a change to `web/`: follow the `write-extension` skill, which points into
+[extensions/README.md](extensions/README.md), and copy the closest existing one (`status-line`, `coding-tools`).
 
 ## North star
 
@@ -91,7 +90,7 @@ guide to writing extensions, and copy the closest existing one (`status-line`, `
 
 - [Running the server](docs/running.md): before starting, debugging or testing a server or core swap.
 - [Worktrees and integration](docs/worktrees.md): before previewing an isolate, landing or recovering a rejected push.
-- [Discovery and settings](docs/settings.md): before changing configuration, trust, resources or `summaryModel` (titles, summaries, reply summaries, question extraction and tree abstracts).
+- [Discovery and settings](docs/settings.md): before changing configuration, trust, resources or `summaryModel` (titles, summaries, reply summaries and tree abstracts).
 - [Durability](docs/durability.md): before changing persistence, replay or durable UI state.
 - [Extension mechanics and introspection](docs/extensions.md): before wiring facets, documents, events or runtime inspection.
 - [Subagents](docs/subagents.md): before delegating, changing definitions or configuring the review team.

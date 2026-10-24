@@ -174,8 +174,9 @@ function createReporter() {
                 },
               }
             }
-            // Provider failures belong to the watchdog. Keep the failed action so recover()
-            // delivers the answer of a later watchdog-retry (or manual continuation).
+            // Provider failures belong to the watchdog, which marks the action `given-up` once it reports
+            // instead of retrying. Either way recover() delivers the answer of a later watchdog retry (or
+            // manual continuation).
             if (
               settled.status === 'unanswered' &&
               (settled.reason === 'model_error' || settled.reason === 'no_model')
@@ -428,8 +429,18 @@ export const actions = {
     if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter))
       throw new Error('frontmatter must be an object')
     if (typeof instructions !== 'string') throw new Error('instructions must be a string')
-    const { description, model, thinking, tools, denyTools, isolate, resident, onFailure, fast } =
-      frontmatter
+    const {
+      description,
+      model,
+      thinking,
+      tools,
+      denyTools,
+      isolate,
+      resident,
+      onFailure,
+      fast,
+      summaries,
+    } = frontmatter
     if (typeof description !== 'string') throw new Error('description is required')
     if (model !== undefined && typeof model !== 'string') throw new Error('model must be a string')
     if (thinking !== undefined && typeof thinking !== 'string')
@@ -451,6 +462,8 @@ export const actions = {
     if (resident !== undefined && typeof resident !== 'boolean')
       throw new Error('resident must be a boolean')
     if (fast !== undefined && typeof fast !== 'boolean') throw new Error('fast must be a boolean')
+    if (summaries !== undefined && typeof summaries !== 'boolean')
+      throw new Error('summaries must be a boolean')
     const { definitions } = await discoverAgents(
       host.ultimateRoot,
       host.projectRoot,
@@ -479,6 +492,7 @@ export const actions = {
         ...(resident !== undefined ? { resident } : {}),
         ...(onFailure ? { onFailure } : {}),
         ...(fast ? { fast } : {}),
+        ...(!summaries ? { summaries } : {}),
       },
       instructions,
     )
@@ -522,7 +536,9 @@ export default function subagents(
       await discoverAgents(host.ultimateRoot, host.projectRoot, host.userHome, host.modelRuntime)
     ).definitions.filter((definition) => definition.resident === true)
   /** Drops standing agents whose definition is gone; their conversations become ordinary ones. Retirement waits
-   * until every definition parses: an error names a file, not the agent it defines, so a typo retires nothing. */
+   * until every definition parses: an error names a file, not the agent it defines, so a typo retires nothing. The
+   * ones kept, every one while a definition fails to parse, get their automatic summaries turned off and stay
+   * standing, as `standing` does on every refresh. */
   const pruneRetired = async (ctx: Context) => {
     const { definitions, errors } = await discoverAgents(
       host.ultimateRoot,
@@ -530,7 +546,6 @@ export default function subagents(
       host.userHome,
       host.modelRuntime,
     )
-    if (errors.length > 0) return
     const kept = new Set(
       definitions
         .filter((definition) => definition.resident === true)
@@ -539,16 +554,26 @@ export default function subagents(
     await host.harness().commit(async (tx) => {
       const index = await tx.doc(Standing, ROOT_CONVERSATION_ID)
       for (const name of Object.keys(index)) {
-        if (kept.has(name)) continue
         const id = index[name]
+        const exists = await tx.conversation(id)
+        if (kept.has(name) || errors.length > 0) {
+          if (exists) {
+            await conversations.setAutomaticSummaries(tx, id, false)
+            await conversations.setStanding(tx, id, true)
+          }
+          continue
+        }
         delete index[name]
-        if (await tx.conversation(id)) delete (await tx.doc(host.metadata, id)).label
+        if (exists) {
+          delete (await tx.doc(host.metadata, id)).label
+          await conversations.setStanding(tx, id, false)
+        }
       }
     }, ctx)
   }
   host.implement(SubagentsApi, {
     async createChild(tx, options) {
-      const child = await createChild(tx, options)
+      const child = await createChild(host, tx, options)
       await started(host, tx, child, options.definition?.name ?? options.label, 'child')
       return child
     },
@@ -588,6 +613,9 @@ export default function subagents(
         const change = definitionAgent(definition, base, host.modelRuntime)
         await configure(tx, id, { ...change, cwd: host.projectRoot })
         Object.assign(await tx.doc(host.metadata, id), { label: 'agent', title: `@${name}` })
+        // A standing agent keeps its `@name`: no automatic title, summary or reply activity.
+        await conversations.setAutomaticSummaries(tx, id, false)
+        await conversations.setStanding(tx, id, true)
         ;(await tx.doc(Profile, id)).definition = name
         // Only a new conversation starts: a refresh reconfigures one that already runs.
         if (created) await started(host, tx, created, name, 'standing')
@@ -615,13 +643,16 @@ export default function subagents(
       const childActions = Object.values(state.actions).filter(
         (candidate) => candidate.conversationId === submission.conversationId,
       )
-      // A one-way message from the parent has no reporter and no reply: without this,
-      // the answer it starts never reaches the parent, which stays idle. A pending reporter
-      // whose input was answered in the same run delivers that answer itself.
+      // A one-way message from the parent, or its reply to the child's own question, has no
+      // reporter and no reply: without this, the answer it starts never reaches the parent,
+      // which stays idle. A pending reporter whose input was answered in the same run delivers
+      // that answer itself.
       const input = await tx.entry(submission.entry)
       const message = input?.data as { from?: unknown; reply?: unknown } | undefined
       let messaged =
-        input?.kind === 'board.message' && message?.from === parent && message.reply === false
+        message?.from === parent &&
+        ((input?.kind === 'board.message' && message.reply === false) ||
+          input?.kind === 'board.reply')
       for (const action of childActions) {
         if (!messaged || action.status !== undefined) continue
         const sibling = await tx.submissionByRequest(
@@ -634,7 +665,11 @@ export default function subagents(
       if (!messaged && !submission.requestId?.startsWith('watchdog-retry:')) {
         const action = childActions.at(-1)
         const interrupted = action?.status === 'interrupted'
-        if (action?.status !== 'unanswered' && action?.status !== 'failed' && !interrupted) return
+        if (
+          !action ||
+          (!['unanswered', 'failed', 'given-up'].includes(action.status ?? '') && !interrupted)
+        )
+          return
         const failed = await tx.submissionByRequest(
           submission.conversationId,
           `subagent:${action.reporter}`,
@@ -918,7 +953,7 @@ export default function subagents(
                   ownership: { kind: 'conversation' },
                   background: true,
                 })
-                const child = await createChild(tx, {
+                const child = await createChild(host, tx, {
                   owner: { kind: 'task', taskId: owner },
                   definition,
                   parentAgent: parent,

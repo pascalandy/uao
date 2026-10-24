@@ -23,7 +23,9 @@ function writeConversation(id: number, replace: boolean) {
 
 /** The page's one live stream and its replica. */
 export const store = createStore({
-  ui: { theme: localStorage.getItem('ultimate.theme') === 'light' ? 'light' : 'dark' },
+  ui: {
+    theme: localStorage.getItem('ultimate.theme') === 'light' ? 'light' : 'dark',
+  },
   onFallback: () => {
     replaceSelection = true
     uiState.delete('shell.conversation')
@@ -39,7 +41,10 @@ const detached = sessionStorage.getItem('ultimate.detached') === '1'
 /** Durable UI state shared by every tab, fed by the stream (see ui-state.ts). */
 export const uiState = createUiState(detached ? undefined : api.updateUi, {
   onError: (error) =>
-    store.notify({ level: 'error', message: `UI state not saved: ${String(error)}` }),
+    store.notify({
+      level: 'error',
+      message: `UI state not saved: ${String(error)}`,
+    }),
 })
 /** Installed web facets of `extensions/*`. */
 export const registry = createRegistry()

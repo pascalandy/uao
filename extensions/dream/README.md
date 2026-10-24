@@ -50,8 +50,8 @@ made active again (`lib/chapters.ts`).
 `seed.ts` builds a JSON manifest with `buildSeed(host, session)` and atomically writes it with
 `writeSeed(chapterDir, seed)` to `seed.json`. It carries the journal and proposal statuses, every root's memories
 (slug collisions keep the newest `updated`, including `about-*`), open to-dos and questions, and enabled automations
-and subscriptions, with counts for the later gate. Conversation docs are read through the host's exported tokens;
-the session-scoped automation and subscription ledgers are read through their list actions.
+and scripts, with counts for the later gate. Conversation docs are read through the host's exported tokens;
+both trigger kinds are read through the single automations list action. Enabled schedule records keep name, optional prompt, schedule and run profile, but no subscribers: conversation ids do not survive a chapter. Schedules without a prompt become recreation to-dos.
 
 On open, dream applies a chapter's seed in one commit with `dream.seed.applied` on conversation 1: memories keep
 their sources, to-dos get fresh ids, questions become user-owned to-dos naming the old chapter and message id, and a
@@ -62,9 +62,9 @@ Automations are recreated through their create action after the commit, with per
 A seed carries at most one enabled automation per name: building rejects duplicates. The destination starts empty;
 before each create, dream checks existing names, so a create committed just before a crash is not repeated when its
 receipt is missing. Seed application must finish before users create unrelated automations with matching names.
-Project subscriptions are rediscovered, stopped, from trusted `.ultimate/subscriptions` manifests by subscriptions'
-own open hook. There is no user-subscription adoption path: each enabled user subscription becomes an
-@ultimate-owned “Recreate subscription” to-do rather than a fabricated ledger record.
+Project scripts are rediscovered, stopped, from trusted `.ultimate/automations` manifests by automations'
+own open hook. There is no user-script adoption path: each enabled user script becomes an
+@ultimate-owned “Recreate script” to-do rather than a fabricated ledger record.
 
 ### Fall asleep and switch
 
@@ -74,7 +74,7 @@ changes are serialized. Each progress update commits separately on the session a
 `backing up`, `switching`, or `failed`, with the gate checks, backup id or skip reason, error, and timestamp.
 
 The gate writes a real seed and switch journal in a temporary home, starts it through optional `InstanceApi`, and
-reads its HTTP actions without a model: root memories, open to-dos (including questions and user subscriptions),
+reads its HTTP actions without a model: root memories, open to-dos (including questions and user scripts),
 automations, @ultimate's `dream.chapter` entry, and the memory brief's tokens. Passive delivery gets up to ten
 seconds to settle. Lineage only publishes `briefTokens` once a root has branched, so the gate uses `estimateTextTokens`
 on the fresh root's index and read instructions (the `memoryBrief` format, with no recent landings); a regression test
@@ -96,3 +96,26 @@ A successful restart never returns: the new host opens the requested chapter.
 `refs.ts` holds the documents and actions: `start`, `end`, `asleep`, `switch` (user-only), `chapters`, `pass`, `journal`, `decide`,
 and `stats`, which reads tool calls from `<home>/trace.sqlite` read-only: calls, failures and mean duration per tool,
 the 20 most frequent errors, and enabled tools never called in the trace's window (7 days or 200k rows).
+
+## Granted by an automation
+
+The user can grant an automation `dream` and, separately, `asleep` (`extensions/automations/README.md` "Grants"). Dream
+provides the `automations.dream` point for them; the user-only actions stay user-only.
+
+Both run inside automations' `act` transaction, so the effect commits with the act's record.
+
+- `start(tx, by, acting)` is the Dream button's own path (`startDreamIn`), with the same refusals; only the acting
+  conversation's own turn does not count as busy. The session records `by`, and its started card names the automation.
+- `asleep(tx, by, {session?})` checks the session (a filed journal, every proposal settled, no sleep under way),
+  reserves it as `waiting` for this attempt and creates the durable `dream.granted-sleep` task. The task looks every
+  15 seconds, for up to 30 minutes, until no conversation works (the acting agent's turn included), then admits and runs
+  every gate of Fall asleep exactly as the user's action does: idle, seed, scratch preview with one repair, final
+  backup, idle again, journaled restart that rolls back on failure. While it waits, neither the user nor another grant
+  can start a second sleep of that session. A wait that runs out, a refusal or an abort records a failed sleep, but only
+  while this attempt still holds it; nothing switches. The task's step commits the admission itself, then leaves only
+  the gates running, so a successful switch's restart never waits on a task step and no reservation outlives its task.
+  The sleep and the seed carry `by`, so the progress, the outcome and the next chapter's morning card say which
+  automation fell asleep, under the user's grant, and when.
+
+On open, a sleep a restart stopped during its gates (`seeding`, `checking`, `backing up`), for the user or a grant,
+becomes `failed`: nothing switched, and Fall asleep can be tried again.

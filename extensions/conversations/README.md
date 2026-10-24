@@ -1,17 +1,30 @@
 What each conversation is about: titles, summaries, features and reply summaries, the overview the sidebar reads,
 and concluding and resuming conversations. Several branches run at once as separate agents; lineage roots keep their shared context without running turns.
 A summary model (GPT-6 Luna by default) automatically gives top-level conversations concise titles and sidebar summaries, and describes each final reply without
-changing the main agent. Ownerless, top-level standing agents (label `agent`) and lander conversations
-(label `lander`) never schedule summary tasks: their `@name` titles stay fixed, with no automatic summary,
-feature, activity or reply summary. This applies to intent, spawn and completed-reply triggers.
+changing the main agent. A conversation turns these automatic triggers (intent, spawn and completed reply) off with
+`setAutomaticSummaries(tx, id, false)` on the service: it then schedules no summary task, a task admitted before settles
+without writing, and its title stays as set, with no automatic summary, feature, activity, reply summary or abstract.
+Explicit `askSummaryModel` calls are unaffected. Standing agents and landers are off (their `@name` titles stay fixed), side
+chats are off (only Summarize & inject asks the model), and a definition with `summaries: false` turns off the
+conversations it configures (see the [subagents README](../subagents/README.md)).
 
 ## Sidebar
 
-The sidebar, its rows and the title bar's @ultimate button live in the [sidebar](../sidebar/README.md) extension, which
+The sidebar, its rows and the phone title bar's @ultimate button live in the [sidebar](../sidebar/README.md) extension, which
 reads this extension's overview, titles and actions. `ui.tsx` declares the points it renders for optional extensions:
 `ConversationPhase` (a working conversation's phase) and `ConversationTask` (the plan task a child works on).
 
 ## Server facet
+
+`context.ts` keeps `conversations.context` (`ContextUsageDoc` in `api.ts`, `ContextDoc` in `refs.ts`) on each
+conversation: `tokens`, the current model's `window`, their `percent`, and `estimated`. Answers measure prompt tokens
+(input plus cache reads and writes, not output); compaction and reset estimate the next request's system prompt,
+tools and new context until another answer. Model changes update the window. Unknown fields are absent. `at` is Unix
+milliseconds (the answer/head message timestamp, or when the estimate was made if absent); `entry` identifies the
+source assistant or head entry. A fork starts at `{ at: 0 }`, without inheriting its parent's measurement.
+A watcher follows Pi's commits and writes the document in its own commit, serially per conversation, only when it
+changes. On open, background reconciliation scans bounded pages and recovers missing or stale source entries without
+blocking startup. The status line reads this same document, independent of which browser is open.
 
 `compactions.ts` emits `conversations.compacted` `{ conversation, entry, reason? }` (`Compacted` in `refs.ts`) for
 each compaction summary Pi places. Pi appends it in its compaction task with no hook in that commit, so a commit
@@ -40,7 +53,8 @@ Actions are callable from the browser with `api.action` or by agents with
 list. No state-key migration runs automatically.
 
 - `conclude {ids:number[]}`: validates top-level conversations (unknown ids, subagents, listed roots and standing agents
-  throw, refusing the whole call), deduplicates and
+  throw, refusing the whole call; a standing agent is one marked by the service's `setStanding`, which subagents calls
+  for residents and workspaces for landers, never by its label or title), deduplicates and
   adds them to `ext.conversations.concluded` in one transaction, then frees their resources through the `conversations.release`
   extension point, which workspaces provides (its worktrees). Returns
   `{ concluded: number[], kept: {id, uncommitted, unlanded, busy?}[] }`; `kept` explains which checkouts remain.
@@ -123,7 +137,7 @@ task. A task that finds no available model before it chose one settles quietly t
 ## Summary model
 
 `summaryModel` in `~/.ultimate/settings.json` or the project's `.ultimate/settings.json` (project wins, and only once
-the project is chosen) names the model for titles, summaries, reply summaries, question extraction and tree abstracts as
+the project is chosen) names the model for titles, summaries, reply summaries and tree abstracts as
 `provider/id[:thinking]`, an exact provider and model id with an optional Pi thinking level, clamped to what the model
 supports (medium when omitted). Unset, it is `DEFAULT_SUMMARY_MODEL`: GPT-6 Luna with medium thinking through the
 current OpenAI provider (including Sign in with ChatGPT). `summary-model.ts` reads it when a request is considered and again when a

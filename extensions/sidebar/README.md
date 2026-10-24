@@ -1,10 +1,11 @@
-The Agent surface's sidebar and the title bar's @ultimate button: talk to @ultimate, see each root's tree with what
+The Agent surface's sidebar and, on phones, the title bar's @ultimate button: talk to @ultimate, see each root's tree with what
 is in flight and what landed, and switch, rename, compact, conclude and resume conversations. It is the UI that brings
 the core together, so it sits at the top of the core tier: it reads conversations, workspaces, subagents, lineage and
 messages, and shows what optional extensions provide through points (`conversations/ui.tsx`: a working phase, a plan task).
 Its UI state keeps the keys it had as part of conversations (`ext.conversations.*`).
 Rows under @ultimate's come from the `sidebar.under-ultimate` point (`ui.tsx`; side-chat fills it with open side
-chats). Conversations labelled `side-chat` are left out of every other list (`listed.ts`).
+chats). The conversations the `sidebar.unlisted` point names (side-chat names every side chat) are left out of every
+other list (`listed.ts`).
 
 Every standing agent's row leads with its mark (conversations' `AgentMark`): a small tinted tile with a glyph — a brand
 `U` for @ultimate (the title bar's wordmark), a green merge for the lander,
@@ -22,12 +23,14 @@ agents (label `agent`) by ID. These rows are never concluded or hidden and show 
 and the age of its latest landing (what landed is its Landed section's first row); other agents show `working` or `idle` and the age. Their menu only
 compacts the context; they are never renamed, cleared or concluded.
 
-The title bar's `@ultimate` button (`titlebar.left`, beside the surfaces, also on phones) opens @ultimate the same way
-from every surface. Its mark's dot pulses while @ultimate works and is amber while questions wait on you, with their count.
+Beyond a phone the title bar's ULTIMATE wordmark (`titlebar.brand`) opens @ultimate too.
+@ultimate's mark is amber while questions wait on you, and its line says how many; the To-dos tab lists them. On
+phones, where the sidebar is hidden, the title bar's `@ultimate` button (`titlebar.left`) opens @ultimate from every
+surface instead, with the same mark: its dot pulses while @ultimate works and is amber while questions wait.
 
 Every section of the sidebar folds the same way (`Section`, `section.tsx`): a quiet mono heading with a chevron and
-a count bubble, open by default, its fold state kept per section in `ext.conversations.closedSections`; the Watching
-and Scheduled sections of the `sidebar.top` slot draw the same heading. Top to bottom:
+a count bubble, open by default, its fold state kept per section in `ext.conversations.closedSections`; the Scheduled
+section of the `sidebar.top` slot draws the same heading. Top to bottom:
 
 - **@ultimate**, then the **Agents** group: the lander first, with its **Landed · N** section right under its row,
   aligned with the other sections, then other standing agents.
@@ -46,7 +49,7 @@ and Scheduled sections of the `sidebar.top` slot draw the same heading. Top to b
   browsable history (every branch, abstract and landing), whose footer offers Compact (lineage `compact {id}`) and
   Talk to @ultimate. The row has no menu; a root is never renamed, cleared or concluded here.
 - The `sidebar.top` slot: background work that optional extensions contribute without the sidebar importing them,
-  subscriptions' **Watching** and automations' **Scheduled**, each up to five compact rows with `+N more`, and its own
+  automations' **Scheduled**, up to five compact rows with `+N more`, and its own
   bottom rule. Each hides while it has nothing active.
 - **In flight · N** (`InFlight`, `root.tsx`): every open branch of every tree, newest input first. A branch is open
   until it is concluded or it landed after its latest input (the lander's results, or a root landing note from it;
@@ -89,7 +92,8 @@ A row switches to its child, highlights selection and keeps the top-level summar
 invented delegation edges. Expansion is persisted in `ext.conversations.expanded`; buttons support keyboard access.
 
 @ultimate starts coordinator branches; there are no manual creation commands or isolation preferences. The sidebar
-header's Workspaces button opens the read-only checkout panel.
+header names the project's path (`<project> #<worktree>` in a branch checkout), the full path on hover; Info's first
+section lists the checkouts.
 Conclude releases clean, fully landed checkouts, including owned subagent checkouts. Uncommitted files,
 unlanded commits, and busy checkouts are kept.
 Info's Workspace section shows checkouts read-only.

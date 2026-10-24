@@ -6,7 +6,7 @@
 - `test/claude-code-incomplete.test.ts` — imports pi-claude-code's patched incompleteResponseError and normalizeError and pi-ai's isRetryableAssistantError. Drop with the patch when upstream makes an incomplete response without a reason retryable.
 - `test/claude-code-native-tool.test.ts` — imports pi-claude-code's patched piToolName and normalizeError, its TurnRelay and pi-ai's isRetryableAssistantError. Drop with the patch when upstream retries a tool_use outside the request.
 - `test/claude-code-slash-replay.test.ts` — imports pi-claude-code's patched rewriteInitialRequest and TurnRelay. Drop with the patch when upstream accepts a string first user message on replay and reports the relay error's message.
-- `extensions/lineage/server.ts` — inlines Pi's unexported createCompaction so tally checks and manual compaction creation share one transaction. Drop when Pi exposes atomic compaction admission.
+- `lib/compaction.ts` — inlines Pi's unexported createCompaction so a caller's checks and manual compaction creation share one transaction (lineage's tally compaction, an automation's granted compact). Drop when Pi exposes atomic compaction admission.
 - `extensions/lineage/rewind.ts` — copies pi-durable's unexported normalizeToolPath (unicode spaces, a leading @) so going back resolves edit and write paths exactly as those tools do, then resolves them with the exported NodeExecutionEnv.absolutePath (home directory and file URLs). Drop when Pi exports resolveToolPath's normalization.
 - `extensions/lineage/catchup.ts` — uses the patched transactional beforeInput hook to place catch-up notes before inputs. Drop the patch when Pi ships input-placement hooks.
 - `extensions/messages/server.ts` — uses the same hook to place the line listing an agent's open questions to the user before the input that starts its run.
@@ -29,6 +29,7 @@
 - `extensions/codemode/chapters.ts` — reads closed chapters' conversation and entry JSON records, follows fork cutoffs, and replays metadata document revisions with read-only SQL. Drop when Pi Durable exposes read-only closed-store history.
 - `lib/chapters.ts` — raises a new chapter's durable_metadata.next_id so record ids continue across chapters, and reads a closed chapter's live foreground tasks from the tasks table to refuse a switch into it. Drop when Pi Durable takes a first record id when it creates storage and reads a closed store's task graph.
 - `extensions/subagents/server.ts` — internal ToolTaskInput.assistant locates the calling assistant for history forks. Drop when ToolExecutionApi exposes the calling assistant entry ID.
+- `server/skills.ts` — copies AgentSession's unexported _expandSkillCommand block format for /skill:name invocation. Drop when Pi exports the skill command expansion.
 
 On a Pi upgrade, run `rg "Pi upstream:"` and recheck each marked item against the new version; test/e2e/pi-upstream.test.ts checks that every tracked marker matches the installed package version and its path appears in this list, and every backticked path in this list is tracked and contains a marker.
 Delete copies and patches that Pi now exports or fixes, then update the remaining markers and this list after verification.

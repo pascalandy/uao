@@ -18,6 +18,7 @@ import { callTrace } from './trace.ts'
 import { projectSkills } from './skills.ts'
 import { requestSwap } from './supervisor-protocol.ts'
 import { activeChapter, finishChapterSwitch } from '../lib/chapters.ts'
+import { previewModel } from '../lib/agents.ts'
 import type {
   ConversationId,
   Cursor,
@@ -160,10 +161,13 @@ export async function prepareHarness(options: HostOptions) {
   const preferred = async () => {
     if (faux) return faux.getModel()
     const available = await modelRuntime.getAvailable()
+    const preview = previewModel()
     return (
+      available.find((m) => m.provider === preview?.provider && m.id === preview.modelId) ??
       available.find(
         (m) => m.provider === settings.getDefaultProvider() && m.id === settings.getDefaultModel(),
-      ) ?? available[0]
+      ) ??
+      available[0]
     )
   }
   let active:
@@ -190,7 +194,7 @@ export async function prepareHarness(options: HostOptions) {
     },
     models: async () => (await listModels(modelRuntime)).models,
     model: (ref: ModelRef) => modelRuntime.getModel(ref.provider, ref.modelId),
-    skills: (cwd: string) => projectSkills({ ultimateRoot, projectRoot, userHome }, cwd),
+    skills: (cwd: string) => projectSkills({ ultimateRoot, projectRoot, userHome }, cwd).skills,
     restart: (approved: (generation: number) => Promise<void>) =>
       requestSwap(approved, builds.current()),
     ultimateRoot,

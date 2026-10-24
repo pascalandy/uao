@@ -1,24 +1,34 @@
+import { constants } from 'node:fs'
+import { access, readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context'
-import type { Context, JsonValue } from '@earendil-works/chord'
+import type { JsonValue } from '@earendil-works/chord'
 import { Type } from '@earendil-works/pi-ai'
-import type { ModelThinkingLevel } from '@earendil-works/pi-ai'
 import {
-  AssistantEntry,
   AgentDoc,
   defineDoc,
   defineExtension,
-  defineTask,
   defineTool,
   ROOT_CONVERSATION_ID,
   section,
 } from '@earendil-works/pi-durable'
-import type { TaskId, ConversationId, Cursor, Tx } from '@earendil-works/pi-durable'
+import { admitCompaction } from '../../lib/compaction.ts'
+import type { TaskId, Tx, ConversationId } from '@earendil-works/pi-durable'
 import type { ExtensionHost } from '../../server/extensions.ts'
 import type { ActionContext } from '../../server/actions.ts'
+import { EVENT_FEED } from '../../shared/events.ts'
+import type { EventRecord } from '../../shared/events.ts'
 import { implementAction } from '../../lib/actions.ts'
+import { actingAs } from '../../lib/acting-as.ts'
 import { discoverAgents } from '../../lib/agents.ts'
+import { validateName } from '../../lib/secrets.ts'
+import { groupAlive } from '../../lib/process-group.ts'
+import { writeJson } from '../../lib/json-file.ts'
 import { SubagentsApi } from '../subagents/api.ts'
+import { MessagesApi } from '../messages/api.ts'
+import { LineageApi } from '../lineage/api.ts'
+import { AutomationsApi, DreamGrant } from './api.ts'
 import {
   CreateAction,
   DeleteAction,
@@ -28,366 +38,81 @@ import {
   ResumeAction,
   RunAction,
   UpdateAction,
+  SubscribeAction,
+  UnsubscribeAction,
+  LogAction,
+  ScriptAction,
+  EscalateAction,
+  Escalated,
+  EventsAction,
+  GrantRef,
+  Acted as ActedEvent,
 } from './refs.ts'
 import { describeSchedule, nextAt, parseSchedule } from './schedule.ts'
-import type { Schedule } from './schedule.ts'
-
-export type Run = {
-  id: string
-  firedAt: number
-  conversationId?: ConversationId
-  status: 'running' | 'done' | 'failed' | 'aborted' | 'skipped'
-  finishedAt?: number
-  answer?: string
-}
-export type Automation = {
-  id: string
-  name: string
-  prompt: string
-  schedule: Schedule
-  enabled: boolean
-  createdAt: number
-  updatedAt: number
-  nextAt?: number
-  scheduler?: TaskId
-  runs: Run[]
-  agent?: string
-  model?: { provider: string; modelId: string }
-  thinking?: ModelThinkingLevel
-}
-export const Automations = defineDoc<{ next: number; automations: Record<string, Automation> }>({
+import { scheduler } from './scheduler.ts'
+import { triggers, TRIGGER_EVENTS, describeTrigger } from './triggers.ts'
+import { supervisor } from './supervisor.ts'
+import type { Prepared } from './supervisor.ts'
+import type {
+  Acted,
+  Args,
+  Automation,
+  AutomationListItem,
+  Effect,
+  GrantAction,
+  GrantedBy,
+  Run,
+  Manifest,
+} from './types.ts'
+import { GRANT_ACTIONS, isSlug } from './types.ts'
+export type { Automation, Run } from './types.ts'
+export { launchHandshake } from './supervisor.ts'
+type Ledger = { next: number; automations: Record<string, Automation> }
+export const Automations = defineDoc<Ledger>({
   kind: 'ultimate.automations',
   checkpointWhen: () => false,
-  version: 1,
+  version: 2,
   scope: 'session',
   initial: () => ({ next: 1, automations: {} }),
+  // Version 1 also holds schedule records from before scripts and subscribers. Pi Durable stores the migrated
+  // value as a version 2 base on the ledger's next write.
+  migrate: (value) => {
+    const ledger = value as unknown as Ledger
+    for (const a of Object.values(ledger.automations)) {
+      a.subscribers ??= []
+      if (a.fires !== undefined) continue
+      // Old records counted fires only as runs; the last run anchors the next interval, as it did then.
+      a.fires = a.runs.length
+      const last = a.runs.at(-1)
+      if (last) a.lastFireAt = last.firedAt
+    }
+    return ledger
+  },
 })
-const Receipt = defineDoc<{ result?: JsonValue; abort?: TaskId }>({
+type Change = { result: JsonValue; abort?: TaskId; effect?: Effect }
+const Receipt = defineDoc<Partial<Change>>({
   kind: 'ultimate.automation-receipt',
   checkpointWhen: () => false,
   version: 1,
   scope: 'task',
   initial: () => ({}),
 })
-type Args = {
-  action: string
-  id?: string
-  name?: string
-  prompt?: string
-  schedule?: string | Schedule
-  agent?: string
-  model?: { provider: string; modelId: string }
-  thinking?: ModelThinkingLevel
-  runId?: string
+/** What one `act` tool call did, on its own tool task, written with the effect: a replay returns it, at any later time. */
+const ActReceipt = defineDoc<{ result?: Acted['result'] }>({
+  kind: 'ultimate.automation-act',
+  checkpointWhen: () => false,
+  version: 1,
+  scope: 'task',
+  initial: () => ({}),
+})
+const json = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T
+function required(v: unknown, field: string): string {
+  if (typeof v !== 'string' || !v.trim()) throw new Error(`${field} is required`)
+  return v.trim()
 }
-type Host = Pick<
-  ExtensionHost,
-  | 'harness'
-  | 'metadata'
-  | 'ultimateRoot'
-  | 'projectRoot'
-  | 'userHome'
-  | 'modelRuntime'
-  | 'extensions'
-  | 'need'
->
-const owner = {
-  ownership: { kind: 'conversation' as const },
-  conversationId: ROOT_CONVERSATION_ID,
-  background: true,
-}
-const terminal = {
-  status: 'terminal' as const,
-  outcome: { status: 'completed' as const, result: null },
-}
-function required(value: string | undefined, field: string) {
-  if (!value?.trim()) throw new Error(`${field} is required`)
-  return value.trim()
-}
-async function definition(host: Host, name: string) {
-  const found = (
-    await discoverAgents(host.ultimateRoot, host.projectRoot, host.userHome, host.modelRuntime)
-  ).definitions.find((d) => d.name === name)
-  if (!found) throw new Error(`Unknown agent: ${name}`)
-  return found
-}
-
-function backend(host: Host) {
-  const RunTask = defineTask<
-    { automation: Automation; firedAt: number },
-    { phase: 'create' } | { phase: 'deliver'; conversationId: ConversationId },
-    null
-  >({
-    name: 'ultimate.automation-run',
-    version: 1,
-    initial: () => ({ phase: 'create' }),
-    phases: {
-      create: async (task, runtime, context) => {
-        try {
-          const a = task.input.automation
-          await validate({ action: 'run' })
-          const parent = await runtime.agent(context)
-          const profile = a.agent ? await definition(host, a.agent) : undefined
-          await runtime.commit(async (tx) => {
-            const child = await host.need(SubagentsApi).createChild(tx, {
-              owner: { kind: 'task', taskId: task.id },
-              definition: profile,
-              parentAgent: parent,
-              modelRuntime: host.modelRuntime,
-              metadata: host.metadata,
-              label: 'automation',
-              title: `${a.name} · ${new Date(task.input.firedAt).toLocaleString()}`,
-              excludeTools: a.agent ? ['automation', 'subagent'] : ['automation'],
-              excludeExtensions: ['automations'],
-              cwd: (await tx.doc(AgentDoc, runtime.conversationId)).cwd ?? host.projectRoot,
-              model: a.model,
-              thinking: a.thinking,
-            })
-            const run = (await tx.doc(Automations)).automations[a.id]?.runs.find(
-              (r) => r.id === String(task.id),
-            )
-            if (run) run.conversationId = child.id
-            return { status: 'running', checkpoint: { phase: 'deliver', conversationId: child.id } }
-          }, context)
-        } catch (error) {
-          if (runtime.signal.aborted) throw error
-          await runtime.commit(async (tx) => {
-            finish(
-              await tx.doc(Automations),
-              task.input.automation.id,
-              String(task.id),
-              'failed',
-              String(error),
-            )
-            return terminal
-          }, context)
-        }
-      },
-      deliver: async (task, runtime, context) => {
-        try {
-          const child = (await runtime.conversation(task.state.checkpoint.conversationId, context))!
-          const result = await (
-            await child.submit(
-              {
-                type: 'input',
-                content: task.input.automation.prompt,
-                requestId: `automation-run:${task.id}`,
-              },
-              context,
-            )
-          ).wait(context)
-          await runtime.commit(async (tx) => {
-            const entry =
-              result.status === 'done' && result.type === 'input'
-                ? await tx.entry(AssistantEntry, result.answer)
-                : undefined
-            const answer = entry?.model?.[0]
-            const text =
-              answer?.role === 'assistant'
-                ? answer.content.flatMap((p) => (p.type === 'text' ? [p.text] : [])).join('')
-                : undefined
-            finish(
-              await tx.doc(Automations),
-              task.input.automation.id,
-              String(task.id),
-              result.status === 'done'
-                ? 'done'
-                : result.status === 'unanswered' && result.reason === 'aborted'
-                  ? 'aborted'
-                  : 'failed',
-              text,
-            )
-            return terminal
-          }, context)
-        } catch (error) {
-          if (runtime.signal.aborted) throw error
-          await runtime.commit(async (tx) => {
-            finish(
-              await tx.doc(Automations),
-              task.input.automation.id,
-              String(task.id),
-              'failed',
-              String(error),
-            )
-            return terminal
-          }, context)
-        }
-      },
-    },
-    abort: (task, runtime, context) =>
-      runtime.commit(async (tx) => {
-        finish(await tx.doc(Automations), task.input.automation.id, String(task.id), 'aborted')
-        return { status: 'terminal', outcome: { status: 'aborted' } }
-      }, context),
-  })
-  async function fire(tx: Tx, a: Automation, firedAt: number) {
-    let running = a.runs.some((r) => r.status === 'running')
-    // A long run can outlive the bounded run history.
-    if (!running) {
-      for (const status of ['pending', 'running', 'waiting', 'completing'] as const) {
-        let cursor: Cursor | undefined
-        do {
-          const page = await tx.scanTasks(
-            { conversationId: ROOT_CONVERSATION_ID, kind: 'ultimate.automation-run', status },
-            100,
-            cursor,
-          )
-          if (
-            page.items.some(
-              (task) => (task.input as { automation: Automation }).automation.id === a.id,
-            )
-          )
-            running = true
-          cursor = page.next
-        } while (cursor && !running)
-        if (running) break
-      }
-    }
-    if (running) {
-      a.runs.push({ id: `skipped:${firedAt}`, firedAt, finishedAt: firedAt, status: 'skipped' })
-    } else {
-      const id = await tx.createTask(
-        RunTask,
-        { automation: { ...(JSON.parse(JSON.stringify(a)) as Automation), runs: [] }, firedAt },
-        owner,
-      )
-      a.runs.push({ id: String(id), firedAt, status: 'running' })
-    }
-    a.runs = a.runs.slice(-50)
-    return a.runs.at(-1)!
-  }
-  const Scheduler = defineTask<
-    { id: string },
-    { phase: 'plan' } | { phase: 'sleep'; until: number } | { phase: 'fire'; until: number },
-    null
-  >({
-    name: 'ultimate.automation-scheduler',
-    version: 1,
-    initial: () => ({ phase: 'plan' }),
-    phases: {
-      plan: (task, runtime, context) =>
-        runtime.commit(async (tx) => {
-          const a = (await tx.doc(Automations)).automations[task.input.id]
-          if (!a?.enabled || a.scheduler !== task.id) return terminal
-          const until =
-            a.nextAt ??
-            nextAt(
-              a.schedule,
-              Math.max(runtime.now(), a.runs.at(-1)?.firedAt ?? a.createdAt),
-              a.runs.at(-1)?.firedAt ?? a.createdAt,
-            )
-          a.nextAt = until
-          return { status: 'running', checkpoint: { phase: 'sleep', until } }
-        }, context),
-      sleep: (task, runtime, context) =>
-        runtime.sleepUntil(
-          task.state.checkpoint.until,
-          { phase: 'fire', until: task.state.checkpoint.until },
-          context,
-        ),
-      fire: (task, runtime, context) =>
-        runtime.commit(async (tx) => {
-          const a = (await tx.doc(Automations)).automations[task.input.id]
-          if (!a?.enabled || a.scheduler !== task.id) return terminal
-          await fire(tx, a, runtime.now())
-          delete a.nextAt
-          if (a.schedule.kind === 'at') {
-            a.enabled = false
-            delete a.scheduler
-            return terminal
-          }
-          return { status: 'running', checkpoint: { phase: 'plan' } }
-        }, context),
-    },
-    abort: (_task, runtime, context) =>
-      runtime.commit(() => ({ status: 'terminal', outcome: { status: 'aborted' } }), context),
-  })
-  async function change(tx: Tx, args: Args): Promise<{ result: JsonValue; abort?: TaskId }> {
-    const state = await tx.doc(Automations)
-    if (args.action === 'list') return { result: Object.values(state.automations) }
-    const id = args.action === 'create' ? `A${state.next++}` : required(args.id, 'id')
-    if (args.action === 'create') {
-      const now = Date.now()
-      state.automations[id] = {
-        id,
-        name: required(args.name, 'name'),
-        prompt: required(args.prompt, 'prompt'),
-        schedule: parseSchedule(args.schedule ?? ''),
-        enabled: true,
-        createdAt: now,
-        updatedAt: now,
-        runs: [],
-      }
-    }
-    const a = state.automations[id]
-    if (!a) throw new Error(`Unknown automation: ${id}`)
-    if (args.action === 'runs') return { result: a.runs }
-    if (args.action === 'run') return { result: await fire(tx, a, Date.now()) }
-    if (args.action === 'abort') {
-      const run = a.runs.find((r) => r.id === args.runId)
-      if (!run || run.status !== 'running') throw new Error('runId must identify a running run')
-      return { result: { id: run.id }, abort: Number(run.id) as TaskId }
-    }
-    if (
-      args.action === 'resume' &&
-      a.schedule.kind === 'at' &&
-      Date.parse(a.schedule.time) <= Date.now()
-    )
-      throw new Error('This one-shot time has passed; update the time first')
-    const abort = a.scheduler
-    const oldSchedule = { ...a.schedule }
-    delete a.scheduler
-    if (args.action !== 'update') delete a.nextAt
-    if (args.action === 'delete') {
-      delete state.automations[a.id]
-      return { result: { id: a.id }, ...(abort ? { abort } : {}) }
-    }
-    if (args.action === 'create' || args.action === 'update') {
-      if (args.name !== undefined) a.name = required(args.name, 'name')
-      if (args.prompt !== undefined) a.prompt = required(args.prompt, 'prompt')
-      if (args.schedule !== undefined) a.schedule = parseSchedule(args.schedule)
-      if (args.agent !== undefined) {
-        if (args.agent) a.agent = args.agent
-        else delete a.agent
-      }
-      if (args.model !== undefined) a.model = args.model
-      if (args.thinking !== undefined) a.thinking = args.thinking
-    } else if (args.action === 'pause') a.enabled = false
-    else if (args.action === 'resume') a.enabled = true
-    else throw new Error(`Unknown action: ${args.action}`)
-    a.updatedAt = Date.now()
-    if (!isDeepStrictEqual(a.schedule, oldSchedule)) delete a.nextAt
-    if (a.enabled) {
-      a.nextAt ??= nextAt(a.schedule, Date.now(), a.runs.at(-1)?.firedAt ?? Date.now())
-      a.scheduler = await tx.createTask(Scheduler, { id: a.id }, owner)
-    }
-    return { result: JSON.parse(JSON.stringify(a)) as JsonValue, ...(abort ? { abort } : {}) }
-  }
-  async function validate(args: Args) {
-    if (!host.extensions().some((e) => e.name === 'subagents' && e.enabled))
-      throw new Error('automations needs the subagents extension enabled')
-    if (args.agent) await definition(host, args.agent)
-    if (args.model && !host.modelRuntime.getModel(args.model.provider, args.model.modelId))
-      throw new Error('Unknown model')
-  }
-  return { RunTask, Scheduler, change, validate }
-}
-function finish(
-  state: { automations: Record<string, Automation> },
-  id: string,
-  runId: string,
-  status: Run['status'],
-  answer?: string,
-) {
-  const run = state.automations[id]?.runs.find((r) => r.id === runId)
-  if (run) {
-    run.status = status
-    run.finishedAt = Date.now()
-    if (answer !== undefined) run.answer = answer.trim().split('\n')[0].slice(0, 200)
-  }
-}
-
 const operations = [
+  'events',
+  'act',
   'list',
   'create',
   'update',
@@ -395,66 +120,666 @@ const operations = [
   'resume',
   'run',
   'runs',
-  'delete',
+  'log',
   'abort',
+  'escalate',
+  'subscribe',
+  'unsubscribe',
+  'delete',
 ] as const
-/** Run ledger operation `action` with the tool's validation, in one transaction; resolves with its JSON result. */
-async function operate(
-  host: ExtensionHost,
-  action: (typeof operations)[number],
-  input: unknown,
-): Promise<JsonValue> {
-  const args = { ...(input as Omit<Args, 'action'>), action }
-  const api = backend(host)
-  await api.validate(args)
-  const receipt = await host.harness().commit(
-    async (tx) =>
-      JSON.parse(JSON.stringify(await api.change(tx, args))) as {
-        result: JsonValue
-        abort?: TaskId
-      },
-    BACKGROUND_CONTEXT,
-  )
-  if (receipt.abort) await host.harness().abortTask(receipt.abort, BACKGROUND_CONTEXT)
-  return receipt.result
-}
+function backend(host: ExtensionHost) {
+  const schedule = scheduler(host, Automations, (...args) => scripts.deliver(...args))
+  const scripts = supervisor(host, Automations, schedule.fire)
+  const trigger = triggers(host, Automations, schedule.fire, schedule.prepareFires)
+  const {
+    trusted,
+    agentFor,
+    projectDir,
+    manifest,
+    creating,
+    pristine,
+    discover,
+    snapshot,
+    runPath,
+    validId,
+    agentConversation,
+    deliver,
+    tail,
+    MANIFEST,
+  } = scripts
+  async function prepareScript(args: Args, caller?: number): Promise<Prepared> {
+    if (args.action === 'create') {
+      if (!caller) throw new Error('create requires a caller conversation')
+      if (args.scope !== 'project') {
+        if (args.slug !== undefined) throw new Error('slug is only for project automations')
+        return await agentFor(caller)
+      }
+      if (!(await trusted()))
+        throw new Error("Choose this project's local setup before creating project automations")
+      const slug =
+        args.slug ??
+        required(args.name, 'name')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^[^a-z]+|-+$/g, '')
+          .slice(0, 40)
+          .replace(/-+$/, '')
+      if (typeof slug !== 'string' || !isSlug(slug))
+        throw new Error(
+          'slug must match ^[a-z][a-z0-9-]*$ (at most 63 characters) and not be an object key',
+        )
+      const committed: Manifest = {
+        name: required(args.name, 'name'),
+        ask: required(args.ask, 'ask'),
+        once: args.once ?? true,
+        ...(args.secrets?.length ? { secrets: args.secrets } : {}),
+      }
+      const path = join(projectDir(slug), MANIFEST)
+      // Published before the record commits. A replay finds its own equal manifest and adopts it; a different
+      // one is another automation.
+      // Resolved before reserving the slug: only the guarded block below may leave it reserved.
+      const agent = await agentFor(caller)
+      if (creating.has(slug)) throw new Error(`Automation ${slug} is being created`)
+      creating.add(slug)
+      try {
+        const existing = await readFile(path, 'utf8').then(
+          (text) => {
+            try {
+              return manifest(JSON.parse(text)) ?? null
+            } catch {
+              // An unreadable manifest is someone's broken automation, not ours to overwrite.
+              return null
+            }
+          },
+          (error: NodeJS.ErrnoException) => {
+            if (error.code !== 'ENOENT') throw error
+            return undefined
+          },
+        )
+        if (
+          existing !== undefined &&
+          JSON.stringify(existing) !== JSON.stringify(manifest(committed))
+        )
+          throw new Error(`Automation ${slug} already exists; pass another slug`)
+        const record = (await host.harness().snapshot(Automations, BACKGROUND_CONTEXT))
+          ?.automations[slug]
+        if (record && !pristine(record))
+          throw new Error(`Automation ${slug} already exists; pass another slug`)
+        if (existing === undefined) await writeJson(path, committed)
+      } catch (error) {
+        creating.delete(slug)
+        throw error
+      }
+      return { ...agent, slug }
+    }
+    const id = validId(args.id)
+    if (!id.startsWith('A')) await discover()
+    const sub = await snapshot(id)
+    if (
+      args.action === 'update' &&
+      sub.scope === 'project' &&
+      [args.name, args.ask, args.once, args.secrets].some((value) => value !== undefined)
+    ) {
+      const script = sub.script!
+      await writeJson(join(projectDir(id), MANIFEST), {
+        name: args.name?.trim() ?? sub.name,
+        ask: args.ask?.trim() ?? script.ask,
+        once: args.once ?? script.once,
+        ...((args.secrets ?? script.secrets)?.length
+          ? { secrets: args.secrets ?? script.secrets }
+          : {}),
+      })
+    }
+    if ((args.action === 'resume' || args.action === 'run') && sub.script) {
+      try {
+        await access(runPath(sub), constants.X_OK)
+      } catch {
+        throw new Error(`Missing or non-executable ${runPath(sub)}; write it and chmod +x it first`)
+      }
+    }
+    if (args.action === 'escalate') required(args.reason, 'reason')
+    if (args.action === 'subscribe' || args.action === 'unsubscribe') {
+      let target = caller
+      if (args.to !== undefined) {
+        if (typeof args.to !== 'string') throw new Error('to must be #id or @name')
+        if (args.to.startsWith('@'))
+          target = await host.need(SubagentsApi).standing(args.to.slice(1), BACKGROUND_CONTEXT)
+        else if (/^#[1-9]\d*$/.test(args.to)) target = Number(args.to.slice(1))
+        else throw new Error('to must be #id or @name')
+      }
+      if (
+        !target ||
+        !(await host.harness().conversation(target as ConversationId, BACKGROUND_CONTEXT))
+      )
+        throw new Error('Subscriber conversation is missing')
+      return { target }
+    }
+    return {}
+  }
+  async function changeScript(
+    tx: Tx,
+    args: Args,
+    prepared: Prepared,
+    caller?: number,
+  ): Promise<{ result: JsonValue; effect?: Effect }> {
+    const state = await tx.doc(Automations)
+    if (args.action === 'list')
+      return {
+        result: Object.values(state.automations).map((s) => ({
+          ...s,
+          alive: groupAlive(s.script?.pid),
+        })),
+      }
+    if (args.action === 'create') {
+      // Only a record discovery made from this create's own manifest (crash, replay) is adopted, with its agent.
+      if (
+        prepared.slug &&
+        state.automations[prepared.slug] &&
+        !pristine(state.automations[prepared.slug])
+      )
+        throw new Error(`Automation ${prepared.slug} already exists; pass another slug`)
+      const id = prepared.slug ?? `A${state.next++}`
+      const name = required(args.name, 'name')
+      // A concurrent list may already have discovered the manifest written in prepare: adopt its agent.
+      const conversationId =
+        (prepared.slug && state.automations[prepared.slug]?.script?.conversationId) ||
+        (await agentConversation(
+          tx,
+          prepared,
+          id,
+          name,
+          prepared.slug
+            ? host.projectRoot
+            : ((await tx.doc(AgentDoc, caller as ConversationId)).cwd ?? host.projectRoot),
+        ))
+      const now = Date.now()
+      const sub: Automation = {
+        id,
+        ...(prepared.slug ? { scope: 'project' as const } : {}),
+        name,
+        enabled: true,
+        script: {
+          ask: required(args.ask, 'ask'),
+          once: args.once ?? true,
+          conversationId,
+          state: 'writing',
+          ...(args.secrets ? { secrets: args.secrets } : {}),
+        },
+        subscribers: [
+          ...new Set(args.subscribers?.length ? args.subscribers : args.prompt ? [] : [caller!]),
+        ],
+        ...(args.prompt ? { prompt: args.prompt } : {}),
+        ...(args.agent ? { agent: args.agent } : {}),
+        ...(args.model ? { model: args.model } : {}),
+        ...(args.thinking ? { thinking: args.thinking } : {}),
+        createdAt: now,
+        updatedAt: now,
+        runs: [],
+        fires: 0,
+      }
+      state.automations[id] = sub
+      await deliver(tx, sub, 'create', 'writing', sub.script!.ask)
+      return { result: sub }
+    }
+    const id = validId(args.id)
+    const sub = state.automations[id]
+    if (!sub) throw new Error(`Unknown automation: ${id}`)
+    if (args.action === 'log') return { result: { text: await tail(id, args.lines) } }
+    sub.updatedAt = Date.now()
+    if (args.action === 'subscribe')
+      sub.subscribers = [...new Set([...sub.subscribers, prepared.target!])]
+    else if (args.action === 'unsubscribe')
+      sub.subscribers = sub.subscribers.filter((s) => s !== prepared.target)
+    else if (args.action === 'resume' || args.action === 'run') {
+      sub.enabled = true
+      sub.script!.state = 'running'
+      // Retain the old pid until launch so onOpen can sweep it if the process dies before the effect.
+      delete sub.script!.error
+      return {
+        result: sub,
+        effect: {
+          id,
+          action: 'resume',
+          ...(sub.script!.pid ? { previousPid: sub.script!.pid } : {}),
+        },
+      }
+    } else if (args.action === 'pause' || args.action === 'delete' || args.action === 'escalate') {
+      sub.enabled = false
+      if (args.action === 'escalate') sub.script!.state = 'failed'
+      else if (sub.script!.state !== 'done') sub.script!.state = 'stopped'
+      const pid = sub.script!.pid
+      if (args.action === 'escalate') {
+        sub.script!.error = required(args.reason, 'reason')
+        const event = await host.emit(tx, Escalated, { id, reason: sub.script!.error })
+        await deliver(tx, sub, event.id, 'escalated', sub.script!.error)
+      }
+      if (args.action === 'delete') delete state.automations[id]
+      return {
+        result: args.action === 'delete' ? { id } : sub,
+        effect: { id, action: 'pause', ...(pid ? { previousPid: pid } : {}) },
+      }
+    }
+    return { result: sub }
+  }
 
-// `change` returns each operation's value as JSON: the ledger's automations, a run, or an id.
+  async function validate(args: Args, caller?: number) {
+    if (!host.extensions().some((e) => e.name === 'subagents' && e.enabled))
+      throw new Error('automations needs the subagents extension enabled')
+    if (!operations.includes(args.action as (typeof operations)[number]))
+      throw new Error(`Unknown action: ${args.action}`)
+    if (args.agent) {
+      const found = (
+        await discoverAgents(host.ultimateRoot, host.projectRoot, host.userHome, host.modelRuntime)
+      ).definitions.some((d) => d.name === args.agent)
+      if (!found) throw new Error(`Unknown agent: ${args.agent}`)
+    }
+    if (args.model && !host.modelRuntime.getModel(args.model.provider, args.model.modelId))
+      throw new Error('Unknown model')
+    if (args.action === 'create') {
+      required(args.name, 'name')
+      if (
+        [args.schedule, args.ask, args.event, args.condition].filter((value) => value !== undefined)
+          .length !== 1
+      )
+        throw new Error('Exactly one of schedule, ask, event or condition is required')
+      if (args.scope !== undefined && args.scope !== 'user' && args.scope !== 'project')
+        throw new Error('scope must be user or project')
+      if (args.scope === 'project' && args.ask === undefined)
+        throw new Error('Project scope is only supported for script triggers')
+      if (args.slug !== undefined && args.scope !== 'project')
+        throw new Error('slug is only for project automations')
+      if (args.schedule !== undefined) parseSchedule(args.schedule)
+      if (args.ask !== undefined) required(args.ask, 'ask')
+      if (!args.prompt && !args.subscribers?.length && !caller)
+        throw new Error('At least one of prompt or subscribers is required')
+      if (
+        args.subscribers !== undefined &&
+        (!Array.isArray(args.subscribers) ||
+          args.subscribers.some((s) => !Number.isInteger(s) || s < 1))
+      )
+        throw new Error('subscribers must be conversation ids')
+      for (const id of args.subscribers ?? [])
+        if (!(await host.harness().conversation(id as ConversationId, BACKGROUND_CONTEXT)))
+          throw new Error(`Unknown subscriber #${id}`)
+    }
+    if (args.event !== undefined) {
+      const event = TRIGGER_EVENTS.find(({ name }) => name === args.event!.name)
+      if (!event) throw new Error(`Unknown event: ${args.event.name}`)
+      for (const [key, value] of Object.entries(args.event.where ?? {})) {
+        if (!Object.hasOwn(event.fields, key)) throw new Error(`Unknown where field: ${key}`)
+        if (!['string', 'number', 'boolean'].includes(typeof value))
+          throw new Error('where values must be strings, numbers or booleans')
+      }
+    }
+    if (args.condition !== undefined) {
+      const c = args.condition
+      if (c.metric !== 'context') throw new Error('condition metric must be context')
+      if (!Number.isInteger(c.above) || c.above < 1 || c.above > 99)
+        throw new Error('above must be an integer from 1 to 99')
+      if (c.cooldownMs !== undefined && (!Number.isFinite(c.cooldownMs) || c.cooldownMs < 0))
+        throw new Error('cooldownMs must be non-negative')
+      const target = typeof c.of === 'string' ? await trigger.resolve(c.of) : undefined
+      if (!target || !(await host.harness().conversation(target, BACKGROUND_CONTEXT)))
+        throw new Error(`Unknown of: ${c.of}`)
+    }
+    if (args.name !== undefined) required(args.name, 'name')
+    // An empty prompt on update removes the run action; create needs a real one.
+    if (args.prompt !== undefined && (args.action === 'create' || args.prompt !== ''))
+      required(args.prompt, 'prompt')
+    if (args.once !== undefined && typeof args.once !== 'boolean')
+      throw new Error('once must be boolean')
+    if (
+      args.secrets !== undefined &&
+      (!Array.isArray(args.secrets) || args.secrets.some((s) => typeof s !== 'string'))
+    )
+      throw new Error('secrets must be names')
+    args.secrets?.forEach(validateName)
+    if (args.action === 'update') {
+      const a = await scripts.status(required(args.id, 'id'))
+      if (
+        (args.ask !== undefined && !a.script) ||
+        (args.schedule !== undefined && !a.schedule) ||
+        (args.event !== undefined && !a.event) ||
+        (args.condition !== undefined && !a.condition)
+      )
+        throw new Error('Cannot change trigger kind')
+      if (args.ask !== undefined) required(args.ask, 'ask')
+    }
+  }
+  async function prepare(args: Args, caller?: number) {
+    await validate(args, caller)
+    if (args.action === 'create' && args.ask !== undefined) return prepareScript(args, caller)
+    if (args.action === 'list') {
+      await scripts.discover()
+      return {}
+    }
+    if (args.action === 'events') return {}
+    const prepared: Prepared = args.action === 'create' ? {} : await prepareScript(args, caller)
+    const condition =
+      args.condition ??
+      (args.action === 'resume'
+        ? (await scripts.status(required(args.id, 'id'))).condition
+        : undefined)
+    if (condition) prepared.target = await trigger.resolve(condition.of)
+    return prepared
+  }
+  async function change(
+    tx: Tx,
+    args: Args,
+    prepared: Awaited<ReturnType<typeof prepare>>,
+    caller?: number,
+  ): Promise<Change> {
+    if (args.action === 'events') return { result: json(TRIGGER_EVENTS) }
+    const state = await tx.doc(Automations)
+    if (args.action === 'list') return changeScript(tx, args, prepared, caller)
+    if (args.action === 'create' && args.ask !== undefined)
+      return changeScript(tx, args, prepared, caller)
+    const id = args.action === 'create' ? `A${state.next++}` : required(args.id, 'id')
+    if (args.action === 'create') {
+      const now = Date.now()
+      state.automations[id] = {
+        id,
+        name: required(args.name, 'name'),
+        ...(args.schedule !== undefined ? { schedule: parseSchedule(args.schedule) } : {}),
+        enabled: true,
+        createdAt: now,
+        updatedAt: now,
+        runs: [],
+        fires: 0,
+        subscribers: [
+          ...new Set(args.subscribers?.length ? args.subscribers : args.prompt ? [] : [caller!]),
+        ],
+      }
+    }
+    const a = state.automations[id]
+    if (!a) throw new Error(`Unknown automation: ${id}`)
+    if (args.action === 'runs') return { result: a.runs }
+    if (args.action === 'run' && !a.script)
+      return { result: await schedule.fire(tx, a, Date.now()) }
+    if (args.action === 'abort') {
+      const run = a.runs.find((r) => r.id === args.runId)
+      if (!run || run.status !== 'running') throw new Error('runId must identify a running run')
+      return { result: { id: run.id }, abort: Number(run.id) as TaskId }
+    }
+    if (
+      ['subscribe', 'unsubscribe'].includes(args.action) ||
+      (a.script && args.action !== 'update')
+    )
+      return changeScript(tx, args, prepared, caller)
+    if (args.action === 'escalate') throw new Error('escalate requires a script trigger')
+    if (args.action === 'log') throw new Error('log requires a script trigger')
+    if (
+      args.action === 'resume' &&
+      a.schedule?.kind === 'at' &&
+      Date.parse(a.schedule.time) <= Date.now()
+    )
+      throw new Error('This one-shot time has passed; update the time first')
+    const abort = a.scheduler
+    const oldSchedule = a.schedule && { ...a.schedule }
+    const oldAsk = a.script?.ask
+    delete a.scheduler
+    if (args.action !== 'update') delete a.nextAt
+    if (args.action === 'delete') {
+      delete state.automations[id]
+      return { result: { id }, ...(abort ? { abort } : {}) }
+    }
+    let effect: Effect | undefined
+    if (args.action === 'create' || args.action === 'update') {
+      if (args.name !== undefined) a.name = required(args.name, 'name')
+      if (args.prompt !== undefined) {
+        if (args.prompt) a.prompt = required(args.prompt, 'prompt')
+        else delete a.prompt
+      }
+      if (!a.prompt && !a.subscribers.length)
+        throw new Error('At least one of prompt or subscribers is required')
+      if (args.schedule !== undefined) a.schedule = parseSchedule(args.schedule)
+      if (args.event !== undefined)
+        a.event = { ...args.event, sinceEvent: a.event?.sinceEvent ?? (await newestEvent(tx)) }
+      if (args.condition !== undefined)
+        a.condition = {
+          ...a.condition,
+          ...args.condition,
+          cooldownMs: args.condition.cooldownMs ?? a.condition?.cooldownMs ?? 3600000,
+          armed: a.condition?.armed ?? true,
+        }
+      if (a.script) {
+        if (args.ask !== undefined) a.script.ask = required(args.ask, 'ask')
+        if (args.once !== undefined) a.script.once = args.once
+        if (args.secrets !== undefined) a.script.secrets = args.secrets
+      }
+      if (args.agent !== undefined) {
+        if (args.agent) a.agent = args.agent
+        else delete a.agent
+      }
+      if (args.model !== undefined) a.model = args.model
+      if (args.thinking !== undefined) a.thinking = args.thinking
+      if (a.script && a.script.ask !== oldAsk) {
+        // The running script watches the old condition: stop it and have the watcher write run again, as at creation.
+        a.script.state = 'writing'
+        delete a.script.error
+        effect = {
+          id,
+          action: 'pause',
+          ...(a.script.pid ? { previousPid: a.script.pid } : {}),
+        }
+      }
+    } else if (args.action === 'pause') a.enabled = false
+    else if (args.action === 'resume') a.enabled = true
+    else throw new Error(`Unknown action: ${args.action}`)
+    if (args.action === 'resume' && a.event) a.event.sinceEvent = await newestEvent(tx)
+    if (args.action === 'create' || args.action === 'resume')
+      await trigger.evaluate(tx, a, prepared.target)
+    a.updatedAt = Date.now()
+    if (effect) await deliver(tx, a, `update:${a.updatedAt}`, 'writing', a.script!.ask)
+    if (!isDeepStrictEqual(a.schedule, oldSchedule)) delete a.nextAt
+    if (a.enabled && a.schedule) {
+      a.nextAt ??= nextAt(a.schedule, Date.now(), a.lastFireAt ?? Date.now())
+      a.scheduler = await tx.createTask(
+        schedule.Scheduler,
+        { id },
+        {
+          ownership: { kind: 'conversation' },
+          conversationId: ROOT_CONVERSATION_ID,
+          background: true,
+        },
+      )
+    }
+    return { result: json(a), ...(abort ? { abort } : {}), ...(effect ? { effect } : {}) }
+  }
+  async function apply(receipt: Partial<Change>) {
+    if (receipt.abort) await host.harness().abortTask(receipt.abort, BACKGROUND_CONTEXT)
+    await scripts.apply(receipt.effect)
+  }
+  async function operate(args: Args, caller?: number): Promise<JsonValue> {
+    const prepared = await prepare(args, caller)
+    const receipt = await host
+      .harness()
+      .commit(async (tx) => json(await change(tx, args, prepared, caller)), BACKGROUND_CONTEXT)
+      .finally(() => scripts.settle(prepared))
+    await apply(receipt)
+    if (receipt.effect?.action === 'resume')
+      return json(await scripts.status(required(args.id, 'id')))
+    return receipt.result
+  }
+  /**
+   * The newest event committed before `tx`: an event trigger activated in `tx` handles only later ones. Read from the
+   * root's event feed, which every emit appends to in its own commit.
+   */
+  async function newestEvent(tx: Tx) {
+    const feed = host.doc(EVENT_FEED)
+    if (!feed) throw new Error('The event feed is not available')
+    return (
+      ((await tx.doc(feed, ROOT_CONVERSATION_ID)) as { events: EventRecord[] }).events.at(-1)?.id ??
+      0
+    )
+  }
+  /** Set the user's grant on `id`: the actions its woken agent may take without asking. Only the user calls this. */
+  async function grant(id: string, actions: unknown, source: unknown) {
+    if (!Array.isArray(actions) || actions.some((item) => !GRANT_ACTIONS.includes(item)))
+      throw new Error(`actions must be some of ${GRANT_ACTIONS.join(', ')}`)
+    if (source !== undefined && (typeof source !== 'string' || source.length > 500))
+      throw new Error('source must be text of at most 500 characters')
+    return host.harness().commit(async (tx) => {
+      const a = (await tx.doc(Automations)).automations[validId(id)]
+      if (!a) throw new Error(`Unknown automation: ${id}`)
+      if (!actions.length) delete a.grant
+      else
+        a.grant = {
+          actions: GRANT_ACTIONS.filter((item) => actions.includes(item)),
+          source: source?.trim() || 'Set in the Automations panel',
+          at: Date.now(),
+        }
+      a.updatedAt = Date.now()
+      return json(a)
+    }, BACKGROUND_CONTEXT)
+  }
+  /**
+   * Subscriber `caller` asks to do `action` for the user under automation `id`'s grant. Refused unless the user granted
+   * that action, the automation is enabled and fired within the last six hours, `caller` is one of the conversations it
+   * wakes, and that action was not already taken on this fire. The check, the effect (a compaction task, a dream
+   * session, a granted Fall asleep task) and the record of the act commit in one transaction, so a crash leaves either
+   * all or nothing. `task` keys the act to its tool call: a replay of that call returns the recorded result instead of
+   * acting again.
+   */
+  async function act(id: string, action: unknown, caller: number | undefined, task?: number) {
+    if (!GRANT_ACTIONS.includes(action as GrantAction))
+      throw new Error(`do must be one of ${GRANT_ACTIONS.join(', ')}`)
+    const name = action as GrantAction
+    if (caller === undefined) throw new Error('act needs the conversation that was woken')
+    const dream = name === 'compact' ? undefined : host.want(DreamGrant)
+    if (name !== 'compact' && !dream) throw new Error('The dream extension is not enabled')
+    const status = await scripts.status(id)
+    // The conversation a context trigger watches, else the woken one itself.
+    const target =
+      (status.condition && (await trigger.resolve(status.condition.of))) ??
+      (caller as ConversationId)
+    return host.harness().commit(async (tx) => {
+      const a = (await tx.doc(Automations)).automations[validId(id)]
+      if (!a) throw new Error(`Unknown automation: ${id}`)
+      // The tool call's own receipt, written with its effect: a replay returns it whatever fired since.
+      const receipt = task === undefined ? undefined : await tx.doc(ActReceipt, task as TaskId)
+      if (receipt?.result)
+        return { action: name, ...json(receipt.result), automation: a.id, name: a.name }
+      const done = a.acted?.[name]
+      if (!a.grant?.actions.includes(name))
+        throw new Error(
+          `Automation ${a.id} has no grant for ${name}: ask the user instead. Only the user grants it, in the Automations panel.`,
+        )
+      if (!a.enabled) throw new Error(`Automation ${a.id} is paused`)
+      const now = Date.now()
+      if (a.lastFireAt === undefined || now - a.lastFireAt > 6 * 3600_000)
+        throw new Error(`Automation ${a.id} has not fired in the last six hours`)
+      if (!a.subscribers.includes(caller))
+        throw new Error(
+          `#${caller} is not woken by automation ${a.id}; only its subscribers act on a grant`,
+        )
+      if (done?.fire === a.fires)
+        throw new Error(`Automation ${a.id} already used its ${name} grant on this fire`)
+      const by: GrantedBy = { automation: a.id, name: a.name, at: now }
+      // Every task scan before the first write: Pi refuses scans after a write in one transaction.
+      const result: Acted['result'] =
+        name === 'compact'
+          ? { conversation: target, taskId: Number(await admitCompaction(tx, target)) }
+          : name === 'dream'
+            ? await dream!.start(tx, by, caller)
+            : await dream!.asleep(tx, by, {})
+      a.acted = {
+        ...a.acted,
+        [name]: { fire: a.fires, at: now, by: caller, ...(task ? { task } : {}), result },
+      }
+      if (receipt) receipt.result = result
+      await host.emit(tx, ActedEvent, { id: a.id, action: name, fire: a.fires, by: caller })
+      return { action: name, ...result, automation: a.id, name: a.name }
+    }, BACKGROUND_CONTEXT)
+  }
+  return { ...schedule, ...scripts, prepare, change, apply, operate, trigger, grant, act }
+}
+function input(args: unknown, action: string): Args {
+  return { ...(args as Omit<Args, 'action'>), action }
+}
+/** The `act` operation of the automation tool, for conversation `caller` in tool task `task`. */
+export const act = (
+  host: ExtensionHost,
+  id: string,
+  action: unknown,
+  caller: number | undefined,
+  task?: number,
+) => backend(host).act(id, action, caller, task)
+/** Only the user grants: no agent may give itself or another automation the right to act without asking. */
+export const userActions = ['grant']
 export const actions = {
+  events: implementAction(EventsAction, () => TRIGGER_EVENTS),
+  grant: implementAction(GrantRef, (args, { host }) => {
+    const given = (args ?? {}) as Record<string, unknown>
+    return backend(host).grant(required(given.id, 'id'), given.actions, given.source)
+  }),
   list: implementAction(
     ListAction,
-    async (args, { host }) => (await operate(host, 'list', args)) as Automation[],
+    async (args, { host }) =>
+      (await backend(host).operate(input(args, 'list'))) as AutomationListItem[],
   ),
   create: implementAction(
     CreateAction,
-    async (args, { host }) => (await operate(host, 'create', args)) as Automation,
+    async (args, { host, conversationId }) =>
+      (await backend(host).operate(input(args, 'create'), conversationId)) as Automation,
   ),
   update: implementAction(
     UpdateAction,
-    async (args, { host }) => (await operate(host, 'update', args)) as Automation,
+    async (args, { host }) => (await backend(host).operate(input(args, 'update'))) as Automation,
   ),
   pause: implementAction(
     PauseAction,
-    async (args, { host }) => (await operate(host, 'pause', args)) as Automation,
+    async (args, { host }) => (await backend(host).operate(input(args, 'pause'))) as Automation,
   ),
   resume: implementAction(
     ResumeAction,
-    async (args, { host }) => (await operate(host, 'resume', args)) as Automation,
+    async (args, { host }) => (await backend(host).operate(input(args, 'resume'))) as Automation,
   ),
   run: implementAction(
     RunAction,
-    async (args, { host }) => (await operate(host, 'run', args)) as Run,
+    async (args, { host }) =>
+      (await backend(host).operate(input(args, 'run'))) as Run | Automation | { id: string },
   ),
-  runs: (input: JsonValue, { host }: ActionContext) => operate(host, 'runs', input),
   delete: implementAction(
     DeleteAction,
-    async (args, { host }) => (await operate(host, 'delete', args)) as { id: string },
+    async (args, { host }) =>
+      (await backend(host).operate(input(args, 'delete'))) as { id: string },
   ),
-  abort: (input: JsonValue, { host }: ActionContext) => operate(host, 'abort', input),
+  subscribe: implementAction(
+    SubscribeAction,
+    async (args, { host, conversationId }) =>
+      (await backend(host).operate(input(args, 'subscribe'), conversationId)) as Automation,
+  ),
+  unsubscribe: implementAction(
+    UnsubscribeAction,
+    async (args, { host, conversationId }) =>
+      (await backend(host).operate(input(args, 'unsubscribe'), conversationId)) as Automation,
+  ),
+  log: implementAction(
+    LogAction,
+    async (args, { host }) => (await backend(host).operate(input(args, 'log'))) as { text: string },
+  ),
+  escalate: implementAction(
+    EscalateAction,
+    async (args, { host }) => (await backend(host).operate(input(args, 'escalate'))) as Automation,
+  ),
+  runs: (args: JsonValue, { host }: ActionContext) => backend(host).operate(input(args, 'runs')),
+  abort: (args: JsonValue, { host }: ActionContext) => backend(host).operate(input(args, 'abort')),
+  script: implementAction(ScriptAction, async (args, { host }) => {
+    const api = backend(host)
+    const a = await api.status(required(input(args, 'script').id, 'id'))
+    if (!a.script) throw new Error('script requires a script trigger')
+    const path = api.runPath(a)
+    try {
+      const text = await readFile(path, 'utf8')
+      return { path, text: text.length > 65536 ? `${text.slice(0, 65536)}\n…` : text }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { path, text: '' }
+      throw error
+    }
+  }),
   describe: implementAction(DescribeAction, (args) => {
-    const input =
-      args && typeof args === 'object' && !Array.isArray(args) ? args.schedule : undefined
-    const schedule = parseSchedule((input ?? '') as string | Schedule)
+    const schedule = parseSchedule(input(args, 'describe').schedule ?? '')
     let time = Date.now()
     const next: number[] = []
     for (let i = 0; i < (schedule.kind === 'at' ? 1 : 3); i++) {
@@ -464,36 +789,75 @@ export const actions = {
     return { schedule, description: describeSchedule(schedule), next }
   }),
 }
-
-export default function automations(host: Host & Pick<ExtensionHost, 'need'>) {
-  // Core, always on; resolved where it is called, declared here so the catalogue lists it.
+export const pollActions = ['list', 'log', 'script']
+export default function automations(host: ExtensionHost) {
   host.need(SubagentsApi)
+  host.need(MessagesApi)
   const api = backend(host)
+  host.implement(AutomationsApi, {
+    resume: async (id) => (await api.operate({ action: 'resume', id }), api.status(id)),
+    pause: async (id) => (await api.operate({ action: 'pause', id }), api.status(id)),
+    run: async (id) => (await api.operate({ action: 'run', id }), api.status(id)),
+    status: api.status,
+  })
+  api.trigger.install()
+  host.onOpen(async () => {
+    await api.open()
+    await api.trigger.open()
+  })
+  const close = async () => {
+    await api.trigger.close()
+    await api.close()
+  }
+  host.onRelease(close)
+  host.onClose(close)
   return defineExtension({
     name: 'automations',
-    tasks: [api.Scheduler, api.RunTask],
+    tasks: [api.Scheduler, api.RunTask, api.Deliver],
     sections: [
       section('automations', async ({ read }, context) => {
         const state = await read.snapshot(Automations, context)
         const lines = Object.values(state?.automations ?? {})
           .filter((a) => a.enabled)
-          .map((a) => `${a.name}: ${describeSchedule(a.schedule)}`)
+          .map((a) => `${a.id} ${a.name}: ${describeTrigger(a)}`)
         return lines.length ? lines.join('\n') : undefined
       }),
     ],
     tools: [
       defineTool({
         name: 'automation',
-        // Transactional receipts deduplicate changes; abort reuses the recorded task id and is idempotent.
+        // Receipts deduplicate ledger changes; process effects reuse their committed pid on replay.
         replay: 'safe',
         description:
-          'Schedule agent prompts durably. Actions: list, create, update, pause, resume, run (now), runs, delete (keeps conversations), abort {id,runId}. create needs name, prompt, schedule; other actions use id A<n>. Schedules: cron "0 9 * * 1-5" Europe/Vienna (timezone optional), at 2026-12-01T09:00:00Z, in 30m, every 15m. Runs cost model tokens. Optional agent selects an existing agent definition that fits the job (see Available definitions in the subagents prompt), or first write <project>/.ultimate/agents/<name>.md with frontmatter name, description, model, thinking, tools and instructions in the body, then reference it so the project team shares it. Agent isolates are ignored. Optional model {provider,modelId} and thinking override the profile. Without an agent, runs copy the root agent.',
+          'Automate background work with one trigger (schedule, ask, event or condition) and one or both actions (prompt, subscribers). create {name,schedule?|ask?|event?|condition?,once?,secrets?,prompt?,agent?,model?,thinking?,subscribers?,scope?,slug?}. ask starts a watcher that writes a supervised script: stdout FIRE wakes subscribers and/or starts a prompt run; DONE then exit 0 stops recurring scripts. event {name,where?} watches domain events; events lists names and fields. condition {metric:"context",of:"@name"|"#id",above:1-99,cooldownMs?} watches context fill. Scripts spend tokens only on setup and repair; prompt runs spend tokens every fire. Schedules: cron "0 9 * * 1-5" Europe/Vienna, at 2026-12-01T09:00:00Z, in 30m, every 15m. IDs A<n>, or lowercase slugs for project scripts in <project>/.ultimate/automations/<slug>/. Project scripts never start themselves. list; update; pause/resume; run (fire trigger now or relaunch script); runs; log {id,lines?}; abort {id,runId}; escalate {id,reason}; subscribe/unsubscribe {id,to?: "#id"|"@name"} (default caller); delete (keeps files and conversations). Without prompt or subscribers, caller subscribes. Optional agent selects an existing definition (isolates ignored), model {provider,modelId} and thinking override it; otherwise runs copy the root agent. Failures wake only the watcher; escalation notifies subscribers and @ultimate. act {id,do: "dream"|"compact"|"asleep"} does that for the user without asking, only when the user granted it on that automation (the panel shows grants) and it fired within 6 h, once per fire; without a grant, ask the user instead.',
         parameters: Type.Object({
           action: Type.Union(operations.map((v) => Type.Literal(v))),
           id: Type.Optional(Type.String()),
           name: Type.Optional(Type.String()),
-          prompt: Type.Optional(Type.String()),
           schedule: Type.Optional(Type.String()),
+          ask: Type.Optional(Type.String()),
+          event: Type.Optional(
+            Type.Object({
+              name: Type.String(),
+              where: Type.Optional(
+                Type.Record(
+                  Type.String(),
+                  Type.Union([Type.String(), Type.Number(), Type.Boolean()]),
+                ),
+              ),
+            }),
+          ),
+          condition: Type.Optional(
+            Type.Object({
+              metric: Type.Literal('context'),
+              of: Type.String(),
+              above: Type.Integer({ minimum: 1, maximum: 99 }),
+              cooldownMs: Type.Optional(Type.Number({ minimum: 0 })),
+            }),
+          ),
+          once: Type.Optional(Type.Boolean()),
+          secrets: Type.Optional(Type.Array(Type.String())),
+          prompt: Type.Optional(Type.String()),
           agent: Type.Optional(Type.String()),
           model: Type.Optional(Type.Object({ provider: Type.String(), modelId: Type.String() })),
           thinking: Type.Optional(
@@ -503,27 +867,76 @@ export default function automations(host: Host & Pick<ExtensionHost, 'need'>) {
               ),
             ),
           ),
+          subscribers: Type.Optional(Type.Array(Type.Integer({ minimum: 1 }))),
+          scope: Type.Optional(Type.Union([Type.Literal('user'), Type.Literal('project')])),
+          slug: Type.Optional(Type.String()),
           runId: Type.Optional(Type.String()),
+          to: Type.Optional(Type.String()),
+          lines: Type.Optional(Type.Integer({ minimum: 1, maximum: 2000 })),
+          reason: Type.Optional(Type.String()),
+          do: Type.Optional(Type.Union(GRANT_ACTIONS.map((v) => Type.Literal(v)))),
         }),
-        execute: async (args, tool, context: Context) => {
+        execute: async (args, tool, context) => {
           const cached = await tool.memo<{ output: { type: 'text'; text: string }[] }>(
             'result',
             context,
           )
           if (cached) return cached
-          await api.validate(args)
-          const receipt = await tool.commit(async (tx) => {
-            const saved = await tx.doc(Receipt, tool.taskId)
-            if (saved.result === undefined) Object.assign(saved, await api.change(tx, args))
-            return {
-              result: JSON.parse(JSON.stringify(saved.result)) as JsonValue,
-              ...(saved.abort ? { abort: saved.abort } : {}),
-            }
-          }, context)
-          if (receipt.abort) await host.harness().abortTask(receipt.abort, context)
+          if (args.action === 'act') {
+            // The grant's claim is keyed to this call's task: a replay gets its own claim, not a second act.
+            const acted = await api.act(
+              required(args.id, 'id'),
+              args.do,
+              tool.conversationId,
+              Number(tool.taskId),
+            )
+            return tool.memo(
+              'result',
+              {
+                output: [
+                  {
+                    type: 'text' as const,
+                    text: `Did ${acted.action} under the user's grant on automation ${acted.automation}: ${JSON.stringify(acted)}`,
+                  },
+                ],
+              },
+              context,
+            )
+          }
+          const caller =
+            args.action === 'create' || args.action === 'subscribe'
+              ? await actingAs(host, tool.conversationId, context)
+              : tool.conversationId
+          let receipt = await tool.commit(
+            async (tx) => json(await tx.doc(Receipt, tool.taskId)),
+            context,
+          )
+          if (receipt.result === undefined) {
+            const prepared = await api.prepare(args, caller)
+            receipt = await tool
+              .commit(async (tx) => {
+                const saved = await tx.doc(Receipt, tool.taskId)
+                if (saved.result === undefined)
+                  Object.assign(saved, await api.change(tx, args, prepared, caller))
+                return json(saved)
+              }, context)
+              .finally(() => api.settle(prepared))
+          }
+          await api.apply(receipt)
+          if (caller !== tool.conversationId)
+            await host
+              .need(LineageApi)
+              .leaveNote(
+                caller,
+                `Side chat #${tool.conversationId} ${args.action === 'create' ? 'created' : 'subscribed to'} automation ${(receipt.result as Automation).id}.`,
+                {
+                  from: tool.conversationId,
+                  requestId: `sidechat:automation:${tool.taskId}:${tool.callId}`,
+                },
+              )
           return tool.memo(
             'result',
-            { output: [{ type: 'text' as const, text: concise(receipt.result) }] },
+            { output: [{ type: 'text' as const, text: concise(receipt.result!) }] },
             context,
           )
         },
@@ -533,13 +946,10 @@ export default function automations(host: Host & Pick<ExtensionHost, 'need'>) {
 }
 function concise(value: JsonValue): string {
   if (Array.isArray(value)) return value.length ? value.map(concise).join('\n') : 'None.'
-  if (value && typeof value === 'object' && 'schedule' in value) {
+  if (value && typeof value === 'object' && 'enabled' in value) {
     const a = value as Automation
-    return `${a.id} ${a.name} — ${describeSchedule(a.schedule)} — ${a.enabled ? 'enabled' : 'paused'}`
+    return `${a.id} ${a.name} — ${describeTrigger(a)} — ${a.enabled ? 'enabled' : 'paused'}`
   }
-  if (value && typeof value === 'object' && 'status' in value) {
-    const run = value as Run
-    return `${run.id} ${run.status}${run.conversationId ? ` #${run.conversationId}` : ''}${run.answer ? `: ${run.answer}` : ''}`
-  }
+  if (value && typeof value === 'object' && typeof value.text === 'string') return value.text
   return JSON.stringify(value)
 }

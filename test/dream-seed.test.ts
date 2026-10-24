@@ -1,4 +1,5 @@
 import { join } from 'node:path'
+import type { JsonValue } from '@earendil-works/chord'
 import { fauxProvider } from '@earendil-works/pi-ai/providers/faux'
 import { configure, ROOT_CONVERSATION_ID } from '@earendil-works/pi-durable'
 import type { Tx } from '@earendil-works/pi-durable'
@@ -12,17 +13,17 @@ import type { ActionContext } from '../server/actions.ts'
 import { Metadata } from '../server/metadata.ts'
 import { docs as lineageDocs } from '../extensions/lineage/server.ts'
 import { Messages } from '../extensions/messages/api.ts'
-import { MessageQuestions } from '../extensions/questions/server.ts'
 import { Todos } from '../extensions/todos/server.ts'
 import { Standing } from '../extensions/subagents/api.ts'
 import automations, {
   actions as automationActions,
   Automations,
 } from '../extensions/automations/server.ts'
-import type { Subscription } from '../extensions/subscriptions/types.ts'
+import type { Automation } from '../extensions/automations/types.ts'
+import type { Seed } from '../extensions/dream/types.ts'
 import dream, { Sessions, fileJournal, startSession } from '../extensions/dream/server.ts'
 import { applySeed, buildSeed, SeedState, writeSeed } from '../extensions/dream/seed.ts'
-import { temp, until } from './helpers.ts'
+import { temp, until, eventHost } from './helpers.ts'
 
 const openedHosts: OpenHost[] = []
 afterEach(async () => {
@@ -39,16 +40,21 @@ async function fixture() {
   })
   let opened: OpenHost
   let opener: () => Promise<void>
-  let subscriptions: Subscription[] = []
-  const tokens = [...lineageDocs, Messages, MessageQuestions, Todos, Sessions]
+  let scripts: (Seed['scripts'][number] & { enabled: boolean })[] = []
+  const tokens = [...lineageDocs, Messages, Todos, Sessions]
   const resources = new Map<string, unknown>()
   const invoke = vi.fn<ExtensionHost['invoke']>(async (extension, action, args) => {
-    if (extension === 'subscriptions' && action === 'list') return subscriptions
     if (extension !== 'automations' || !['list', 'create', 'describe'].includes(action))
       throw new Error(`Unexpected action ${extension}/${action}`)
-    return automationActions[action as 'list' | 'create' | 'describe'](args, {
+    const result = await automationActions[action as 'list' | 'create' | 'describe'](args, {
       host,
     } as ActionContext)
+    return action === 'list'
+      ? [
+          ...(result as Automation[]),
+          ...scripts.map(({ ask, ...item }) => ({ ...item, script: { ask } })),
+        ]
+      : result
   })
   const host = {
     ...prepared,
@@ -61,8 +67,15 @@ async function fixture() {
       return resources.get(key)
     },
     metadata: Metadata,
+    ...eventHost(() => opened.harness, 'automations'),
+    implement: () => {},
+    onRelease: () => {},
+    onClose: () => {},
+    projectSetup: async () => ({ decision: false }),
     extensions: () => [{ name: 'subagents', enabled: true }],
-    doc: (kind: string) => tokens.find((token) => token.definition.kind === kind),
+    doc: (kind: string) =>
+      tokens.find((token) => token.definition.kind === kind) ??
+      eventHost(() => opened.harness, 'automations').doc(kind),
     onOpen: (callback: () => Promise<void>) => {
       opener = callback
     },
@@ -104,8 +117,8 @@ async function fixture() {
     get harness() {
       return opened.harness
     },
-    subscriptions: (items: Subscription[]) => {
-      subscriptions = items
+    scripts: (items: (Seed['scripts'][number] & { enabled: boolean })[]) => {
+      scripts = items
     },
     async source() {
       await opened.harness.commit(async (tx) => {
@@ -144,12 +157,10 @@ async function fixture() {
             at: 1,
             reply: true,
             state,
+            questions: [{ text: `Choose ${id}?`, kind: 'confirm' }],
           })
-          ;(await tx.doc(MessageQuestions, ROOT_CONVERSATION_ID)).asked[String(id)] = [
-            { text: `Choose ${id}?`, kind: 'confirm' },
-          ]
         }
-        // Open, but its questions were never extracted: the message itself is the question.
+        // Open, asking no questions of its own: the message itself is the question.
         board.messages.push({
           id: 103,
           from: 1,
@@ -184,18 +195,18 @@ it('carries the seed into a fresh chapter once, including user memory and its pa
     { name: 'Daily', prompt: 'Review', schedule: 'every 1d' },
     new AbortController().signal,
   )
-  f.subscriptions([
-    { id: 'S1', title: 'Watch it', ask: 'Watch the build', enabled: true },
-    { id: 'build-watch', scope: 'project', title: 'Project watch', ask: 'Watch CI', enabled: true },
-    { id: 'S2', title: 'Stopped', ask: 'Ignore', enabled: false },
-  ] as Subscription[])
+  f.scripts([
+    { id: 'A1', name: 'Watch it', ask: 'Watch the build', prompt: 'Summarise', enabled: true },
+    { id: 'build-watch', scope: 'project', name: 'Project watch', ask: 'Watch CI', enabled: true },
+    { id: 'A2', name: 'Stopped', ask: 'Ignore', enabled: false },
+  ])
   const seed = await buildSeed(f.host, 1)
   expect(seed.counts).toEqual({
     memories: 3,
     todos: 1,
     questions: 2,
     automations: 1,
-    subscriptions: 2,
+    scripts: 2,
   })
   expect(seed.memories.constructor).toMatchObject({ line: 'Builds' })
   expect(seed.journal.proposals[0].status).toBe('open')
@@ -228,7 +239,10 @@ it('carries the seed into a fresh chapter once, including user memory and its pa
     { text: 'Keep this', owner: 'ultimate' },
     { text: 'Open question (the-beginning#100): Choose 100?', owner: 'user' },
     { text: 'Open question (the-beginning#103): Question 103', owner: 'user' },
-    { text: 'Recreate subscription S1 (Watch it): Watch the build', owner: 'ultimate' },
+    {
+      text: 'Recreate script A1 (Watch it): Watch the build · prompt: Summarise',
+      owner: 'ultimate',
+    },
   ])
   expect(after.todos.next).toBe(5)
   expect(after.seed.applied).toBeGreaterThan(0)
@@ -256,7 +270,7 @@ it('carries the seed into a fresh chapter once, including user memory and its pa
   expect(JSON.stringify(entry.model)).toContain('the-beginning#123')
   for (const line of seed.journal.learned) expect(JSON.stringify(entry.model)).toContain(line)
   expect(JSON.stringify(entry.model)).toContain(
-    '3 memories, 1 todos, 2 questions, 1 automations, 2 subscriptions',
+    '3 memories, 1 todos, 2 questions, 1 automations, 2 scripts',
   )
   // Simulate the crash window: creation committed but dream did not record its automation receipt.
   await f.harness.commit(async (tx) => {
@@ -266,14 +280,116 @@ it('carries the seed into a fresh chapter once, including user memory and its pa
   expect(
     Object.values((await contents()).automations.automations).map((item) => item.name),
   ).toEqual(['Daily'])
+  // A rediscovered project script with the schedule's name never stands in for its lost create.
+  await f.harness.commit(async (tx) => {
+    const records = (await tx.doc(Automations)).automations
+    delete records.A1
+    ;(await tx.doc(SeedState, ROOT_CONVERSATION_ID)).automations = []
+  }, context)
+  f.scripts([{ id: 'daily', scope: 'project', name: 'Daily', ask: 'Watch', enabled: true }])
+  await applySeed(f.host)
+  expect(
+    Object.values((await contents()).automations.automations).map((item) => [
+      item.name,
+      item.schedule?.kind,
+    ]),
+  ).toEqual([['Daily', 'every']])
+  f.scripts([])
+  const settled = await contents()
   await f.close()
   await f.open()
   const again = await contents()
   expect(again.memory).toEqual(after.memory)
   expect(again.todos).toEqual(after.todos)
   expect(again.seed).toEqual(after.seed)
-  expect(again.automations).toEqual(after.automations)
+  expect(again.automations).toEqual(settled.automations)
   expect(await chapterEntries()).toEqual([entry])
+})
+
+it('carries subscriber-only schedules as to-dos instead of recreating stale conversation ids', async () => {
+  const f = await fixture()
+  await f.source()
+  await f.host.invoke(
+    'automations',
+    'create',
+    {
+      name: 'Wake me',
+      schedule: 'every 1d',
+      subscribers: [ROOT_CONVERSATION_ID],
+    },
+    new AbortController().signal,
+  )
+  const seed = await buildSeed(f.host, 1)
+  expect(seed.automations).toEqual([{ name: 'Wake me', schedule: { kind: 'every', ms: 86400000 } }])
+  expect(seed.counts.automations).toBe(1)
+  await writeSeed(f.host.chapter.dir, seed)
+  await applySeed(f.host)
+  const todos = (await f.harness.snapshot(Todos, ROOT_CONVERSATION_ID, context))!.items
+  expect(
+    todos.some((item) =>
+      item.text.includes('Recreate schedule automation (Wake me) with new subscribers'),
+    ),
+  ).toBe(true)
+  expect((await f.harness.snapshot(SeedState, ROOT_CONVERSATION_ID, context))!.automations).toEqual(
+    [],
+  )
+})
+
+it('carries event and standing context triggers, but leaves numeric context targets for recreation', async () => {
+  const f = await fixture()
+  await f.source()
+  const signal = new AbortController().signal
+  const triggers: JsonValue[] = [
+    {
+      name: 'Landed',
+      prompt: 'Review landing',
+      event: { name: 'workspaces.landed', where: { target: 'main' } },
+      thinking: 'high',
+    },
+    {
+      name: 'Standing context',
+      prompt: 'Review context',
+      condition: { metric: 'context', of: '@ultimate', above: 80 },
+    },
+    {
+      name: 'Old context',
+      prompt: 'Review old context',
+      condition: { metric: 'context', of: '#1', above: 80 },
+    },
+  ]
+  for (const args of triggers) await f.host.invoke('automations', 'create', args, signal)
+  const seed = await buildSeed(f.host, 1)
+  expect(seed.counts.automations).toBe(3)
+  expect(seed.automations[0]).toEqual({
+    name: 'Landed',
+    prompt: 'Review landing',
+    event: { name: 'workspaces.landed', where: { target: 'main' } },
+    thinking: 'high',
+  })
+  expect(seed.automations[1].condition).toEqual({
+    metric: 'context',
+    of: '@ultimate',
+    above: 80,
+    cooldownMs: 3600000,
+  })
+  await writeSeed(join(f.home, 'chapters', 'triggers'), seed)
+  await f.close()
+  await requestChapter(f.home, 'triggers')
+  await f.open()
+  await applySeed(f.host)
+  const carried = await automationActions.list(null, { host: f.host } as ActionContext)
+  expect(carried.map((a) => a.name)).toEqual(['Landed', 'Standing context'])
+  expect(carried[0].event).toMatchObject({ name: 'workspaces.landed', where: { target: 'main' } })
+  expect(carried[1].condition).toMatchObject({ of: '@ultimate', armed: true })
+  const todos = (await f.harness.snapshot(Todos, ROOT_CONVERSATION_ID, context))!.items
+  expect(
+    todos.some((item) =>
+      item.text.includes('Recreate context automation (Old context) with new conversation target'),
+    ),
+  ).toBe(true)
+  expect((await f.harness.snapshot(SeedState, ROOT_CONVERSATION_ID, context))?.automations).toEqual(
+    ['Landed', 'Standing context'],
+  )
 })
 
 it('checks gate automation schedules without creating any and records receipts exactly once', async () => {
@@ -368,6 +484,28 @@ it.each([true, false])(
       error: 'Earlier failure',
     })
     expect(lock.busy).toBe(false)
+  },
+)
+
+it.each(['seeding', 'checking', 'backing up'] as const)(
+  'fails a sleep a restart stopped in %s, so nothing stays stuck and a retry is allowed',
+  async (phase) => {
+    const f = await fixture()
+    const by = { automation: 'A4', name: 'Dream at 80%', at: 1 }
+    await f.harness.commit(async (tx) => {
+      await startSession(tx, 1)
+      const sessions = (await tx.doc(Sessions, ROOT_CONVERSATION_ID)).sessions
+      sessions[0].sleep = { chapter: 'next', phase, at: 1, by }
+    }, context)
+    await f.close()
+    await f.open()
+    const sleep = (await f.harness.snapshot(Sessions, ROOT_CONVERSATION_ID, context))!.sessions[0]
+      .sleep
+    expect(sleep).toMatchObject({
+      phase: 'failed',
+      by,
+      error: expect.stringContaining('nothing moved'),
+    })
   },
 )
 
