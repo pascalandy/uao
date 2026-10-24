@@ -18,9 +18,9 @@ uao forked from upstream `33c05e9` on 2026-10-23. Its first own commit, `7698625
 ## Differences
 
 - `README.md`: the line "`uao` stands for the Ultimate Agent Orchestrator." (`7698625`)
-- `docs/north-star/` and one line in `AGENTS.md`: this map ([D033](decisions/D033-one-north-star.md))
+- `docs/north-star/` and the North star section of `AGENTS.md`: this map (`7779cce`, `49ee895`, [D033](decisions/D033-one-north-star.md))
 
-`README.md` and `AGENTS.md` are the only upstream files that uao changes. These two lines are the current exceptions to the sync rule. Additive places decrease the risk of a merge conflict, but they do not prevent all conflicts.
+`README.md` and `AGENTS.md` are the only upstream files that uao changes. These two changes are the current exceptions to the sync rule. Additive places decrease the risk of a merge conflict, but they do not prevent all conflicts.
 
 ## What still points at HazAT
 
@@ -44,7 +44,9 @@ After each merge:
 2. Check each brick status, and each item of [Known drift in upstream docs](#known-drift-in-upstream-docs), against the new code
 3. Update the bricks and the decisions that changed
 4. Only when the merge changes a principle or the status of a brick, add a decision
-5. Move the [snapshot](#snapshot)
+5. Add the new commits to [history.md](history.md)
+6. Update the counts in [evolution.md](evolution.md)
+7. Move the [snapshot](#snapshot)
 
 ## Known drift in upstream docs
 
@@ -53,3 +55,4 @@ These upstream texts disagree with the code at the snapshot. uao records them an
 - The README says that every built-in is on by default, but some built-ins ship off ([D031](decisions/D031-resource-built-ins-off.md))
 - `AGENTS.md` calls a project "a forest of conversation trees", and it also says "A project has one root" (`86ed900`)
 - `extensions/README.md` says that `lib/` "holds no state", but `lib/chapters.ts` reads SQLite and writes journal files
+- `docs/subagents.md` says that only `scout`, `worker`, and `designer` pin their models. `agents/subscription.md` and `agents/dream-pass.md` pin models too

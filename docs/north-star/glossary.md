@@ -38,6 +38,7 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 ## Agents
 
 - **Agent definition**: a Markdown file with frontmatter that sets the model, thinking level, tools, and instructions of an agent. Built-ins are in `agents/` (`docs/subagents.md`). Early commits call it a "profile" (`703b104`)
+- **Overlay**: an agent definition with the name of an earlier definition and an `addTools` key. It can change settings, add tools, and append text, but it keeps the earlier instructions (`docs/subagents.md`, `9d40a9b`)
 - **@ultimate**: the standing agent that the user talks to. It starts and steers branches, and it relays their questions (`agents/ultimate.md`). Code: definition `ultimate`
 - **Standing agent**: an agent with one permanent conversation in a project. Nobody concludes it, so it keeps what it learned (`8a1c100`). Code: `resident: true`. Examples: @ultimate and @lander
 - **Coordinator**: the agent that runs a branch. It plans, decides, and verifies, and it delegates execution but never judgment (`agents/coordinator.md`). UI: `branch · coordinator`
@@ -53,6 +54,8 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 - **Isolate**: a git worktree that belongs to one conversation (`extensions/subagents/README.md`). Code: the extension `workspaces` and the tool `workspace`
 - **Submission**: a request to land the tip of an isolate, made with `workspace submit`. The lander takes submissions one at a time (`docs/worktrees.md`)
 - **Landing**: a submission that passed every check and reached the target branch. The tally records each landing (`extensions/lineage/README.md`)
+- **Change unit**: the work of one conversation in Git. Its commits carry the trailer `Ultimate-Conversation: <n>`. Its isolate uses the Git branch `ultimate/<hash>-<n>` (`extensions/workspaces/workspaces.ts`). See [history.md](history.md#how-a-change-lands)
+- **Landing merge**: the merge commit that the lander makes when Git cannot fast-forward the target. Its message is `Merge <sha> from #<n> into main`. Before `19f960d`, the message named `W<n>` (`extensions/workspaces/lander.ts`). Not: a merge of `main` into a Git branch
 - **Preview**: a separate Ultimate instance that runs one checkout on its own port with the configured models. Code: the extension `instance` (`extensions/instance/README.md`)
 - **Supervisor**: the small process in `bin/ultimate.ts` that holds the port and the lock, and starts each generation (`docs/running.md`)
 - **Generation**: one core process that the supervisor starts. `ULTIMATE_GENERATION` labels it (`docs/running.md`)
@@ -106,6 +109,8 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 - **Brick**: one capability of the system, with its status at the snapshot. See [bricks](bricks/README.md)
 - **Decision**: one choice with lasting effect, with its reason and its evidence. See [decisions](decisions/README.md)
 - **Snapshot**: the commit that the north-star describes. See [upstream.md](upstream.md#snapshot)
+- **Era**: a span of days in the history of upstream with one main theme. See [history.md](history.md#eras)
+- **Seam**: a place where new behavior attaches with no edit to an upstream file. See [evolution.md](evolution.md#seams)
 - **Source**: the owner of an intent. `upstream` is Daniel's project, and `uao` is Pascal's direction
 
 ## Retired names
@@ -114,6 +119,7 @@ Do not use these names for current things:
 
 - **Board**: the old name of the messages extension (`28d657a`) and of a feed surface that `eeae136` removed
 - **Canvas**: a map surface that `deb65f8` removed. The upstream branch `park/canvas` keeps it
-- **@sync**, **writer lease**, **machine home**, and **move**: parts of the cloud fleet that `67caeb6` removed
+- **@sync**, **writer lease**, and **move**: parts of the cloud fleet that `67caeb6` removed
+- **Machine home**: the home of @sync on each machine. `1708844` removed it
 - **Faux mode**: a demo mode without tokens that `f23e291` removed. Tests still use Pi's faux provider
 - **Exclusive commands**: an extension that `89676a2` removed
