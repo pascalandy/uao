@@ -62,13 +62,15 @@ Three folders sit beside the layers. `lib/` holds helpers that extensions share 
 
 ## Flows
 
-These five flows connect the parts at the snapshot. The linked files hold the mechanics.
+These seven flows connect the parts at the snapshot. The linked files hold the mechanics.
 
 - **A user message.** The composer sends the input to `conversation.submit` in `server/api.ts`. Pi Durable accepts the input, and a second commit records the event. A crash between the two commits loses the event, not the input (`server/api.ts:551`). The browser gets each committed change from `/api/events` (`web/src/sdk/store.ts`)
 - **A change goes live.** The loader loads each server facet through Vite (`server/extensions.ts:508`). Vite reloads each web facet. A change to `server/` or `shared/` goes live through a checked swap of the generation ([the layer table](../../AGENTS.md#layers-and-how-they-reload))
 - **A feature lands.** [Life of a change unit](history.md#life-of-a-change-unit) gives the steps from @ultimate to `main`
 - **A crash.** The supervisor starts a new generation (`bin/ultimate.ts:459`). The generation opens the storage of the active chapter, and the harness resumes (`server/harness.ts:240`). A reactor commits its writes and its cursor in one transaction (`server/events.ts:182`). Messages and the lander keep receipts and checkpoints, so a second run does no harm (`extensions/messages/send.ts:93`, `extensions/workspaces/lander.ts:735`). [Durability](../durability.md) holds the rules
-- **A question to the user.** Only @ultimate sends messages to the user ([D022](decisions/D022-route-through-ultimate.md)). The `message` tool accepts structured questions and validates them (`extensions/messages/questions.ts`). The questions extension renders those fields without a model (`extensions/questions/README.md`). The user can answer the questions, add a comment, or dismiss the message (`extensions/questions/README.md`). An answer returns to the sender only while the message is open (`extensions/messages/server.ts:92`, `extensions/messages/send.ts:101`)
+- **A question to the user.** Only @ultimate sends messages to the user ([D022](decisions/D022-route-through-ultimate.md)). During a hands-off goal, @ultimate can decide instead ([D037](decisions/D037-goals-delegate-approvals.md)). Otherwise, `message` accepts structured questions and validates them (`extensions/messages/questions.ts`). The questions extension renders those fields without a model (`extensions/questions/README.md`). The user can answer the questions, add a comment, or dismiss the message (`extensions/questions/README.md`). An answer returns to the sender only while the message is open (`extensions/messages/server.ts:92`, `extensions/messages/send.ts:101`)
+- **A compaction.** `compact` admits self-compaction and its wake-up in one transaction for a conversation without an owner (`extensions/lineage/server.ts:1653`). Automatic compaction continues a subagent's run ([B01](bricks/B01-durable-conversations.md)). After @ultimate compacts, a built-in automation starts the dream flow ([B15](bricks/B15-dreams-and-chapters.md))
+- **A hands-off goal.** The user's start action commits the goal and its delivery task (`extensions/goal/server.ts`). Each input reads the current goal into a note before @ultimate runs (`extensions/goal/server.ts`). @ultimate records its decisions and ends with a report ([B12](bricks/B12-human-in-the-loop.md)). A queued start after the goal ends grants nothing (`65a251f`)
 
 ## Code map
 
@@ -84,13 +86,17 @@ These five flows connect the parts at the snapshot. The linked files hold the me
 | `shared/protocol.ts`      | Typed contracts between server and browser                                                    | `AGENTS.md`                                           |
 | `shared/extension-api.ts` | Extension API tokens, the core-tier reader, and `defaultOff`                                  | [Extension APIs](../extensions.md#extension-apis)     |
 | `lib/`                    | Shared helpers: exec, git, JSON files, settings, secrets, and chapters                        | `AGENTS.md`                                           |
+| `lib/agents.ts`           | Agent definitions, overlay saves, and deferred tools                                          | [Subagents](../subagents.md)                          |
+| `lib/ago.ts`              | The relative-time formatter that server code and the web SDK share                            | `0104d7a`                                             |
 | `web/src/`                | The app shell, the surface host, and the extension registry                                   | [Writing extensions](../../extensions/README.md)      |
-| `web/src/sdk/`            | The SDK that web facets import as `@/sdk`                                                     | [SDK](../../extensions/README.md#sdk-sdk)             |
+| `web/src/sdk/`            | The SDK that web facets import as `@/sdk`, including `Card` and `formatAgo`                   | [SDK](../../extensions/README.md#sdk-sdk)             |
 | `extensions/`             | The built-ins, each with a README                                                             | [Writing extensions](../../extensions/README.md)      |
 | `agents/`                 | Built-in agent definitions                                                                    | [Subagents](../subagents.md)                          |
 | `skills/`                 | Built-in skills: `integrate-ultimate`, `write-extension`, `ui-preview-round`, and `verify-ui` | [Discovery and settings](../settings.md)              |
 | `server/skills.ts`        | Skill discovery, scopes, diagnostics, and `/skill:name` expansion                             | [Discovery and settings](../settings.md)              |
 | `extensions/messages/`    | Message admission, delivery, triage, replies, and the branch tool                             | [Messages](../../extensions/messages/README.md#files) |
+| `extensions/goal/`        | Hands-off goals, decision records, and report cards                                           | [Goals](../../extensions/goal/README.md)              |
+| `extensions/dream/`       | Dreams, the compaction trigger, and checked chapter changes                                   | [Dreams](../../extensions/dream/README.md)            |
 | `.ultimate/`              | The project setup of this repository: checks, push target, review team                        | [.ultimate/README.md](../../.ultimate/README.md)      |
 | `scripts/`                | Dependency graph check, reset, restore, and machine setup                                     | `package.json`                                        |
 | `lint/`                   | Custom lint rules for boundaries, durability, and fast tests                                  | `AGENTS.md`                                           |

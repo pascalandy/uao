@@ -38,7 +38,7 @@ The date of a decision is the date of its commit: `git log -1 --format=%ad --dat
 | [D014](D014-remove-canvas.md)                 | 2026-10-14 | upstream | active           | Remove the Canvas surface                            |
 | [D015](D015-root-is-a-tally.md)               | 2026-10-16 | upstream | active           | Make the root a tally that runs no turns             |
 | [D016](D016-personal-project.md)              | 2026-10-17 | upstream | active           | Share Ultimate as a personal project                 |
-| [D017](D017-questions-get-proposals.md)       | 2026-10-17 | upstream | active           | Explore questions, act on instructions               |
+| [D017](D017-questions-get-proposals.md)       | 2026-10-17 | upstream | replaced by D037 | Explore questions, act on instructions               |
 | [D018](D018-own-personal-layer.md)            | 2026-10-17 | upstream | active           | Keep a personal layer apart from Pi                  |
 | [D019](D019-standing-agents.md)               | 2026-10-17 | upstream | active           | Keep standing agents                                 |
 | [D020](D020-size-the-work.md)                 | 2026-10-17 | upstream | active           | Size the work to the change                          |
@@ -58,3 +58,4 @@ The date of a decision is the date of its commit: `git log -1 --format=%ad --dat
 | [D034](D034-follow-upstream.md)               | 2026-10-23 | uao      | active           | Follow upstream through merges                       |
 | [D035](D035-adopt-blog-direction.md)          | 2026-10-23 | uao      | active           | Adopt the direction of the post                      |
 | [D036](D036-previews-on-instance-model.md)    | 2026-10-24 | upstream | active           | Preview every agent on one model                     |
+| [D037](D037-goals-delegate-approvals.md)      | 2026-10-24 | upstream | active           | Let a user-granted goal delegate approvals           |

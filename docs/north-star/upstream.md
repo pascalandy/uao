@@ -6,14 +6,15 @@ This file says how uao relates to `HazAT/ultimate`: the snapshot, the fork point
 
 Each status in the north-star is true at the snapshot:
 
-- Upstream: `HazAT/ultimate` at `11d1d4c`, 2026-10-24
-- Fork: `pascalandy/uao` at `01a53cc`, 2026-10-23, the merge of this snapshot
+- Upstream: `HazAT/ultimate` at `4aaa074`, 2026-10-24
+- Fork: `pascalandy/uao` at `342b1e2`, 2026-10-24, the merge of this snapshot
 
-`git log --oneline 11d1d4c..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
+`git log --oneline 4aaa074..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
 
 ### Sync log
 
 - 2026-10-23: upstream `11d1d4c` (2026-10-24), merged into uao by `01a53cc`
+- 2026-10-24: upstream `4aaa074` (2026-10-24), merged into uao by `342b1e2`
 
 ## Fork point
 
@@ -34,7 +35,7 @@ uao does not change these files ([D034](decisions/D034-follow-upstream.md)). Rea
 - `docs/worktrees.md` gives an example path under `/home/haza/`, the home folder of Daniel's machine
 - `AGENTS.md` and `extensions/cloud/README.md` place the backup Worker in the private repository `HazAT/ultimate-fleet`. The Worker code is absent from this repository (`67caeb6`), so a backup from uao needs a Worker that uao does not ship (inferred)
 - `docs/running.md` says that a scratch server is "for Daniel to open remotely"
-- `extensions/pause/README.md` gives Daniel's wish as the reason why a pause after a rate limit does not end by itself
+- `extensions/pause/README.md` names Daniel's wish for a pause that waits for him. The user can now enable a timer ([B12](bricks/B12-human-in-the-loop.md))
 - `CONTRIBUTING.md` keeps the upstream policy: a personal project, with no review of issues or pull requests
 - `extensions/update/` compares the clone with `origin`. In uao, the extension follows `pascalandy/uao`, not upstream (inferred from `extensions/update/README.md` and the remotes)
 - `.ultimate/settings.json` sets `"push": "origin"`, so the lander pushes to `pascalandy/uao` (inferred from the remotes)
@@ -65,3 +66,4 @@ These upstream texts disagree with the code at the snapshot. uao records these d
 - `docs/settings.md` says that `health` reports provider health with backups. `69a367a` stopped sending provider health with backups
 - `extensions/automations/README.md` names `act` in its text, but its list of 14 tool operations omits it. The tool exposes `act` (`extensions/automations/server.ts`)
 - `docs/extensions.md` says that `workspaces.check`, `health.changed`, `cloud.backup`, and `conversations.compacted` are recorded for the history and the system stream. The event triggers of automations also react to them (`extensions/automations/triggers.ts`, `a7f32b5`)
+- The opening rate-limit paragraph in `extensions/pause/README.md` describes a pause that waits for Daniel. Its later bullet and `extensions/pause/server.ts` allow the user's timer (`d3178ff`)
