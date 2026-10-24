@@ -13,6 +13,7 @@ Conversations stay on record, so Ultimate can study its own behavior (`docs/dura
 - `extensions/context/`: the model context
 - `extensions/debug/`: the read-only debug tool
 - `extensions/info/`: runtime facts
+- `extensions/conversations/context.ts`: server records of each conversation's context use
 
 ## Evidence
 
@@ -22,3 +23,4 @@ Conversations stay on record, so Ultimate can study its own behavior (`docs/dura
 - `6a3f41a` adds parked tasks
 - `86cf602` adds the context view
 - `e3f355c` keeps async failures visible
+- `ed0bb8a` publishes context use for the status line and automation triggers

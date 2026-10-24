@@ -2,34 +2,47 @@ import type { ConversationSummary } from '../../shared/protocol.ts'
 import type { MemoryItem } from '../lineage/refs.ts'
 import type { Todo } from '../todos/refs.ts'
 import type { ModelThinkingLevel } from '@earendil-works/pi-ai'
-import type { Schedule } from '../automations/refs.ts'
-import type { Journal, Proposal } from './refs.ts'
+import type { CreateArgs, Schedule } from '../automations/refs.ts'
+import type { GrantedBy, Journal, Proposal } from './refs.ts'
 
-/** Everything a dream carries to a fresh chapter; no runtime ids for schedules or subscribers. */
+/** Everything a dream carries to a fresh chapter; numeric trigger targets and subscribers need recreating. */
 export type Seed = {
   /** Written only by the gate: the preview checks automations' schedules instead of creating them. */
   gate?: true
   from: { name: string; number: number }
   session: number
+  /** The granted automation that fell asleep for the user; absent when the user did. */
+  by?: GrantedBy
   journal: Journal & { proposals: Proposal[] }
   memories: Record<string, MemoryItem>
   todos: Pick<Todo, 'text' | 'owner'>[]
   questions: { text: string; ref: string }[]
   automations: {
     name: string
-    prompt: string
-    schedule: Schedule
+    prompt?: string
+    schedule?: Schedule
+    event?: CreateArgs['event']
+    condition?: CreateArgs['condition']
     agent?: string
     model?: { provider: string; modelId: string }
     thinking?: ModelThinkingLevel
   }[]
-  subscriptions: { id: string; scope?: 'project'; title: string; ask: string }[]
+  scripts: {
+    id: string
+    scope?: 'project'
+    name: string
+    ask: string
+    prompt?: string
+    agent?: string
+    model?: { provider: string; modelId: string }
+    thinking?: ModelThinkingLevel
+  }[]
   counts: {
     memories: number
     todos: number
     questions: number
     automations: number
-    subscriptions: number
+    scripts: number
   }
 }
 

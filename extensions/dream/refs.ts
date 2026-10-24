@@ -26,10 +26,19 @@ export type Proposal = {
 export type Journal = { learned: string[]; text: string; chapter?: string; at: number }
 
 export type GateResult = { ok: boolean; checks: { name: string; ok: boolean; detail: string }[] }
+/** A granted automation that acted for the user: its id, name and when it acted. */
+export type GrantedBy = { automation: string; name: string; at: number }
 export type Sleep = {
   chapter: string
-  /** `asleep`: the switch happened; this session's chapter is the one it left. */
-  phase: 'seeding' | 'checking' | 'backing up' | 'switching' | 'asleep' | 'failed'
+  /**
+   * `waiting`: a granted Fall asleep holds the session until no conversation works. `asleep`: the switch happened;
+   * this session's chapter is the one it left.
+   */
+  phase: 'waiting' | 'seeding' | 'checking' | 'backing up' | 'switching' | 'asleep' | 'failed'
+  /** The granted automation that started this Fall asleep; absent when the user did. */
+  by?: GrantedBy
+  /** The granted attempt (its task) that holds this sleep; only it writes the sleep while `waiting`. */
+  attempt?: number
   checks?: GateResult['checks']
   backup?: { id?: string; skipped?: string }
   error?: string
@@ -47,6 +56,8 @@ export type Session = {
   proposals: Proposal[]
   /** Every proposal settled, or the user ended the session. */
   endedAt?: number
+  /** The granted automation that started this session; absent when the user did. */
+  by?: GrantedBy
 }
 
 /** `{ next, sessions }` on conversation 1, oldest first. */

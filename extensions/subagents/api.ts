@@ -4,12 +4,12 @@
  */
 import type { Context } from '@earendil-works/chord'
 import { defineDoc } from '@earendil-works/pi-durable'
-import type { ConversationId, EntryId, TaskId } from '@earendil-works/pi-durable'
+import type { ConversationId, EntryId, TaskId, Tx } from '@earendil-works/pi-durable'
 import { defineApi } from '../../shared/extension-api.ts'
 import { StandingDoc } from './refs.ts'
 import type { createChild } from './children.ts'
 
-export { Started } from './refs.ts'
+export { Started, StandingDoc } from './refs.ts'
 
 /** Each conversation's subagents and pending subagent actions, on the conversation that started them. */
 export const Subagents = defineDoc<{
@@ -28,6 +28,11 @@ export const Subagents = defineDoc<{
       conversationId: ConversationId
       reporter: TaskId
       answer?: EntryId
+      /**
+       * Unset while delivering; then `done`, `unanswered` (stopped by the parent), `interrupted` (stopped in the
+       * child), `failed` (a provider error the watchdog holds, or a delivery error) or `given-up` (the watchdog
+       * reported that provider error instead of retrying it: final).
+       */
       status?: string
     }
   >
@@ -69,7 +74,10 @@ export type SubagentsService = {
   /** The conversation of standing agent `name`, created or refreshed from its definition; throws for unknown names. */
   standing(name: string, ctx: Context): Promise<ConversationId>
   /** Create, inside `tx`, a child conversation configured from a definition or as a copy of the parent's agent. */
-  createChild: typeof createChild
+  createChild: (
+    tx: Tx,
+    options: Parameters<typeof createChild>[2],
+  ) => ReturnType<typeof createChild>
 }
 /** Child conversations and standing agents; `need` it where delegation is required, else `want` it. */
 export const SubagentsApi = defineApi<SubagentsService>()('subagents')

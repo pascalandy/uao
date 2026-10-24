@@ -2,7 +2,15 @@
  * The extension SDK: everything a `web.tsx` needs besides components (`@/components/ui/*`, `@/components/ai/*`).
  * The guide is extensions/README.md.
  */
-export { defineWebExtension, definePoint, ParkedRuns, provide, RunStart } from './types.ts'
+export {
+  ConversationKind,
+  defineWebExtension,
+  definePoint,
+  MessageReference,
+  ParkedRuns,
+  provide,
+  RunStart,
+} from './types.ts'
 export { events, useEvent } from './events.ts'
 export { resumed } from './resume.ts'
 export type {
@@ -43,6 +51,8 @@ export {
   Slot,
   StatusLine,
 } from '../app/primitives.tsx'
+/** The title bar's project chip, for an extension that replaces it in `titlebar.project` with a menu. */
+export { ProjectChip, projectTitle, Wordmark } from '../app/titlebar.tsx'
 /** Isolates another extension's component you render, such as a document renderer: it throws into an error card. */
 export { ExtensionBoundary } from '../app/boundary.tsx'
 /** A card that folds to one quiet line in compact mode, and whether one is open; the reader's choice survives reloads. */
@@ -57,7 +67,7 @@ export { UserText, UserView } from '../app/user-turn.tsx'
 export { Provided } from '../app/boundary.tsx'
 export { ConversationScope } from './conversation-scope.tsx'
 /** Sends what the composer inside it submits somewhere else, such as a new side chat; see `composer` renderers. */
-export { ComposerRedirect } from '../app/composer.tsx'
+export { ComposerRedirect, fillComposer } from '../app/composer.tsx'
 export type { ComposerTarget } from '../app/composer.tsx'
 export { api } from './client.ts'
 export { ActionError } from './api.ts'

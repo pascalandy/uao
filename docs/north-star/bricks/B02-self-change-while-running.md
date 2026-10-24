@@ -9,7 +9,8 @@ Ultimate edits its own code while the conversation that edits the code continues
 - `bin/ultimate.ts`: the supervisor
 - `server/supervisor-protocol.ts`: messages between the supervisor and a generation
 - `server/build.ts`: the build identity of each section
-- `extensions/self/`: the restart tool and its status
+- `extensions/self/`: the restart tool, its status, and the hot-reload toast
+- `extensions/prompt/`: the Reloaded divider
 - `bin/cli.ts`: the emergency terminal agent for a broken UI, server, or database
 
 ## Decisions
@@ -24,3 +25,4 @@ Ultimate edits its own code while the conversation that edits the code continues
 - `083fd2a` reverts a failed swap
 - `8233269` adds the build identity
 - `56b0e1c` adds the emergency terminal agent
+- `b535e02` names landed features in the Reloaded divider and the hot-reload toast

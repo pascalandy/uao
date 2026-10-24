@@ -41,11 +41,11 @@ Source: uao ([D035](decisions/D035-adopt-blog-direction.md)). Pascal adopts the 
 
 ### The examples of the post at the snapshot
 
-| Example in the post                 | State at the snapshot | Evidence                                           |
-| ----------------------------------- | --------------------- | -------------------------------------------------- |
-| Side chats                          | shipped               | `extensions/side-chat/`                            |
-| Steering of branches from @ultimate | shipped               | `steer` in `extensions/messages/README.md`         |
-| Messages between instances          | shipped               | `ultimate.tell` in `extensions/messages/README.md` |
+| Example in the post                 | State at the snapshot | Evidence                                     |
+| ----------------------------------- | --------------------- | -------------------------------------------- |
+| Side chats                          | shipped               | `extensions/side-chat/server.ts`             |
+| Steering of branches from @ultimate | shipped               | `steer` in `extensions/messages/delivery.ts` |
+| Messages between instances          | shipped               | `tell` in `extensions/messages/remote.ts`    |
 
 The post also names a better flow timeline and design polish. [Next](bricks/README.md#next) lists them.
 

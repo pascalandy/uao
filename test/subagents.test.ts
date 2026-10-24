@@ -38,7 +38,7 @@ import type { ActionContext } from '../server/actions.ts'
 import codemode from '../extensions/codemode/server.ts'
 import { Metadata } from '../server/metadata.ts'
 import { UiState } from '../server/ui-state.ts'
-import { discoverAgents, parseDefinition } from '../lib/agents.ts'
+import { discoverAgents, parseDefinition, serializeDefinition } from '../lib/agents.ts'
 import { ProjectTrustStore } from '@earendil-works/pi-coding-agent'
 
 const directories: string[] = []
@@ -553,7 +553,10 @@ describe('provider error recovery', () => {
       const f = await fixture(undefined, undefined, undefined, (transcript) =>
         transcript.messages.at(-1)?.role === 'user' &&
         transcript.messages.at(-1)?.content === 'one-way failure'
-          ? fauxAssistantMessage('', { stopReason: 'error', errorMessage: 'not logged in' })
+          ? fauxAssistantMessage('', {
+              stopReason: 'error',
+              errorMessage: 'Our servers are currently overloaded. Please try again later.',
+            })
           : undefined,
       )
       await call(f.opened, { action: 'start', agent: 'scout', task: 'initial answer' })
@@ -617,7 +620,7 @@ describe('provider error recovery', () => {
       expect(await reports(again)).toHaveLength(before + 1)
     },
   )
-  it('sends one watchdog card to the actual parent without a reporter failure', async () => {
+  it('sends one watchdog card to the actual parent without a reporter failure, and gives the action up', async () => {
     const f = await fixture(
       undefined,
       undefined,
@@ -644,6 +647,12 @@ describe('provider error recovery', () => {
       error: 'invalid model configuration',
       retried: false,
     })
+    // Reported, not retried: the action is final, not left `failed` for a retry that never comes.
+    expect(
+      Object.values(
+        (await f.opened.harness.snapshot(Subagents, f.opened.root.id, context))!.actions,
+      ).map((action) => action.status),
+    ).toEqual(['given-up'])
     expect(await reports(f.opened)).toHaveLength(0)
     expect(f.errors).toEqual([])
   })
@@ -932,6 +941,46 @@ describe('turns without an answer', () => {
     view.dispose()
     expect(last.model?.[0]).toMatchObject({ role: 'assistant' })
     expect(JSON.stringify(last.model)).toContain('Report received')
+  })
+  it('reports the answer to the parent’s reply to the child’s question once, across reopen', async () => {
+    const f = await fixture()
+    await call(f.opened, { action: 'start', agent: 'scout', task: 'Ready', background: true })
+    await until(async () => (await reports(f.opened)).length === 1)
+    await f.opened.harness.waitForIdle(context)
+    const [child] = await children(f.opened)
+    const handle = (await f.opened.harness.conversation(child.conversationId, context))!
+    // What the Messages reply phase submits into the child after it asked a question with `message`.
+    const reply = async (id: number, from: number, content: string) =>
+      (
+        await handle.submit(
+          {
+            type: 'input',
+            requestId: `board-reply:${id}`,
+            whenBusy: 'steer',
+            content,
+            entry: {
+              kind: 'board.reply',
+              data: { id, re: id - 1, from, text: content, failed: false },
+            },
+          },
+          context,
+        )
+      ).wait(context)
+    // Another conversation answering the child's question is not the parent's business.
+    await reply(2, f.opened.root.id + 1000, 'Sibling reply')
+    await f.opened.harness.waitForIdle(context)
+    expect(await reports(f.opened)).toHaveLength(1)
+    await reply(4, f.opened.root.id, 'Yes, proceed')
+    await until(async () => (await reports(f.opened)).length === 2)
+    expect((await reports(f.opened))[1].model?.[0]).toMatchObject({
+      content: `[subagent ${child.conversationId} (scout) answered] Returned model: faux/faux-1\nChild: Yes, proceed`,
+    })
+    await f.opened.harness.waitForIdle(context)
+    await f.opened.close()
+    hosts.splice(hosts.indexOf(f.opened), 1)
+    const resumed = await f.reopen()
+    await resumed.harness.waitForIdle(context)
+    expect(await reports(resumed)).toHaveLength(2)
   })
   it('reports a one-way message answer once while a later queued follow-up is pending', async () => {
     const f = await gatedFixture()
@@ -1643,18 +1692,26 @@ describe('subagents', () => {
     expect(found.errors).toEqual([])
     expect(found.replaced).toEqual([])
   })
-  it("merges this repository's lander overlay into the tools, model and instructions of its old full copy", async () => {
+  it('merges a project lander overlay into the tools, model and instructions of the built-in lander', async () => {
+    // The built-in lander comes from this repository; the overlay is a fixture, so switching the repository's own
+    // lander model never touches this test.
     const root = fileURLToPath(new URL('..', import.meta.url)),
-      home = await directory()
-    new ProjectTrustStore(join(home, '.ultimate')).set(decisionRoot(root), true)
-    const found = await discoverAgents(root, root, home, await ModelRuntime.create())
+      home = await directory(),
+      cwd = await directory()
+    await mkdir(join(cwd, '.ultimate/agents'), { recursive: true })
+    await writeFile(
+      join(cwd, '.ultimate/agents/lander.md'),
+      '---\nname: lander\nmodel: anthropic/claude-opus-4-8\nthinking: high\nonFailure: fix\naddTools: [workspace, automation, screenshot, browser, codemode, write, edit, instance, web_search, web_fetch, restart]\n---\n\nThe checks are `pnpm check`, then `pnpm test` and `pnpm test:e2e` in parallel.\n\nWhen you fix: read AGENTS.md first. A flaky test is fixed at its cause or deleted, never skipped or given a longer timeout.\n',
+    )
+    new ProjectTrustStore(join(home, '.ultimate')).set(decisionRoot(cwd), true)
+    const found = await discoverAgents(root, cwd, home, await ModelRuntime.create())
     const lander = found.definitions.find((agent) => agent.name === 'lander')!
     expect(lander).toMatchObject({
       source: 'builtin',
-      model: { provider: 'openai-codex', modelId: 'gpt-6.1-sol' },
+      model: { provider: 'anthropic', modelId: 'claude-opus-4-8' },
       thinking: 'high',
       onFailure: 'fix',
-      overlays: [join(root, '.ultimate/agents/lander.md')],
+      overlays: [join(cwd, '.ultimate/agents/lander.md')],
     })
     expect(lander.tools?.toSorted()).toEqual(
       [
@@ -1738,6 +1795,18 @@ describe('subagents', () => {
           'test',
         ),
       ).toMatchObject({ onFailure })
+    // `summaries: false` survives a save: only the field's off state is written.
+    const quiet = parseDefinition(
+      definition().replace('tools: [read, bash]', 'summaries: false'),
+      'test',
+    )
+    expect(quiet).toMatchObject({ summaries: false })
+    expect(serializeDefinition('scout', quiet, quiet.instructions)).toContain(
+      '\nsummaries: false\n',
+    )
+    expect(serializeDefinition('scout', { description: 'Search' }, 'Search')).not.toContain(
+      'summaries',
+    )
     for (const [from, to, error] of [
       [
         'tools: [read, bash]',
@@ -1751,6 +1820,7 @@ describe('subagents', () => {
       ['tools: [read, bash]', 'tool: [read]', 'Unknown field: tool'],
       ['tools: [read, bash]', 'isolate: remote', 'isolate must be none or worktree'],
       ['tools: [read, bash]', 'onFailure: land', 'onFailure must be diagnose or fix'],
+      ['tools: [read, bash]', 'summaries: never', 'summaries must be a boolean'],
       ['Original instructions', '', 'Instructions are required'],
     ])
       expect(() => parseDefinition(definition().replace(from, to), 'test')).toThrow(error)

@@ -16,3 +16,5 @@ Ultimate studies its own memory, failures, tools, and corrections, and then prop
 - `4c94093` adds chapters
 - `74f38c9` seeds a chapter from a dream
 - `af3b3a3` gates the chapter switch
+- `7c0a3f4` lets a user grant authorize a dream or a checked chapter switch
+- `11d1d4c` keeps a refused chapter switch from releasing another switch's lock

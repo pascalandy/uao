@@ -8,7 +8,7 @@ Each branch works in its own isolate, a git worktree, so several features run in
 
 - `extensions/workspaces/`: isolates and the landing queue
 - `agents/lander.md` and `.ultimate/agents/lander.md`: the lander
-- `.ultimate/settings.json`: the checks and the push target
+- `.ultimate/settings.json`: the checks, the push target, and the preview model
 - `extensions/instance/`: previews
 
 ## Decisions
@@ -16,7 +16,7 @@ Each branch works in its own isolate, a git worktree, so several features run in
 - [D008](../decisions/D008-worktree-per-conversation.md) Give parallel work its own isolate
 - [D010](../decisions/D010-push-without-asking.md) Push landed work without asking again
 - [D011](../decisions/D011-lander-queue.md) Land through a durable queue
-- [D030](../decisions/D030-previews-on-real-models.md) Preview on the configured models
+- [D036](../decisions/D036-previews-on-instance-model.md) Preview every agent on one model
 
 ## Evidence
 
@@ -26,3 +26,4 @@ Each branch works in its own isolate, a git worktree, so several features run in
 - `b40b9c2` shares the folder until a project can have isolates
 - `4a6d393` previews other projects
 - `f23e291` runs previews on the configured models
+- `a4843af` makes `instance.model` control every agent in a preview ([D036](../decisions/D036-previews-on-instance-model.md))

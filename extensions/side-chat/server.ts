@@ -12,6 +12,7 @@ import type { ConversationId, Cursor, EntryId, TaskId, Tx } from '@earendil-work
 import type { ExtensionHost } from '../../server/extensions.ts'
 import { implementAction } from '../../lib/actions.ts'
 import { ConversationsApi } from '../conversations/api.ts'
+import { Standing } from '../subagents/api.ts'
 import type { ResponseReceipt } from '../conversations/summary.ts'
 import type { SummaryModel } from '../conversations/summary-model.ts'
 import { DiscardAction, InjectAction, OpenAction, SideChatDoc, SideChatsDoc } from './refs.ts'
@@ -299,9 +300,8 @@ export const actions = {
     await host.harness().commit(async (tx) => {
       if ((await tx.doc(Side, main)).of !== undefined)
         throw new Error('A side chat cannot open another side chat')
-      const standing = host.doc('ultimate.standing-agents')
-      const residents = standing && (await tx.doc(standing, ROOT_CONVERSATION_ID))
-      if (residents?.ultimate !== main) throw new Error('Only @ultimate can open a side chat')
+      if ((await tx.doc(Standing, ROOT_CONVERSATION_ID)).ultimate !== main)
+        throw new Error('Only @ultimate can open a side chat')
     }, context)
     const answer = await lastAnswer(host, main)
     const id = await host.harness().commit(async (tx) => {
@@ -312,6 +312,8 @@ export const actions = {
         title: 'Side chat',
         label: 'side-chat',
       })
+      // A temporary copy keeps its fixed title; only Summarize & inject asks the summary model.
+      await host.need(ConversationsApi).setAutomaticSummaries(tx, fork.id, false)
       ;(await tx.doc(Index, main)).sides.push({ id: fork.id, at, openedAt: Date.now() })
       await tx.createTask(
         Start,
@@ -330,7 +332,7 @@ export const actions = {
 /** Calls that could affect the world; marking first deliberately also locks Discard after failures. */
 export function tracksEffect(name: string, args: Record<string, unknown>) {
   if (name === 'todo') return args.action === 'add' || args.action === 'done'
-  if (name === 'subscription') return args.action !== 'list' && args.action !== 'log'
+  if (name === 'automation') return !['list', 'runs', 'log'].includes(String(args.action))
   return [
     'branch',
     'message',
@@ -349,7 +351,7 @@ export function sideReminder(side: number, main: number, at: Date) {
   return [
     `You are in a side chat (#${side}): a temporary copy of @ultimate (#${main}), forked at ${at.toTimeString().slice(0, 5)}. Main keeps running without you.`,
     'It is for quick lookups and small side tasks. Answer here, in place.',
-    'Persistent actions (branch, message, note, notify, remember, todo, subscription changes, setup, restart, edit, write) remove Discard for good and count as main’s, so their replies land in main. Use them only when the user clearly wants a lasting change.',
+    'Persistent actions (branch, message, note, notify, remember, todo, automation changes, setup, restart, edit, write) remove Discard for good and count as main’s, so their replies land in main. Use them only when the user clearly wants a lasting change.',
     'When the user is done, they choose Discard or Summarize & inject. There is no side chat inside a side chat.',
   ].join('\n')
 }

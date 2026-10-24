@@ -65,11 +65,12 @@ document, tools and model-facing text, where agents and stored entries already u
   once, placing the note in a tally inside its own transaction, or, for a root that is no tally yet, creating a
   `lineage.landing-note` task in it that delivers the note as a write (request id `lander-root:<submission>`). A second
   reactor, `lineage/conclude-landed`, starts a background `lineage.conclude-landed` task in a top-level submitter: it
-  waits for the lander's report (`lander:<submission>`) to settle and the submitter and its subagents to go idle, then
-  concludes it through `ConversationsApi.concludeIn`, unless it is running or has queued input, has a reply-enabled
+  waits for the lander's report (`lander:<submission>`) to be answered and the submitter and its subagents to go idle,
+  then concludes it through `ConversationsApi.concludeIn`, unless it is running or has queued input, has a reply-enabled
   message still open, or a subagent still runs. That check, the conclusion and the task's next phase commit in one
-  transaction, so a replay never concludes twice; freeing the worktree follows as its own phase. A lander that goes idle
-  without sending the report (aborted) ends the task. Any later input resumes the branch. The
+  transaction, so a replay never concludes twice; freeing the worktree follows as its own phase. A report that ends
+  unanswered (a provider error, a Stop, a reset) or a lander that goes idle without sending it (aborted) ends the task
+  and leaves the branch open, for watchdog's idle-branches note. Any later input resumes the branch. The
   note has `source: 'lander'`, `sha`, `base`, `target`, `commits`, `paths`, `divergence` and
   `at`. Text includes the submitter's `#N/at` breadcrumb and `Diverged: …`, including "None"; the landing card shows
   divergence too (up to 10 commits and 8 changed paths). A landing is the commit of a liquid abstract: in a tally, a
@@ -115,7 +116,9 @@ document, tools and model-facing text, where agents and stored entries already u
   to near-duplicates, delete or rewrite memories a landing removes or replaces, and merge at the cap, with one example
   answer. The parser takes the one object with an `ops` array (extra keys ignored) or a bare array of ops, also inside
   one code fence or between prose; two fences, no batch or invalid JSON refuse it, the last with the JSON error; adds and
-  updates take the landing's `#<submitter>/<at>` as source. The ops commit with the task's completion, so a resumed task applies them once. An unparsable answer or a refused batch writes nothing and is asked once
+  updates take the landing's `#<submitter>/<at>` as source. Since nobody corrects a landing's batch, `normalizeMemoryOp`
+  first collapses each `line` to one line and cuts a long `line` or `body` at a word boundary with `…`, and kebab-cases
+  a slug outside the pattern; the `remember` tool stays strict. The ops commit with the task's completion, so a resumed task applies them once. An unparsable answer or a refused batch writes nothing and is asked once
   more with the refused answer and the reason appended (a memo of its own); when that is refused too, it leaves a notice. The landing itself never fails on it.
 - **Go back** (`rewind.ts`, `rewind.tsx`): the message action **Go back to here** on any stored message of a non-root
   conversation (standing agents included) opens a confirm dialog fed by `rewindPreview {conversation, at}`: steps set
@@ -197,7 +200,7 @@ the task completes. The method returns `{ id }`. With `deliver: false`, no `line
 must deliver its first input (messages uses a reply-enabled message). `by: conversationId` attributes the tally's branch node to that caller,
 including its standing-agent name when available.
 
-The user talks to @ultimate in its own conversation, opened by the top-bar @ultimate button or first sidebar row; it picks a root by reading tallies and starts coordinator branches.
+The user talks to @ultimate in its own conversation, opened by the first sidebar row (on phones, the top-bar @ultimate button); it picks a root by reading tallies and starts coordinator branches.
 A branch is the conversation; the coordinator is the agent that runs it, so the header and System lanes label it `branch · coordinator`.
 There is no manual creation page or message-hover branch action. Coordinator branches keep their composers for steering.
 

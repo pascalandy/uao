@@ -78,8 +78,7 @@ Extensions outside the clone import exactly what built-ins import (`@/sdk`, `@/c
 `lucide-react`, any package installed in the clone): Ultimate resolves those from its clone, and Tailwind picks up their
 classes. In the clone, `pnpm check` type-checks and lints `extensions/` and `.ultimate/extensions/`; extensions of
 other projects are not checked by anything, so try them in the browser. Agents live in the same three places
-(`agents/`); skills come from clone `skills/`, then the project's `.pi/skills/`, then `~/.ultimate/skills/`, then
-`<project>/.ultimate/skills/`, later winning by name. A project's `.ultimate/settings.json` may set `defaultSurface` (see
+(`agents/`); skills load as [Discovery and settings](../docs/settings.md) describes, later scopes winning by name. A project's `.ultimate/settings.json` may set `defaultSurface` (see
 [Surfaces](#surfaces)).
 
 ## Extension host
@@ -89,7 +88,7 @@ Server factories receive exactly these `ExtensionHost` fields (import its type o
 - `ultimateRoot`, `projectRoot`, `userHome`, `home`: source, work, user and instance-state roots.
 - `modelRuntime`, `settings`: Pi model/auth runtime and settings.
 - `models()`: model descriptors, including availability.
-- `skills(cwd)`: merged clone, Pi, user and project skills for a working directory.
+- `skills(cwd)`: merged clone, user and project skills for a working directory, each with its `scope` and `overrides`.
 - `restart(approved)`: request a verified core swap; the async callback records the approved generation before activation.
 - `build()`, `system()`, `extensions()`: current build, system and extension inspection.
 - `conversations()`: every conversation's summary, as `useConversations()` gives the web; empty until the harness is open.
@@ -182,7 +181,9 @@ export default defineWebExtension({ provides: [provide(Phase, (id) => usePhaseWo
 ```
 
 The provider's function is a hook, run once per `<Provided>`; the last facet in discovery order providing a point wins,
-and while none does the render prop gets `undefined`. The server's counterpart is an extension point
+and while none does the render prop gets `undefined`. The web core declares its own points in the SDK: `ParkedRuns`
+(pause), `RunStart` (tasks), `ConversationKind` (the title bar's kind before a title; messages names coordinator
+branches `branch · coordinator`) and `MessageReference` (the copyable reference to a stored message; codemode). The server's counterpart is an extension point
 ([docs/extensions.md](../docs/extensions.md#extension-apis)).
 
 The provider calls `host.implement(Echo, { echo: (text) => text })` in its factory; it is staged, replaced and
@@ -303,7 +304,9 @@ title bar the host shows above every surface.
 | ---------------------- | ---------------------------------------------------------------------------------------------- |
 | `sidebar`              | Left column (`<Sidebar />`); it disappears while nothing is in it                              |
 | `sidebar.top`          | Agent sidebar, after the Agents group and before the roots: background work such as watches    |
-| `titlebar.left`        | Title bar above every surface, after the project name; monospace, one line                     |
+| `titlebar.brand`       | Title bar, the wordmark beyond a phone; render `Wordmark` from `@/sdk` with an `onClick`       |
+| `titlebar.project`     | Title bar, in place of the project chip; render `ProjectChip` from `@/sdk` with a menu         |
+| `titlebar.left`        | Title bar above every surface, after the project chip; monospace, one line                     |
 | `titlebar.right`       | Title bar, right, before the palette button                                                    |
 | `header.right`         | Right side of the header, before the panel toggle (`<Header>`)                                 |
 | `statusline.left`      | Bottom status line, left; monospace, one line (`<StatusLine />`)                               |
@@ -429,13 +432,14 @@ of plain text. A folded "worked · N steps" row lists its newest calls this way 
 line, the tool name when no facet provides one); the last facet providing a name wins. Coding tools give their verb and
 path or programs, codemode its one-line summary.
 
-`compact` makes conversations use compact mode: `{ when(conversation), tools? }` decides from a conversation's summary
-(label, title, owner), and in a matching transcript each run of tool calls and thinking between inputs, messages and
-answers folds into one quiet "worked · N steps" row that expands to the usual rendering. Calls the listed `tools` keep
-stay visible and split the run: a tool name, or a test `(call, docs) => boolean` of a call; `docs` lists the kinds of
-the root conversation's documents the tests read, which the transcript follows and passes to them by kind. The tools
-and docs of every matching facet combine. Renderers check `useCompact()`, that test for the shown conversation or
-`undefined`, to adapt to it. Messages turns it on for @ultimate's conversation, keeping messages, branch starts,
+`compact` makes conversations use compact mode: `{ when(conversation, docs), tools? }` decides from a conversation's
+summary and the root conversation's documents, and in a matching transcript each run of tool calls and thinking
+between inputs, messages and answers folds into one quiet "worked · N steps" row that expands to the usual rendering.
+Calls the listed `tools` keep stay visible and split the run: a tool name, or a test `(call, docs) => boolean` of a
+call; `docs` lists the kinds of the root conversation's documents `when` and the tests read, which the transcript
+follows and passes to them by kind. The tools of every matching facet combine. Renderers check `useCompact()`, that
+test for the shown conversation or `undefined`, to adapt to it. Messages turns it on for @ultimate's conversation, found
+by the standing agents' index (`StandingDoc`) rather than its title, keeping messages, branch starts,
 workspace outcomes and scripts its log says messaged you, and shows its messages to you as bubbles. Revealing an entry
 in a folded run opens the run.
 
@@ -639,7 +643,7 @@ The window shows one surface at a time. **Agent** is the built-in home surface (
 with the sidebar and the right panel. An app surface puts its own UI first and keeps the agent one keystroke away,
 usually docked beside it. The `documents` extension provides the Documents tab.
 
-- **Switching**: the title bar lists the surfaces (Agent first, then by `order`, then title); on phones the brand
+- **Switching**: the title bar lists the surfaces as tabs (Agent first, then by `order`, then title); on phones the brand
   opens them as a menu. ⌘K has "Switch to …"; `mod+1…9` select the first nine (Ctrl+1…9 off macOS, which Chrome lets
   the page take before its tab switching). In code: `useUltimate().showSurface(id)` or
   `context.showSurface(id)` in a command. Switching never interrupts the agent: the run goes on, and the transcript and

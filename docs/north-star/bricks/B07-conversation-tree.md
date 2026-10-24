@@ -26,3 +26,5 @@ A project keeps one tree of conversations. The root keeps the project memory and
 - `4603cb9` adds rewind in place
 - `4c1b652` adds project memory
 - `86ed900` keeps one root for each project
+- `07e4945` normalizes the memory changes that a landing produces
+- `f9ac8f2` concludes a landed branch only after its report gets an answer

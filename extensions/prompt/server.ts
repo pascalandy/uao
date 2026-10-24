@@ -14,16 +14,20 @@ import {
 } from '@earendil-works/pi-durable'
 import type { ConversationId, Tx } from '@earendil-works/pi-durable'
 import type { ExtensionHost } from '../../server/extensions.ts'
+import type { ConversationSummary } from '../../shared/protocol.ts'
 import { discoverAgents } from '../../lib/agents.ts'
-import type { BuildNote } from './refs.ts'
+import { git } from '../../lib/git.ts'
+import { shortTitle } from '../../lib/title.ts'
+import { Standing } from '../subagents/api.ts'
+import type { BuildNote, Landing } from './refs.ts'
 
 export const order = -100
 
 /**
- * The build a conversation's last run started on; a fork starts from its parent's. For the primary agent also the
- * hashes of the instruction files it last saw (`files`, path → sha256 prefix).
+ * The build a conversation's last run started on and the clone's commit then (`head`); a fork starts from its parent's.
+ * For the primary agent also the hashes of the instruction files it last saw (`files`, path → sha256 prefix).
  */
-const SeenBuild = defineDoc<{ id?: string; files?: Record<string, string> }>({
+const SeenBuild = defineDoc<{ id?: string; head?: string; files?: Record<string, string> }>({
   kind: 'prompt.build',
   checkpointWhen: () => false,
   version: 1,
@@ -34,15 +38,68 @@ const SeenBuild = defineDoc<{ id?: string; files?: Record<string, string> }>({
 })
 export const docs = [SeenBuild]
 
-/** What changed since build `seen`: the changes of every later build in this process, or nothing when it is older. */
-export function buildNote(build: ReturnType<ExtensionHost['build']>, seen: string) {
+/**
+ * What changed since build `seen`: the changes of every later build in this process, or nothing when it is older, and
+ * what landed meanwhile.
+ */
+export function buildNote(
+  build: ReturnType<ExtensionHost['build']>,
+  seen: string,
+  landed: Landing[] = [],
+) {
   const since = build.history.findIndex((entry) => entry.id === seen)
   const changed =
     since < 0 ? [] : [...new Set(build.history.slice(since + 1).flatMap((entry) => entry.changed))]
   return (
     `Build changed: ${seen} → ${build.id} · generation ${build.generation}` +
-    (changed.length ? ` · changed: ${changed.join(', ')}` : '')
+    (changed.length ? ` · changed: ${changed.join(', ')}` : '') +
+    (landed.length
+      ? ` · landed: ${landed.map((row) => (row.conversation ? `${row.title} (#${row.conversation})` : `${row.title} (${row.sha.slice(0, 7)})`)).join(', ')}`
+      : '')
   )
+}
+
+/**
+ * The landings in the clone from commit `from` to `to`, newest first: one row per branch, named by its title, else by
+ * its newest commit's subject. A commit names its conversation by trailer, a lander merge in its subject; a
+ * subagent's commit counts for the branch that owns it. A commit made outside Ultimate is a row of its own.
+ */
+export async function landings(
+  cwd: string,
+  from: string,
+  to: string,
+  conversations: ConversationSummary[],
+): Promise<Landing[]> {
+  const log = await git(
+    cwd,
+    'log',
+    '--first-parent',
+    '-n',
+    '200',
+    '--format=%H%x00%s%x00%(trailers:key=Ultimate-Conversation,valueonly)%x1e',
+    `${from}..${to}`,
+  )
+  const byId = new Map(conversations.map((conversation) => [conversation.id, conversation]))
+  const rows = new Map<string, Landing>()
+  for (const record of log.split('\x1e')) {
+    const [sha, subject, trailer] = record.trim().split('\0')
+    if (!sha) continue
+    let id = Number(trailer?.trim()) || Number(/ from #(\d+) into /.exec(subject)?.[1]) || undefined
+    // An owned conversation (a worker, a designer) worked for its owner's branch.
+    for (let owner = id && byId.get(id)?.parentConversationId; owner;) {
+      id = owner
+      owner = byId.get(owner)?.parentConversationId
+    }
+    const key = id ? `#${id}` : sha
+    if (rows.has(key)) continue
+    const title = id && byId.get(id)?.title
+    rows.set(key, {
+      ...(id ? { conversation: id } : {}),
+      title: title ? shortTitle(title) : subject,
+      sha,
+    })
+  }
+  return [...rows.values()]
 }
 
 const digest = (text: string) => createHash('sha256').update(text).digest('hex').slice(0, 16)
@@ -89,12 +146,9 @@ async function instructionChanges(
   conversationId: ConversationId,
   seen: { files?: Record<string, string> },
 ) {
-  const standing = host.doc('ultimate.standing-agents')
   const name = 'ultimate'
-  const index = standing
-    ? ((await tx.doc(standing, ROOT_CONVERSATION_ID)) as Record<string, number>)
-    : {}
-  if (index[name] !== conversationId) return { instructions: [], docs: [] }
+  if ((await tx.doc(Standing, ROOT_CONVERSATION_ID))[name] !== conversationId)
+    return { instructions: [], docs: [] }
   const { definitions } = await discoverAgents(
     host.ultimateRoot,
     host.projectRoot,
@@ -168,12 +222,29 @@ export default function prompt(host: ExtensionHost) {
           const previous = seen.id
           seen.id = build.id
           const built = previous !== undefined && previous !== build.id
-          const text = [built && buildNote(build, previous), instructionNote(changes)]
+          let landed: Landing[] = []
+          if (seen.head === undefined || built) {
+            // Outside Git the build changes without commits: no landings to name.
+            const head = await git(host.ultimateRoot, 'rev-parse', 'HEAD').catch(() => undefined)
+            if (built && head && seen.head && head !== seen.head)
+              landed = await landings(
+                host.ultimateRoot,
+                seen.head,
+                head,
+                host.conversations(),
+              ).catch(
+                // A seen commit no longer in the clone (history rewritten) names nothing.
+                () => [],
+              )
+            if (head) seen.head = head
+          }
+          const text = [built && buildNote(build, previous, landed), instructionNote(changes)]
             .filter(Boolean)
             .join('\n')
           if (!text) return undefined
           const data: BuildNote = {
             ...(built && { from: previous, to: build.id }),
+            ...(landed.length > 0 && { landed }),
             ...(changes.instructions.length > 0 && { instructions: changes.instructions }),
             ...(changes.docs.length > 0 && { docs: changes.docs }),
           }
@@ -263,7 +334,13 @@ export default function prompt(host: ExtensionHost) {
       ),
       section('skills', (input) => {
         const skills = host.skills(input.env?.cwd ?? input.agent.cwd ?? host.projectRoot)
-        return formatSkillsForPrompt(skills)
+        // As Pi's buildSystemPromptSections: name the tool the agent can load a skill with, and list none without one.
+        const names = new Set((input.agent.tools ?? []).map((tool) => tool.name))
+        const reader = (['read', 'bash'] as const).find((name) => names.has(name))
+        const listed = reader ? formatSkillsForPrompt(skills, reader).trim() : ''
+        return listed
+          ? `${listed}\nWhen a task matches a listed skill, read it before you start; it carries the steps the project expects.`
+          : undefined
       }),
       section('building_blocks', () => {
         const off = host.extensions().filter((extension) => !extension.enabled)

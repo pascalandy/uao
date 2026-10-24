@@ -10,6 +10,7 @@ A coordinator runs each branch. It assesses the request, plans, decides, and ver
 - `agents/worker.md`, `agents/scout.md`, and `agents/designer.md`: bounded roles
 - `agents/reviewer.md` and `.ultimate/agents/`: the review lead and the review team of this repository
 - `extensions/subagents/`: delegation
+- `extensions/messages/branch.ts`: the branch tool and the coordinator's model
 - `extensions/watchdog/`: failure reports
 
 ## Decisions
@@ -26,3 +27,6 @@ A coordinator runs each branch. It assesses the request, plans, decides, and ver
 - `25d180d` sizes the work to the change
 - `f0d80a3` adds the assessment
 - `fb51fea` reports failed runs
+- `8ff34aa` applies the coordinator definition's model and clamps its thinking level
+- `397c368` lets definitions disable automatic summaries
+- `1c8a97e` tells agents to reuse passed tests on an unchanged tree

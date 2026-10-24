@@ -1,4 +1,4 @@
-Side chats are temporary, ownerless copies of the standing @ultimate conversation. The user opens one to explore a tangent, then discards it or sends a summary back without waking main.
+Side chats are temporary, ownerless copies of the standing @ultimate conversation. The user opens one to explore a tangent, then discards it or sends a summary back without waking main. A side chat keeps its fixed `Side chat` title: `open` turns its automatic summaries off (`setAutomaticSummaries` on the conversations service), so no intent, reply or spawn trigger asks the summary model; only Summarize & inject does.
 
 ## UI (`web.tsx`)
 
@@ -6,7 +6,7 @@ Side chats are temporary, ownerless copies of the standing @ultimate conversatio
 - **Depth view** (`conversation.overlay`): main's transcript and composer slide left, scale to 0.88 and dim, and keep streaming; its composer is covered by "Typing goes to the side chat · Back to main". The side chat comes forward as a sheet: a live `<Conversation/>` in a `ConversationScope`, under a cut marker ("forked from @ultimate at HH:MM · knows everything up to here"). The core transcript already hides a fork's inherited history. On a phone main recedes behind a bottom sheet with a "show main" strip; with `prefers-reduced-motion` both only fade. The id in front is the UI state `ext.side-chat.front`, so a reload restores the view; minimize parks the chat (it stays open in the sidebar and as a "Side chat · HH:MM show" chip above main's composer).
 - **Ending:** Discard and Summarize & inject in the sheet's footer. Once `effects` is set, Discard is gone and one quiet line says why. A failed inject shows the model error and turns into Retry summary.
 - **`sidechat.summary`** renders as a card in main, like an agent report, with a link to the side chat.
-- **Sidebar:** open side chats are rows under @ultimate (the sidebar's `sidebar.under-ultimate` point); a row brings its chat to the front, or parks it when it is already there. Ended chats are not listed; the sidebar keeps `side-chat` labels out of its branch, Earlier and Concluded lists.
+- **Sidebar:** open side chats are rows under @ultimate (the sidebar's `sidebar.under-ultimate` point); a row brings its chat to the front, or parks it when it is already there. Ended chats are not listed; side-chat names every side chat to the sidebar's `sidebar.unlisted` point, which keeps them out of its branch, Earlier and Concluded lists.
 
 ## Web contract
 
@@ -24,9 +24,9 @@ All three actions are user-only (`userActions`); agents cannot call them. Inputs
 
 ## Safety and attribution
 
-`effects` is sticky and committed **before** a potentially effectful tool executes. It deliberately locks Discard even if that call subsequently fails: a crash must not leave an effect behind while Discard is still permitted. Tracked: branch, message, note, notify, remember, setup, restart, edit, write; todo add/done; subscription except list/log. Bash and codemode themselves are not tracked (their nested tracked tools still are).
+`effects` is sticky and committed **before** a potentially effectful tool executes. It deliberately locks Discard even if that call subsequently fails: a crash must not leave an effect behind while Discard is still permitted. Tracked: branch, message, note, notify, remember, setup, restart, edit, write; todo add/done; automation except list/runs/log. Bash and codemode themselves are not tracked (their nested tracked tools still are).
 
-Message, branch, note, notify and subscription create/subscribe act as main via `lib/acting-as.ts`, which reads the sidechat document by kind and adds no dependency from core to this optional extension. Replies, branch reports, notification tasks and default subscription subscribers therefore belong to main. A message to user retains the copy's identity and is refused by the existing @ultimate-only check. A message to @ultimate is refused as messaging yourself. Branch starts, reply-requesting messages, notifications and subscription create/subscribe also leave one deduplicated, non-waking provenance note in main.
+Message, branch, note, notify and automation create/subscribe act as main via `lib/acting-as.ts`, which reads the sidechat document by kind and adds no dependency from core to this optional extension. Replies, branch reports, notification tasks and default automation subscribers therefore belong to main. A message to user retains the copy's identity and is refused by the existing @ultimate-only check. A message to @ultimate is refused as messaging yourself. Branch starts, reply-requesting messages, notifications and automation create/subscribe also leave one deduplicated, non-waking provenance note in main.
 
 ## Fork boundary and prompt cache
 

@@ -20,8 +20,9 @@ import type {
   Tx,
 } from '@earendil-works/pi-durable'
 import type { ExtensionHost } from '../../server/extensions.ts'
+import { rateLimited } from '../../lib/rate-limit.ts'
 import { Messages } from '../messages/api.ts'
-import { Standing } from '../subagents/api.ts'
+import { Standing, Subagents } from '../subagents/api.ts'
 import { idleNote } from './idle.ts'
 import type { Failure } from './refs.ts'
 
@@ -82,6 +83,34 @@ async function boundary(tx: Tx, task: Generation, next?: Generation) {
     } while (cursor)
   }
   return { upper, assistant }
+}
+
+/**
+ * What a failed run's error asks for: a broken login needs the user, so it reports at once with a hint to log in again;
+ * a rate limit that outlasted Pi's retries paused Ultimate (the pause extension), so it reports once and never
+ * re-prompts into the limit; an
+ * incomplete Claude Code relay response (status 200 or unknown) is a dropped stream, so it retries like Pi's own
+ * retryable errors.
+ */
+export function diagnose(error: string, assistant?: AssistantMessage) {
+  if (rateLimited(error))
+    return {
+      hint: 'Still rate limited after Pi’s retries, so Ultimate is paused; once the limit resets (or the agent has another model), press Play and resume this conversation with a message',
+      temporary: false,
+    }
+  if (/not logged in/i.test(error))
+    return { hint: 'Run `claude auth login` in a terminal', temporary: false }
+  const provider = /OAuth refresh failed for ([\w-]+)/i.exec(error)?.[1] ?? assistant?.provider
+  if (/OAuth refresh failed|invalid_grant/i.test(error))
+    return {
+      hint: `Log in to ${provider ?? 'the provider'} again: ⌘K → Log in to a provider`,
+      temporary: false,
+    }
+  return {
+    temporary:
+      /^Incomplete Claude Code upstream response \(status (200|unknown),/.test(error) ||
+      !!(assistant && isRetryableAssistantError(assistant)),
+  }
 }
 
 type Generation = TaskRecord<JsonValue, JsonValue, JsonValue>
@@ -193,7 +222,19 @@ export default function watchdog(host: ExtensionHost) {
             ctx,
           )
         }
-        await runtime.commit(() => terminal, ctx)
+        await runtime.commit(async (tx) => {
+          // Reporting ends the watchdog's hold on a subagent's provider failure: its action has given up.
+          const actions = Object.values((await tx.doc(Subagents, recipient)).actions)
+          const action = actions.findLast((candidate) => candidate.conversationId === conversation)
+          if (action?.status === 'failed') {
+            const input = await tx.submissionByRequest(
+              conversation as ConversationId,
+              `subagent:${action.reporter}`,
+            )
+            if (input && failedInput(input)) action.status = 'given-up'
+          }
+          return terminal
+        }, ctx)
       },
     },
     abort: (_task, runtime, ctx) =>
@@ -248,9 +289,7 @@ export default function watchdog(host: ExtensionHost) {
         throw new Error('Watchdog needs @ultimate to report a failed run')
       if (task.state.status !== 'terminal' || task.state.outcome.status !== 'failed') return
       const error = task.state.outcome.error.message
-      const hint = /not logged in/i.test(error)
-        ? 'Run `claude auth login` in a terminal'
-        : undefined
+      const { hint, temporary } = diagnose(error, info.assistant)
       await tx.createTask(
         Watchdog,
         {
@@ -262,7 +301,7 @@ export default function watchdog(host: ExtensionHost) {
           step: info.step,
           ...(hint ? { hint } : {}),
           retried: runInputs.some((input) => input.requestId?.startsWith('watchdog-retry:')),
-          temporary: !!hint || !!(info.assistant && isRetryableAssistantError(info.assistant)),
+          temporary,
           until: (task.endedAt ?? Date.now()) + 60_000,
         },
         { conversationId: recipient, ownership: { kind: 'conversation' }, background: true },
