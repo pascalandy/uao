@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-The user talks to one agent, @ultimate, which knows the project and stays the same each time the user comes back. @ultimate onboards the project, keeps its memory and to-dos, and starts and steers branches. Other standing agents, such as @lander, keep their own conversation and what they learned.
+The user talks to one agent, @ultimate, which knows the project and stays the same each time the user returns. @ultimate prepares the project, keeps the project memory and the project's to-dos, and starts and steers branches. Other standing agents, such as @lander, keep their own conversation and what they learned.
 
 ## Where it lives
 
@@ -20,6 +20,6 @@ The user talks to one agent, @ultimate, which knows the project and stays the sa
 ## Evidence
 
 - `8a1c100` adds standing agents
-- `0319295` sets projects up through @ultimate
+- `0319295` prepares projects through @ultimate
 - `4d3605e` routes messages for the user through @ultimate
 - `eeae136` replaces the Board surface with the @ultimate button

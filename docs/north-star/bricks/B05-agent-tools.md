@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-The agent has Pi's default coding tools: read, write, edit, and bash. Codemode lets it run one script that composes tools and reads Ultimate's state. A browser tool lets it see and drive web pages, its own UI included.
+The agent has Pi's default coding tools: read, write, edit, and bash. Codemode lets it run one script that composes tools and reads Ultimate's state. A browser tool lets the agent view and control web pages, including Ultimate's own UI.
 
 ## Where it lives
 

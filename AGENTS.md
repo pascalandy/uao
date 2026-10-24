@@ -68,20 +68,20 @@ guide to writing extensions, and copy the closest existing one (`status-line`, `
 
 ## North star
 
-[docs/north-star/](docs/north-star/) is the map of this fork: what the system is for, what it can do, why it works this way, and how changes land in uao. Read the files in the first three rows at the start of a session. When another row applies, read its file.
+[docs/north-star/](docs/north-star/) describes this fork. The files explain the purpose, capabilities, design reasons, and how changes land in uao. At the start of a session, read the files in the first three rows. When another row applies, read its file.
 
 | Question                                                   | File                                                       | Read it when                          | Update it when                                    |
 | ---------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------- | ------------------------------------------------- |
-| What is uao, and where does it go?                         | [vision.md](docs/north-star/vision.md)                     | You start a session                   | The purpose or the direction changes              |
+| What is uao, and what is its direction?                    | [vision.md](docs/north-star/vision.md)                     | You start a session                   | The purpose or the direction changes              |
 | Which rules shape every design choice?                     | [principles.md](docs/north-star/principles.md)             | You start a session                   | A principle changes, with its decision            |
 | Can I push? How do changes land?                           | [dev-preferences.md](docs/north-star/dev-preferences.md)   | You start a session                   | Pascal states a new preference                    |
 | What can the system do, and what comes next?               | [bricks/](docs/north-star/bricks/README.md)                | You plan a new capability             | A brick changes status, or a source states a plan |
 | Why does the system work this way?                         | [decisions/](docs/north-star/decisions/README.md)          | You ask why a rule exists             | A choice with lasting effect is made              |
 | What does a word mean?                                     | [glossary.md](docs/north-star/glossary.md)                 | A word is unclear                     | Before the first use of a new term                |
 | Where does each part live?                                 | [architecture.md](docs/north-star/architecture.md)         | You change code                       | A process, a layer, or a folder changes           |
-| How did uao get to this state?                             | [history.md](docs/north-star/history.md)                   | You ask how a part grew               | After a merge of upstream                         |
+| How did uao reach this state?                              | [history.md](docs/north-star/history.md)                   | You ask how a part developed          | After a merge of upstream                         |
 | Where can uao change next, and at what risk?               | [evolution.md](docs/north-star/evolution.md)               | You plan a change to the code         | After a merge of upstream                         |
-| How does uao follow upstream? Is the map current?          | [upstream.md](docs/north-star/upstream.md)                 | You merge, or see HazAT               | After a merge of upstream                         |
+| How does uao follow upstream? Is the map current?          | [upstream.md](docs/north-star/upstream.md)                 | You merge or see HazAT                | After a merge of upstream                         |
 | What did Daniel ask for first?                             | [first-prompt.md](docs/north-star/sources/first-prompt.md) | The original intent is unclear        | Never. It is a source                             |
 | What survives a crash?                                     | [Durability](docs/durability.md)                           | You change persistence or replay      | Not from the north-star                           |
 | What does a project control, and when does its setup load? | [Discovery and settings](docs/settings.md)                 | You change a setting or project trust | Not from the north-star                           |

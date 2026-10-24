@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-A coordinator runs each branch. It assesses the request, plans, decides, and verifies, and it delegates bounded work to subagents. Workers implement, scouts read, designers build UI from screenshots, and a reviewer leads a team of specialist reviewers. The post calls the coordinators "the real heroes of Ultimate".
+A coordinator runs each branch. It assesses the request, plans, decides, and verifies. The coordinator delegates bounded work to subagents. Workers implement, scouts read, designers build UI from screenshots, and a reviewer leads a team of specialist reviewers. The post calls the coordinators "the real heroes of Ultimate".
 
 ## Where it lives
 

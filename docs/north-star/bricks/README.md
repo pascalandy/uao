@@ -1,6 +1,6 @@
 # Bricks
 
-A brick is one capability of the system, at the level of a person who decides what to build next. The bricks go in a logical order, from the foundation up. Each status is true at the [snapshot](../upstream.md#snapshot).
+A brick is one capability of the system, at the level of a person who decides what to build next. The bricks follow a logical order, starting with the basic capabilities. Each status is true at the [snapshot](../upstream.md#snapshot).
 
 ## Status legend
 
@@ -22,7 +22,7 @@ Each brick has a source: **upstream** for Daniel's project, or **uao** for Pasca
 7. Omit a section that has nothing to record
 8. For a planned brick, cite the source that states the plan. Without such a source, do not add the brick
 9. Link to the decisions behind the brick, and to the docs that hold its mechanics
-10. Put each next item in [Next](#next), not in the brick
+10. Put each gap or wish in [Next](#next), not in the brick
 
 ## Index
 
@@ -53,7 +53,7 @@ Each item below is a gap or a wish that a source states. The code does not cover
 
 - A better flow timeline. The post says that the timeline "isn't ideal yet" (section "An Example: Side Chats"). See [B14](B14-everything-on-record.md)
 - Design polish. The post says that the design is "functional, but not super nice" (section "Just Getting Started")
-- Subscriptions that move into a new chapter. At the snapshot, a dream turns each user subscription into a to-do to create it again (`74f38c9`, `extensions/dream/README.md`). See [B15](B15-dreams-and-chapters.md)
+- Subscriptions that move into a new chapter. At the snapshot, a dream turns each user subscription into a to-do to create the subscription again (`74f38c9`, `extensions/dream/README.md`). See [B15](B15-dreams-and-chapters.md)
 - The removal of the local Pi patches and couplings when Pi exports or fixes what they replace (`docs/pi-upstream.md`). See [B01](B01-durable-conversations.md)
 
 uao has no plan of its own yet. A planned brick with `Source: uao` comes only from Pascal.

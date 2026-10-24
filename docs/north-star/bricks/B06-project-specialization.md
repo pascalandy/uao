@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-A project adds its own tools, panels, surfaces, agents, skills, and settings in its `.ultimate/` folder, and commits them. Everyone who opens the project gets the same specialized agent, and the core stays the same in every project. The README calls the product "a coding agent you specialize for the project you work on".
+A project adds its own tools, panels, surfaces, agents, skills, and settings in its `.ultimate/` folder, and commits them. Everyone who opens the project and trusts it gets the same specialized agent ([D009](../decisions/D009-trust-before-project-setup.md)). The core stays the same in every project. The README calls the product "a coding agent you specialize for the project you work on".
 
 ## Where it lives
 
@@ -21,7 +21,7 @@ A project adds its own tools, panels, surfaces, agents, skills, and settings in 
 ## Evidence
 
 - `1135742` separates the clone from the project
-- `a5fe6b8` gates the project setup on trust
+- `a5fe6b8` requires project trust before the project setup
 - `248b25f` ships the `integrate-ultimate` skill
 - `9d40a9b` adds `addTools` overlays
 - `8cc313c` lets a project commit subscriptions

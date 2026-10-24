@@ -2,9 +2,9 @@
 
 Decided 2026-10-13. Source: upstream. Status: active.
 
-`workspace submit` puts a clean isolate tip in a queue. Code lands each submission in order. It merges, runs the configured checks, fast-forwards the target, and pushes without force. The lander's model works only when a step fails or a user messages it.
+`workspace submit` queues the tip of a clean isolate. Code lands each submission in order. The code merges, runs the configured checks, fast-forwards the target, and pushes without force. The lander's model works only when a step fails or a user messages the lander.
 
-**Why.** Coordinators spent many turns to merge, check, land, and push. Also, `workspace land` often failed on a moved target or on an unrelated dirty file (`5c36dcd`).
+**Why.** Coordinators spent many turns to merge, check, land, and push. Also, `workspace land` often failed on a target that advanced or on an unrelated dirty file (`5c36dcd`).
 
 **Rejected.** Synchronous `workspace land` as the default end of a branch. It stays as an alternative that never pushes (`docs/worktrees.md`).
 

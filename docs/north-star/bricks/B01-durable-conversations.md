@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-Every conversation, tool call, subagent, and document reaches SQLite before the UI shows it. Committed conversation state survives a restart or a crash. A run resumes from its last checkpoint. An interrupted tool runs again only when it is marked replay-safe ([Durability](../../../docs/durability.md)). An effect outside the transaction is not rolled back ([Durability](../../../docs/durability.md), `extensions/codemode/README.md`). All other bricks stand on this one. The agent can change its own code because its state does not live in the process.
+Every conversation, tool call, subagent, and document reaches SQLite before the UI shows it. Committed conversation state survives a restart or a crash. A run resumes from its last checkpoint. An interrupted tool runs again only when it is marked replay-safe ([Durability](../../../docs/durability.md)). An effect outside the transaction is not rolled back ([Durability](../../../docs/durability.md), `extensions/codemode/README.md`). All other bricks depend on this brick. The agent can change its own code because its state is stored outside the process.
 
 ## Where it lives
 
