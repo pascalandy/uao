@@ -41,7 +41,7 @@ uao does not change these files ([D034](decisions/D034-follow-upstream.md)). Rea
 
 ## Sync rule
 
-Pascal merges `upstream/main` when he wants its changes ([D034](decisions/D034-follow-upstream.md)). The sync pull request lands with a merge commit, never with a squash or a rebase. A squash or a rebase replaces the upstream commits with new commits, so `check_links.py` rejects the upstream SHAs that the north-star cites. uao keeps its own additions in places that upstream does not edit: `docs/north-star/`, new files in `.ultimate/`, and `~/.ultimate/`.
+Pascal merges `upstream/main` when he wants its changes ([D034](decisions/D034-follow-upstream.md)). The sync pull request lands with a merge commit, never with a squash or a rebase (Pascal, 2026-10-24). A squash or a rebase replaces the upstream commits with new commits, so `check_links.py` rejects the upstream SHAs that the north-star cites. uao keeps its own additions in places that upstream does not edit: `docs/north-star/`, new files in `.ultimate/`, and `~/.ultimate/`.
 
 After each merge:
 

@@ -2,7 +2,7 @@
 
 Decided 2026-10-24. Source: upstream. Status: active.
 
-A preview runs every agent on the `instance.model` setting, which overrides the root's default model, the model of each agent definition, and the summary model (`a4843af`). The project setting wins over the user setting, and this repository sets the model in `.ultimate/settings.json` (`a4843af`). The product still has no faux demos or faux mode (`f23e291`, [D030](D030-previews-on-real-models.md)).
+A preview runs every agent on `instance.model`, which overrides the root's default model, each agent definition's model, and the summary model (`a4843af`). The project setting wins over the user setting, and this repository sets the model in `.ultimate/settings.json` (`a4843af`). The product still has no faux demos or faux mode (`f23e291`, [D030](D030-previews-on-real-models.md)).
 
 **Why.** The commit gives no reason (`a4843af`).
 
