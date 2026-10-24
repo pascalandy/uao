@@ -15,16 +15,16 @@ Each date is an author date, as `git log --date=short` shows it. Each count is f
 
 Upstream went through eight eras. An era is a span of days with one main theme. `git log --format=%ad --date=short 11d1d4c | sort | uniq -c` gives the commits of each day. A landing merge puts a change unit on `main` ([Life of a change unit](#life-of-a-change-unit)). A change unit counts in the era of its first work commit. `git log --no-merges --format='%ad %(trailers:key=Ultimate-Conversation,valueonly)' --date=short 11d1d4c` gives each unit and its dates. Commits before 2026-10-14 have no trailer, so the table counts no change unit for them. `git log --merges --format='%ad %s' --date=short 11d1d4c` gives the dates of the landing shapes defined below.
 
-| Era                  | Dates (2026)   | Commits | Landing merges | Change units | Decisions    |
-| -------------------- | -------------- | ------: | -------------: | -----------: | ------------ |
-| 1 Foundation         | 10-01 to 10-02 |      89 |              0 |            0 | D001 to D009 |
-| 2 Parallel work      | 10-03 to 10-11 |      63 |              0 |            0 | none         |
-| 3 Delivery path      | 10-12 to 10-13 |     189 |             11 |            0 | D010 to D012 |
-| 4 Conversation tree  | 10-14 to 10-16 |     217 |             11 |           76 | D013 to D015 |
-| 5 One front door     | 10-17 to 10-18 |     289 |             21 |          121 | D016 to D024 |
-| 6 Boundaries         | 10-19          |     168 |             14 |           44 | D025, D026   |
-| 7 Memory and backups | 10-20 to 10-21 |     172 |             15 |           53 | D027 to D029 |
-| 8 Recoverable work   | 10-22 to 10-24 |     294 |             37 |           99 | D030, D031   |
+| Era                  | Dates (2026)   | Commits | Landing merges | Change units | Decisions        |
+| -------------------- | -------------- | ------: | -------------: | -----------: | ---------------- |
+| 1 Foundation         | 10-01 to 10-02 |      89 |              0 |            0 | D001 to D009     |
+| 2 Parallel work      | 10-03 to 10-11 |      63 |              0 |            0 | none             |
+| 3 Delivery path      | 10-12 to 10-13 |     189 |             11 |            0 | D010 to D012     |
+| 4 Conversation tree  | 10-14 to 10-16 |     217 |             11 |           76 | D013 to D015     |
+| 5 One front door     | 10-17 to 10-18 |     289 |             21 |          121 | D016 to D024     |
+| 6 Boundaries         | 10-19          |     168 |             14 |           44 | D025, D026       |
+| 7 Memory and backups | 10-20 to 10-21 |     172 |             15 |           53 | D027 to D029     |
+| 8 Recoverable work   | 10-22 to 10-24 |     294 |             37 |           99 | D030, D031, D036 |
 
 ### Era 1: Foundation
 
@@ -154,7 +154,7 @@ Background work gets supervision and recovery. The history of a home gets chapte
   - project subscriptions (`8cc313c`)
   - side chats (`34c3633`)
   - dreams and chapters (`34c001a`, `4c94093`, [B15](bricks/B15-dreams-and-chapters.md))
-  - structured questions on messages, including a note field on each answer card (`de87bde`, [B12](bricks/B12-human-in-the-loop.md))
+  - structured questions on messages, including a comment field on each answer card (`de87bde`, [B12](bricks/B12-human-in-the-loop.md))
   - built-in skills for extensions, UI previews, and UI verification (`bc3a786`, [B06](bricks/B06-project-specialization.md))
   - event and context triggers for automations (`a7f32b5`, [B13](bricks/B13-background-work.md))
   - user grants for dreams, compaction, and chapter switches (`d6c9628`, [B13](bricks/B13-background-work.md), [B15](bricks/B15-dreams-and-chapters.md))
@@ -166,7 +166,7 @@ Background work gets supervision and recovery. The history of a home gets chapte
   - eight built-ins are off by default (`5323967`, [D031](decisions/D031-resource-built-ins-off.md))
   - subscriptions become script triggers in automations, under one ledger and UI (`e099781`, `9dd221c`, [B13](bricks/B13-background-work.md))
   - the branch tool applies the coordinator definition's model and thinking level (`8ff34aa`, [B09](bricks/B09-coordinators-and-subagents.md))
-  - previews use the `instance.model` setting (`a4843af`, [D030](decisions/D030-previews-on-real-models.md))
+  - previews use the `instance.model` setting (`a4843af`, [D036](decisions/D036-previews-on-instance-model.md))
   - agents avoid repeated tests on an unchanged tree (`1c8a97e`, [B09](bricks/B09-coordinators-and-subagents.md))
   - messages become separate modules, and a message to an agent can answer its earlier request (`2941024`, `b956232`, [B11](bricks/B11-notes-and-messages.md))
   - retryable rate limits pause the host (`a63e2fb`, `787fa1a`, [B12](bricks/B12-human-in-the-loop.md))
@@ -175,14 +175,14 @@ Background work gets supervision and recovery. The history of a home gets chapte
   - root tools `new_root`, `seed_tally`, and `compact_tally` (`86ed900`)
   - faux mode (`f23e291`, [D030](decisions/D030-previews-on-real-models.md))
   - the separate subscriptions extension and agent definition (`e099781`, [B13](bricks/B13-background-work.md))
-  - question extraction from prose and the summary model (`de87bde`, [B12](bricks/B12-human-in-the-loop.md))
+  - question extraction by the summary model (`de87bde`, [B12](bricks/B12-human-in-the-loop.md))
 
 ## Life of a change unit
 
 Since era 5, a change unit reaches `main` in these steps:
 
 1. @ultimate starts a coordinator branch with the `branch` tool (`extensions/messages/branch.ts:15`)
-2. The workspaces extension makes an isolate on Git branch `ultimate/<hash>-<n>` (`extensions/workspaces/workspaces.ts:927`). `<n>` is the conversation ID (`extensions/workspaces/workspaces.ts:927`). `<hash>` comes from the home path (`extensions/workspaces/workspaces.ts:927`)
+2. The workspaces extension makes an isolate on Git branch `ultimate/<hash>-<n>`. `<n>` is the conversation ID, and `<hash>` comes from the home path (`extensions/workspaces/workspaces.ts:927`)
 3. A Git hook of the `bash` tool adds the trailer `Ultimate-Conversation: <n>` to each commit (`extensions/coding-tools/server.ts:59`)
 4. Workers commit in their isolates. The coordinator merges their Git branches and `main` into its own
 5. The coordinator calls `workspace submit`. Code of the landing queue merges the tip, then runs checks from `.ultimate/settings.json`
@@ -207,7 +207,7 @@ Landings and their commit trailers can name different conversations. `0eb16c0` n
 | Merge by hand                 | `chore(integration): ...`                     |     24 |
 | Other                         | Free text                                     |     25 |
 
-The row for merges of `main` also counts subjects that start with `Merge main`, and merges of `origin/main` or a local path. Of the landing merges, 104 have no trailer (`git log --merges --format='%s %(trailers:key=Ultimate-Conversation,valueonly)' 11d1d4c`). The other 5 list conflicts and carry the trailer of conversation 30726, such as `23f26ba`. That conversation is the lander, which fixed the conflicts in `23f26ba` (inferred).
+The row for merges of `main` also counts subjects that start with `Merge main`, and merges of `origin/main` or a local path. Of the 109 landing merges of both shapes, 104 have no trailer (`git log --merges --format='%s %(trailers:key=Ultimate-Conversation,valueonly)' 11d1d4c`). The other 5 list conflicts and carry the trailer of conversation 30726, such as `23f26ba`. That conversation is the lander, which fixed the conflicts in `23f26ba` (inferred).
 
 ### How the process changed
 
@@ -246,4 +246,4 @@ Behavior rules live in prompts ([Principle 11](principles.md), `6b8477d`). These
 - Era 7: `63da866` restores the scout, adds the designer, and pins the worker to GPT-6.1 Sol
 - Era 8: `556eb4c` keeps previews with the coordinator. `2f68182` lets @ultimate restart after core landings without asking. `8883ef7` sets Claude Code Opus 5.5 in the project coordinator definition. `8ff34aa` makes `branch` apply that model. `ce2d46ab` temporarily sets OpenRouter models, and `50930ec` restores the Claude Code and Codex models. `bc3a786` moves procedures into skills and removes the coordinator's check before submission. `1c8a97e` tells agents to reuse passed tests on an unchanged tree
 
-[Subagents](../subagents.md) describes the team at the snapshot. Outside previews, an unpinned definition uses its parent's model (`lib/agents.ts:63`). [D030](decisions/D030-previews-on-real-models.md) records the preview override.
+[Subagents](../subagents.md) describes the team at the snapshot. Outside previews, an agent with no model in its definition and no override uses the model of its parent (`lib/agents.ts:63`). [D036](decisions/D036-previews-on-instance-model.md) records the preview override.

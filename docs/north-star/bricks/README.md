@@ -53,7 +53,7 @@ Each item below is a gap or a wish that a source states. The code does not cover
 
 - A better flow timeline. The post says that the timeline "isn't ideal yet" (section "An Example: Side Chats"). See [B14](B14-everything-on-record.md)
 - Design polish. The post says that the design is "functional, but not super nice" (section "Just Getting Started")
-- Script triggers that move into a new chapter. A dream turns each enabled user script into a to-do for @ultimate to recreate it (`extensions/dream/README.md`). Project scripts load stopped from trusted manifests (`extensions/automations/README.md`). See [B15](B15-dreams-and-chapters.md)
+- Script triggers that move into a new chapter. A dream turns each enabled user script trigger into a to-do for @ultimate to recreate it (`extensions/dream/README.md`). Project scripts load stopped from trusted manifests (`extensions/automations/README.md`). See [B15](B15-dreams-and-chapters.md)
 - The removal of the local Pi patches and couplings when Pi exports or fixes what they replace (`docs/pi-upstream.md`). See [B01](B01-durable-conversations.md)
 
 uao has no plan of its own yet. A planned brick with `Source: uao` comes only from Pascal.

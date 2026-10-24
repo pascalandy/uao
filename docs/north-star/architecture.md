@@ -51,9 +51,9 @@ Three folders sit beside the layers. `lib/` holds helpers that extensions share 
   - `project.json` and `conversations.json`: the manifest that other projects read (`docs/durability.md`)
   - `chapters.json`, `chapters/`, and `pending-chapter.json`: the other chapters and a pending switch (`lib/chapters.ts`)
   - `lander/`: the lander's integration checkout (`extensions/workspaces/README.md`)
-- **The user layer**, `~/.ultimate/`: `settings.json`, `trust.json`, `secrets.json`, `health.json`, `AGENTS.md`, `skills/`, `agents/`, and `extensions/` (`docs/settings.md`, `extensions/secrets/README.md`, `extensions/health/README.md`)
+- **The user layer**, `~/.ultimate/`: `settings.json`, `trust.json`, `secrets.json`, `health.json`, `AGENTS.md`, `skills/`, `agents/`, `extensions/`, and `automations/`, which holds user script triggers and the state of all script triggers (`docs/settings.md`, `extensions/automations/README.md`, `extensions/secrets/README.md`, `extensions/health/README.md`)
 - **Pi**, `~/.pi/agent/`: logins, models, and settings that Ultimate shares with Pi. Each machine logs in separately (`README.md`)
-- **The project**, `.ultimate/` in the repository: committed settings, extensions, agents, and skills (`docs/settings.md`). Script triggers live in `<project>/.ultimate/automations/<slug>/` (`extensions/automations/README.md`)
+- **The project**, `.ultimate/` in the repository: committed settings, extensions, agents, and skills (`docs/settings.md`). Project script triggers live in `<project>/.ultimate/automations/<slug>/` (`extensions/automations/README.md`)
 - **The UI**: durable UI state in the `ultimate.ui` document of the root conversation. Drafts and scroll positions stay in the browser (`docs/durability.md`)
 
 ## How a change goes live
@@ -68,7 +68,7 @@ These five flows connect the parts at the snapshot. The linked files hold the me
 - **A change goes live.** The loader loads each server facet through Vite (`server/extensions.ts:508`). Vite reloads each web facet. A change to `server/` or `shared/` goes live through a checked swap of the generation ([the layer table](../../AGENTS.md#layers-and-how-they-reload))
 - **A feature lands.** [Life of a change unit](history.md#life-of-a-change-unit) gives the steps from @ultimate to `main`
 - **A crash.** The supervisor starts a new generation (`bin/ultimate.ts:459`). The generation opens the storage of the active chapter, and the harness resumes (`server/harness.ts:240`). A reactor commits its writes and its cursor in one transaction (`server/events.ts:182`). Messages and the lander keep receipts and checkpoints, so a second run does no harm (`extensions/messages/send.ts:93`, `extensions/workspaces/lander.ts:735`). [Durability](../durability.md) holds the rules
-- **A question to the user.** Only @ultimate sends messages to the user ([D022](decisions/D022-route-through-ultimate.md)). The `message` tool accepts structured questions and validates them (`extensions/messages/questions.ts`). The questions extension renders those fields without a model (`extensions/questions/README.md`). The user can answer the questions, send a note, or dismiss the message (`extensions/questions/README.md`). An answer returns to the sender only while the message is open (`extensions/messages/server.ts:92`, `extensions/messages/send.ts:101`)
+- **A question to the user.** Only @ultimate sends messages to the user ([D022](decisions/D022-route-through-ultimate.md)). The `message` tool accepts structured questions and validates them (`extensions/messages/questions.ts`). The questions extension renders those fields without a model (`extensions/questions/README.md`). The user can answer the questions, add a comment, or dismiss the message (`extensions/questions/README.md`). An answer returns to the sender only while the message is open (`extensions/messages/server.ts:92`, `extensions/messages/send.ts:101`)
 
 ## Code map
 

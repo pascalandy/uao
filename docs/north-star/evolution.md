@@ -11,7 +11,7 @@ Each row is one kind of change. The columns have these meanings:
 - **Layer**: a number from [Layers](architecture.md#layers). "Beside" means next to the layers. "None" means outside them
 - **Goes live**: short for the [layer table](../../AGENTS.md#layers-and-how-they-reload) and [Discovery and settings](../settings.md)
 - **Checks**: "Base" is `pnpm check` and the tests that cover the change ([Conventions](../../AGENTS.md#conventions)). After a submission, the landing queue runs the checks of `.ultimate/settings.json`: `pnpm check`, then `pnpm test` and `pnpm test:e2e` in parallel. `pnpm check` covers only the repository (`extensions/README.md`)
-- **Merge risk**: upstream commits that touch the path, from `git log --no-merges --oneline 11d1d4c -- <path> | wc -l`. High is 100 or more, medium is 20 to 99, and low is 1 to 19. "None" means outside the repository. Frequent upstream edits to a path increase the risk of merge conflicts when uao also edits it (inferred)
+- **Merge risk**: upstream commits that touch the path, from `git log --no-merges --oneline 11d1d4c -- '<path>' | wc -l`. Quote a path that contains `*`. High is 100 or more, medium is 20 to 99, and low is 1 to 19. "None" means outside the repository. Frequent upstream edits to a path increase the risk of merge conflicts when uao also edits it (inferred)
 
 The runtime risk follows the layer, not the count. A broken web facet shows an error card. A core change goes live only after a checked swap. Only a human restart applies a change to the supervisor ([the layer table](../../AGENTS.md#layers-and-how-they-reload)).
 
@@ -92,19 +92,21 @@ A seam permits new behavior without edits to upstream files. Each seam below is 
 - **Personal setup** in `~/.ultimate/`: `settings.json`, `skills/`, and `AGENTS.md` ([Discovery and settings](../settings.md))
 - **Project automations** in `.ultimate/automations/<slug>/`. A script trigger loads stopped from its committed manifest (`e099781`, `extensions/automations/README.md`)
 
-Two limits apply. Lander checks and the push target live in upstream file `.ultimate/settings.json`. Thus, changing them requires an edit (inferred). Personal places are outside the repository, so uao cannot keep them under version control (inferred).
+Two limits apply. Lander checks, the push target, and the preview model live in upstream file `.ultimate/settings.json`. The project setting wins over the user setting, so a change to them requires an edit of that file (inferred from `a4843af`, [D036](decisions/D036-previews-on-instance-model.md)). Personal places are outside the repository, so uao cannot keep them under version control (inferred).
 
 ## Areas in motion at the snapshot
 
-These areas changed most on 2026-10-23 and 2026-10-24, the last two days at the snapshot. Upstream made 129 work commits in those days (`git log --no-merges --format=%ad --date=short 11d1d4c | grep -c '2026-10-2[34]'`). Counts below use `git log --no-merges --format=%ad --date=short 11d1d4c -- <path> | grep -c '2026-10-2[34]'`:
+These areas changed on 2026-10-23 and 2026-10-24, the last two days at the snapshot. Upstream made 129 work commits in those days (`git log --no-merges --format=%ad --date=short 11d1d4c | grep -c '2026-10-2[34]'`). Counts below use `git log --no-merges --format=%ad --date=short 11d1d4c -- <path> | grep -c '2026-10-2[34]'`:
 
 - **Dreams and chapters**: `extensions/dream` 37 and `lib/chapters.ts` 6. Both are new on 2026-10-23 (`34c001a`, `4c94093`). Grants add a path to a checked chapter switch (`7c0a3f4`, [B15](bricks/B15-dreams-and-chapters.md))
 - **The conversation tree**: `extensions/lineage` 13. Landings normalize memory changes (`07e4945`). A branch concludes only after its landing report gets an answer (`f9ac8f2`, [B07](bricks/B07-conversation-tree.md))
 - **Automations**: `extensions/automations` 14. Script, event, and context triggers join schedules (`e099781`, `a7f32b5`, [B13](bricks/B13-background-work.md))
+- **Shared helpers**: `lib/` 16. Six of these commits change `lib/chapters.ts` (see above). Others change the model of an agent in a preview (`lib/agents.ts`, `a4843af`) and the test for a rate limit (`lib/rate-limit.ts`, `a63e2fb`)
+- **Context use**: `extensions/conversations` 10. The server records the context use of each conversation (`ed0bb8a`, [B14](bricks/B14-everything-on-record.md))
 - **The team**: `extensions/subagents` 8 and `agents/ultimate.md` 10. Definitions can disable automatic summaries (`397c368`). The `branch` tool applies the pinned model (`8ff34aa`, [B09](bricks/B09-coordinators-and-subagents.md))
-- **Messages and questions**: 15 commits touch the Board extension or `extensions/messages`, and 10 touch `extensions/questions`. Questions become structured message fields (`de87bde`, [B12](bricks/B12-human-in-the-loop.md))
+- **Messages and questions**: 15 commits touch `extensions/messages`, and 10 touch `extensions/questions`. Questions become structured message fields (`de87bde`, [B12](bricks/B12-human-in-the-loop.md))
 - **Isolates and previews**: `extensions/workspaces` 7 and `extensions/instance` 7. Previews use `instance.model` (`a4843af`, [B10](bricks/B10-isolates-previews-lander.md))
 - **The web UI and side chats**: `web/src` 16 and `extensions/side-chat` 5. Transitions change (`7113b4f`), and side chats disable automatic summaries (`397c368`, [B12](bricks/B12-human-in-the-loop.md))
-- **Skills and reload notices**: `extensions/prompt` 7. The prompt lists scoped skills (`f23fbeb`), and reload notices name landed features (`b535e02`, [B02](bricks/B02-self-change-while-running.md))
+- **Skills and the Reloaded divider**: `extensions/prompt` 7. The prompt lists scoped skills (`f23fbeb`), and the Reloaded divider and the hot-reload toast name landed features (`b535e02`, [B02](bricks/B02-self-change-while-running.md))
 
 A uao change in one of these areas meets the most upstream changes at the next merge (inferred).
