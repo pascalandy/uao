@@ -9,8 +9,8 @@ Ultimate edits its own code while the conversation that edits the code continues
 - `bin/ultimate.ts`: the supervisor
 - `server/supervisor-protocol.ts`: messages between the supervisor and a generation
 - `server/build.ts`: the build identity of each section
-- `extensions/self/`: the restart tool and its status
-- `extensions/prompt/`: the Reloaded divider and the hot-reload toast, which name the features that landed
+- `extensions/self/`: the restart tool, its status, and the hot-reload toast
+- `extensions/prompt/`: the Reloaded divider
 - `bin/cli.ts`: the emergency terminal agent for a broken UI, server, or database
 
 ## Decisions

@@ -2,7 +2,7 @@
 
 Decided 2026-10-23. Source: upstream. Status: replaced by D036.
 
-A preview runs a clean Ultimate instance on the models that the user configured. The product has no faux demos or faux mode. Tests script Pi's faux provider directly.
+A preview runs a clean Ultimate instance on the models that the user configured (`f23e291`). The product has no faux demos or faux mode, and tests script Pi's faux provider directly (`f23e291`).
 
 **Why.** The commit gives no reason (`f23e291`). It says that previews and coordinator checks run clean instances on the configured models. A preview on configured models shows the configured behavior (inferred).
 

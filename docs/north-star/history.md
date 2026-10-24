@@ -190,7 +190,7 @@ Since era 5, a change unit reaches `main` in these steps:
 
 The landing queue uses `git merge` defaults (`extensions/workspaces/lander.ts:769`). Git makes a landing merge only if it cannot fast-forward. Its message is `Merge <sha> from #<n> into main` (`extensions/workspaces/lander.ts:819`).
 
-The 94 landing merges with `#<n>` name 90 conversations (`git log --merges --format=%s 11d1d4c`). Of these conversations, 86 appear in the work trailers (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' 11d1d4c`). The other 4 do not appear in those trailers (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' 11d1d4c`). Their landings contain work from other conversations, as `0eb16c0` shows below. The other units reached `main` by a fast-forward or through another unit, given those merge subjects and trailers (inferred).
+The 94 landing merges with `#<n>` name 90 conversations (`git log --merges --format=%s 11d1d4c`). Of these conversations, 86 appear in the work trailers, and the other 4 do not (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' 11d1d4c`). Their landings contain work from other conversations, as `0eb16c0` shows below. The other units reached `main` by a fast-forward or through another unit, given those merge subjects and trailers (inferred).
 
 Landings and their commit trailers can name different conversations. `0eb16c0` names `#209732`. Its commit `8c44921` has trailer `216060`.
 

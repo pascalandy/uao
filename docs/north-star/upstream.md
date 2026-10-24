@@ -41,14 +41,14 @@ uao does not change these files ([D034](decisions/D034-follow-upstream.md)). Rea
 
 ## Sync rule
 
-Pascal merges `upstream/main` when he wants its changes ([D034](decisions/D034-follow-upstream.md)). uao keeps its own additions in places that upstream does not edit: `docs/north-star/`, new files in `.ultimate/`, and `~/.ultimate/`.
+Pascal merges `upstream/main` when he wants its changes ([D034](decisions/D034-follow-upstream.md)). The sync pull request lands with a merge commit, never with a squash or a rebase. A squash or a rebase replaces the upstream commits with new commits, so `check_links.py` rejects the upstream SHAs that the north-star cites. uao keeps its own additions in places that upstream does not edit: `docs/north-star/`, new files in `.ultimate/`, and `~/.ultimate/`.
 
 After each merge:
 
 1. Run `python3 docs/north-star/check_links.py` and the other checks in [How a change lands](dev-preferences.md#how-a-change-lands)
 2. Check each brick status, and each item of [Known drift in upstream docs](#known-drift-in-upstream-docs), against the new code
 3. Update the bricks and the decisions that changed
-4. Only when the merge changes a principle, the status of a brick, or the rule of a decision, add a decision
+4. Only when the merge changes a principle, a brick's status, or a decision's rule, add a decision
 5. Add the new commits to [history.md](history.md)
 6. Update the counts in [evolution.md](evolution.md)
 7. Update the [snapshot](#snapshot)
