@@ -4,7 +4,7 @@ Status: shipped, at the snapshot. Source: upstream.
 
 Conversations stay on record, so Ultimate can study its own behavior (`docs/durability.md`). The user and the agents see tasks, events, traces, the model context, and failures. Call traces are diagnostics with a limit of seven days and 200,000 rows (`server/trace.ts`). "Everything on record" is the intent of the post, not a promise to keep each record without a limit. The post says that "The agent can read any action of any conversation of any subagent".
 
-Hands-off goals keep decision reasons and any attached screenshots in report cards ([B12](B12-human-in-the-loop.md), `extensions/goal/cards.tsx`).
+Hands-off goals keep goal decisions and any attached screenshots in goal reports ([B12](B12-human-in-the-loop.md), `extensions/goal/cards.tsx`).
 
 ## Where it lives
 

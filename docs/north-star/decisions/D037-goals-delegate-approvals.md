@@ -2,7 +2,7 @@
 
 Decided 2026-10-24. Source: upstream. Status: active.
 
-A question gets a proposal that waits for approval, while a clear instruction, delegated task, or scheduled run authorizes work (`bf94a30`). During a user-granted hands-off goal, @ultimate gives approvals and records each decision with its reason (`001a193d`). Secrets, logins, and force pushes still need the user (`agents/ultimate.md`).
+During a user-granted hands-off goal, @ultimate gives the approvals that [D017](D017-questions-get-proposals.md) assigns to the user (`001a193d`). @ultimate records each goal decision with its reason (`extensions/goal/README.md`). Secrets, logins, and force pushes still need the user (`agents/ultimate.md`).
 
 **Why.** The goal lets work continue while the user is away (`extensions/goal/README.md`). The commit gives no further reason (`001a193d`).
 

@@ -41,7 +41,7 @@ Notes:
 1. A new folder has no upstream history. Only a later upstream folder with the same name can conflict (inferred). A built-in that needs a resource ships off through `defaultOff` (`shared/extension-api.ts`, [D031](decisions/D031-resource-built-ins-off.md)). A user turns an extension on or off with the `enable` and `disable` lists of the settings ([Discovery and settings](../settings.md)). The guide requires a README (`extensions/README.md`). A web facet that imports a `.ts` file needs a line in `tsconfig.web.json`. That file has 42 commits, and 40 also change `extensions/` (the commands for merge risk and [co-change](#areas-that-change-together))
 2. A project extension loads after the user trusts the project ([D009](decisions/D009-trust-before-project-setup.md)). Its code requires a coordinator branch ([D027](decisions/D027-project-code-through-branches.md)). Then it goes live like a built-in's facets (`extensions/README.md`)
 3. A new conversation reads the new text. At its next input, @ultimate gets a note that names changed definition and instruction files (`extensions/prompt/server.ts:139`). Other agents keep their initial instructions (`extensions/prompt/server.ts:139`). But a standing agent reads its definition again before a message reaches it (`extensions/messages/delivery.ts:30`). The system prompt lists skills (`extensions/prompt/server.ts:335`). A `/skill:name` command expands one skill into the user input (`server/skills.ts:61`)
-4. An overlay extends a built-in definition, not its copy ([Subagents](../subagents.md)). The definition editor now preserves that overlay ([B06](bricks/B06-project-specialization.md)). A new file has no upstream history. An edit to an upstream file in `.ultimate/agents/` meets 31 upstream commits (the command for merge risk)
+4. An overlay extends a built-in definition, not its copy ([Subagents](../subagents.md)). The **Agents tab** preserves that overlay ([B06](bricks/B06-project-specialization.md)). A new file has no upstream history. An edit to an upstream file in `.ultimate/agents/` meets 31 upstream commits (the command for merge risk)
 5. A Pi patch goes live after `pnpm install` and a restart (inferred from `8b87d6f`). `test/e2e/pi-upstream.test.ts` checks the list in [Borrowed from Pi](../pi-upstream.md). Upstream upgraded Pi four times (`8d5dc26`, `e93d930`, `f7f0863`, `d7dd683`). Each upgrade renamed the Pi Durable patch file with the new version
 
 ## Stable parts and parts that change often
@@ -56,7 +56,7 @@ Most changes affect the conversation lifecycle, web app, and agent definitions. 
 | `extensions/lineage`            |     139 |          31 | Changes often, also recently      |
 | `extensions/workspaces`         |     131 |          15 | Changes often                     |
 | `web/src/app`                   |     140 |          29 | Changes often                     |
-| `AGENTS.md`                     |     125 |           8 | Fewer changes now                 |
+| `AGENTS.md`                     |     125 |           8 | Few recent changes                |
 | `agents/`                       |      86 |          29 | Receives the behavior rules       |
 | `lib/`                          |      57 |          31 | Many new helpers                  |
 | `extensions/self`               |      39 |           5 | More recent changes               |
@@ -98,17 +98,17 @@ Two limits apply. Lander checks, the push target, and the preview model live in 
 
 These areas changed on 2026-10-23 and 2026-10-24, the last two days at the snapshot. Upstream made 150 work commits in those days (`git log --no-merges --format=%ad --date=short 4aaa074 | grep -c '2026-10-2[34]'`). Counts below use `git log --no-merges --format=%ad --date=short 4aaa074 -- <path> | grep -c '2026-10-2[34]'`:
 
-- **Dreams and chapters**: `extensions/dream` 43 and `lib/chapters.ts` 6. Both are new on 2026-10-23 (`34c001a`, `4c94093`). Dreams now follow @ultimate's compaction and can continue its work in a checked chapter ([B15](bricks/B15-dreams-and-chapters.md), `6c1c6bc`)
-- **The conversation tree**: `extensions/lineage` 16. Self-compaction extends beyond @ultimate and commits with its wake-up (`4a6aab5`, [B01](bricks/B01-durable-conversations.md))
+- **Dreams and chapters**: `extensions/dream` 43 and `lib/chapters.ts` 6. Both are new on 2026-10-23 (`34c001a`, `4c94093`). Dreams follow @ultimate's compaction and can continue its work in a checked chapter ([B15](bricks/B15-dreams-and-chapters.md), `6c1c6bc`)
+- **The conversation tree**: `extensions/lineage` 16. Self-compaction extends beyond @ultimate (`d3178ff`). For other top-level conversations, `compact` commits the compaction with its wake-up (`4a6aab5`, [B01](bricks/B01-durable-conversations.md))
 - **Automations**: `extensions/automations` 16. Event filters follow standing-agent names across chapters (`6c1c6bc`, [B13](bricks/B13-background-work.md))
 - **Shared helpers**: `lib/` 21. Six of these commits change `lib/chapters.ts` (see above). Others preserve overlays and deferred tools (`lib/agents.ts`, `d3c39fd`, `d3178ff`) or share relative-time formatting (`lib/ago.ts`, `0104d7a`)
 - **Context use**: `extensions/conversations` 10. The server records the context use of each conversation (`ed0bb8a`, [B14](bricks/B14-everything-on-record.md))
-- **The team**: `extensions/subagents` 12 and `agents/ultimate.md` 13. The editor preserves overlays ([B06](bricks/B06-project-specialization.md), `ba7984e`). Coordinators receive deferred tools from overlays ([B09](bricks/B09-coordinators-and-subagents.md), `d3178ff`)
+- **The team**: `extensions/subagents` 12 and `agents/ultimate.md` 13. The **Agents tab** preserves overlays ([B06](bricks/B06-project-specialization.md), `ba7984e`). Coordinators receive deferred tools from overlays ([B09](bricks/B09-coordinators-and-subagents.md), `d3178ff`)
 - **Messages and questions**: 18 commits touch `extensions/messages`, and 11 touch `extensions/questions`. Questions become structured message fields (`de87bde`, [B12](bricks/B12-human-in-the-loop.md))
 - **Isolates and previews**: `extensions/workspaces` 7 and `extensions/instance` 7. Previews use `instance.model` (`a4843af`, [B10](bricks/B10-isolates-previews-lander.md))
 - **The web UI and side chats**: `web/src` 17 and `extensions/side-chat` 6. Shared cards and relative-time helpers replace repeated code (`0104d7a`, [B03](bricks/B03-reloadable-extensions.md))
 - **Skills and the Reloaded divider**: `extensions/prompt` 7. The prompt lists scoped skills (`f23fbeb`), and the Reloaded divider and the hot-reload toast name landed features (`b535e02`, [B02](bricks/B02-self-change-while-running.md))
-- **Hands-off goals**: `extensions/goal` 5. The user can delegate approvals and receive a report (`001a193d`, [B12](bricks/B12-human-in-the-loop.md), [D037](decisions/D037-goals-delegate-approvals.md))
-- **Pause and recovery**: `extensions/pause` 5 and `extensions/watchdog` 5. The pause timer and earlier idle notes reduce manual intervention (`d3178ff`, `a7495cb`, [B12](bricks/B12-human-in-the-loop.md), [B09](bricks/B09-coordinators-and-subagents.md)) (inferred)
+- **Hands-off goals**: `extensions/goal` 5. The user can delegate approvals and receive a goal report (`001a193d`, [B12](bricks/B12-human-in-the-loop.md), [D037](decisions/D037-goals-delegate-approvals.md))
+- **Pause and recovery**: `extensions/pause` 5 and `extensions/watchdog` 5. Play by itself and earlier idle notes reduce manual intervention (`d3178ff`, `a7495cb`, [B12](bricks/B12-human-in-the-loop.md), [B09](bricks/B09-coordinators-and-subagents.md)) (inferred)
 
 A uao change in one of these areas meets the most upstream changes at the next merge (inferred).

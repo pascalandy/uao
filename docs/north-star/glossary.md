@@ -33,11 +33,13 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Catch-up**: the update that a branch receives when it resumes. It holds the new tally events of its tree, then the new commits on its target (`extensions/lineage/README.md`)
 - **Conclude**: to close a conversation when its work is done. A concluded conversation stays readable and can resume. Roots and standing agents are never concluded (`AGENTS.md`)
 - **Compaction**: a summary of old messages that replaces them in the model context. The old messages stay in storage ([Pi Durable](https://earendil.com/posts/pi-durable/), `docs/settings.md`)
+- **Self-compaction**: a conversation's request to compact its own context. Code: `compact`, a deferred tool for top-level conversations (`extensions/lineage/server.ts`). Not: automatic compaction
 - **Divergence**: how a result differs from the task as given. Each report and each submission states it, or says "None" (`AGENTS.md`)
 
 ## Agents
 
 - **Agent definition**: a Markdown file with frontmatter that sets the model, thinking level, tools, and instructions of an agent. Built-in agent definitions are in `agents/` (`docs/subagents.md`). Early commits call it a "profile" (`703b104`)
+- **Agents tab**: the UI tab where the user edits agent definitions (`extensions/subagents/README.md`). UI: **Agents tab**. Not: the Agent surface
 - **Overlay**: an agent definition with the name of an earlier definition and an `addTools` key. It can change settings, add tools, and append text, but it keeps the earlier instructions (`docs/subagents.md`, `9d40a9b`)
 - **Deferred tool**: a tool that loads when an agent definition names it, including through an overlay's `addTools` (`lib/agents.ts`, `d3178ff`)
 - **Skill**: instructions that an agent reads for a task, stored in `SKILL.md`. A `/skill:name` command adds the named skill to user input (`server/skills.ts`)
@@ -95,6 +97,8 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Steer**: a message that enters a run in progress, after the current tool calls (`extensions/messages/README.md`)
 - **Question**: one structured request for a user answer, carried by a message (`extensions/messages/questions.ts`). Its answer card stays open until the user answers or dismisses the message (`extensions/questions/README.md`)
 - **Hands-off goal**: a user-granted goal during which @ultimate decides what it would otherwise ask the user (`extensions/goal/README.md`). Code: the extension `goal`. Not: an automation grant
+- **Goal decision**: a choice that @ultimate records for the user during a hands-off goal, including the reason (`extensions/goal/README.md`). Code: `goal {action: 'decide'}`. Not: a north-star decision
+- **Goal report**: the card that records a hands-off goal's outcome, criteria, summary, and goal decisions (`extensions/goal/README.md`). UI: **Hands-off report**. Code: `goal.report`
 - **To-do**: an open item for the user or for @ultimate, in one short list for each project (`extensions/todos/README.md`)
 - **Side chat**: a temporary fork of @ultimate for a tangent. The user discards it, or injects a summary into the main conversation (`extensions/side-chat/README.md`)
 - **Project trust**: the user's choice to load a project's `.ultimate/` folder. Until the user chooses, Ultimate uses only the global setup. Code: decision `local` or `global` (`docs/settings.md`)
@@ -118,7 +122,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 ## North-star terms
 
 - **Brick**: one capability of the system, with its status at the snapshot. See [bricks](bricks/README.md)
-- **Decision**: one choice with lasting effect, with its reason and its evidence. See [decisions](decisions/README.md)
+- **Decision**: one choice with lasting effect, with its reason and its evidence. See [decisions](decisions/README.md). Not: a goal decision
 - **Snapshot**: the commit that the north-star describes. See [upstream.md](upstream.md#snapshot)
 - **Era**: a span of days in the history of upstream with one main theme. See [history.md](history.md#eras)
 - **Seam**: a place where new behavior attaches with no edit to an upstream file. See [evolution.md](evolution.md#seams)

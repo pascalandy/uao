@@ -35,7 +35,7 @@ uao does not change these files ([D034](decisions/D034-follow-upstream.md)). Rea
 - `docs/worktrees.md` gives an example path under `/home/haza/`, the home folder of Daniel's machine
 - `AGENTS.md` and `extensions/cloud/README.md` place the backup Worker in the private repository `HazAT/ultimate-fleet`. The Worker code is absent from this repository (`67caeb6`), so a backup from uao needs a Worker that uao does not ship (inferred)
 - `docs/running.md` says that a scratch server is "for Daniel to open remotely"
-- `extensions/pause/README.md` names Daniel's wish for a pause that waits for him. The user can now enable a timer ([B12](bricks/B12-human-in-the-loop.md))
+- `extensions/pause/README.md` names Daniel's wish for a pause that waits for him. Play by itself, a user setting that is off by default, can end that pause ([B12](bricks/B12-human-in-the-loop.md))
 - `CONTRIBUTING.md` keeps the upstream policy: a personal project, with no review of issues or pull requests
 - `extensions/update/` compares the clone with `origin`. In uao, the extension follows `pascalandy/uao`, not upstream (inferred from `extensions/update/README.md` and the remotes)
 - `.ultimate/settings.json` sets `"push": "origin"`, so the lander pushes to `pascalandy/uao` (inferred from the remotes)
@@ -66,4 +66,3 @@ These upstream texts disagree with the code at the snapshot. uao records these d
 - `docs/settings.md` says that `health` reports provider health with backups. `69a367a` stopped sending provider health with backups
 - `extensions/automations/README.md` names `act` in its text, but its list of 14 tool operations omits it. The tool exposes `act` (`extensions/automations/server.ts`)
 - `docs/extensions.md` says that `workspaces.check`, `health.changed`, `cloud.backup`, and `conversations.compacted` are recorded for the history and the system stream. The event triggers of automations also react to them (`extensions/automations/triggers.ts`, `a7f32b5`)
-- The opening rate-limit paragraph in `extensions/pause/README.md` describes a pause that waits for Daniel. Its later bullet and `extensions/pause/server.ts` allow the user's timer (`d3178ff`)

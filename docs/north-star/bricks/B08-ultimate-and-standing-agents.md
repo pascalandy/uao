@@ -15,6 +15,7 @@ The user talks to one agent, @ultimate, which knows the project and stays the sa
 
 ## Decisions
 
+- [D017](../decisions/D017-questions-get-proposals.md) Explore questions, act on instructions
 - [D037](../decisions/D037-goals-delegate-approvals.md) Let a user-granted goal delegate approvals
 - [D019](../decisions/D019-standing-agents.md) Keep standing agents
 - [D022](../decisions/D022-route-through-ultimate.md) Route agent messages for the user through @ultimate

@@ -159,10 +159,10 @@ Background work gets supervision and recovery. The history of a home gets chapte
   - event and context triggers for automations (`a7f32b5`, [B13](bricks/B13-background-work.md))
   - user grants for dreams, compaction, and chapter switches (`d6c9628`, [B13](bricks/B13-background-work.md), [B15](bricks/B15-dreams-and-chapters.md))
   - server records of context use (`ed0bb8a`, [B14](bricks/B14-everything-on-record.md))
-  - hands-off goals with recorded decisions and a report card (`001a193d`, `65a251f`, `a1b3c01`, [B12](bricks/B12-human-in-the-loop.md), [D037](decisions/D037-goals-delegate-approvals.md))
+  - hands-off goals with goal decisions and a goal report (`001a193d`, `65a251f`, `a1b3c01`, [B12](bricks/B12-human-in-the-loop.md), [D037](decisions/D037-goals-delegate-approvals.md))
   - dreams after @ultimate's compaction, with checked chapter changes and continuation of its work (`6c1c6bc`, `4195ad4`, [B15](bricks/B15-dreams-and-chapters.md))
   - agent calls for backups and clone updates (`d3178ff`, [B16](bricks/B16-remote-backup-update.md))
-  - self-compaction for conversations without an owner, with an atomic wake-up (`d3178ff`, `4a6aab5`, [B01](bricks/B01-durable-conversations.md))
+  - self-compaction beyond @ultimate, with a wake-up for each request (`d3178ff`, `4a6aab5`, [B01](bricks/B01-durable-conversations.md))
 - Reworked:
   - Pi moves to 1.4.0 (`d7dd683`)
   - Board extension becomes `messages` (`28d657a`)
@@ -174,8 +174,8 @@ Background work gets supervision and recovery. The history of a home gets chapte
   - agents avoid repeated tests on an unchanged tree (`1c8a97e`, [B09](bricks/B09-coordinators-and-subagents.md))
   - messages become separate modules, and a message to an agent can answer its earlier request (`2941024`, `b956232`, [B11](bricks/B11-notes-and-messages.md))
   - retryable rate limits pause the host (`a63e2fb`, `787fa1a`, [B12](bricks/B12-human-in-the-loop.md))
-  - an optional user timer releases rate-limit pauses (`d3178ff`, `4a6aab5`, [B12](bricks/B12-human-in-the-loop.md))
-  - the definition editor saves overlays and keeps their `addTools` (`d3c39fd`, `ba7984e`, [B06](bricks/B06-project-specialization.md))
+  - Play by itself releases rate-limit pauses (`d3178ff`, `4a6aab5`, [B12](bricks/B12-human-in-the-loop.md))
+  - the **Agents tab** saves overlays and keeps their `addTools` (`d3c39fd`, `ba7984e`, [B06](bricks/B06-project-specialization.md))
   - coordinator branches receive deferred tools from overlays (`d3178ff`, [B09](bricks/B09-coordinators-and-subagents.md))
   - the watchdog reports idle branches sooner, and coordinators stop only for completion, a block, or a promised wake-up (`a7495cb`, [B09](bricks/B09-coordinators-and-subagents.md))
   - repeated cards and relative-time helpers use SDK exports (`0104d7a`, [B03](bricks/B03-reloadable-extensions.md))
@@ -186,9 +186,8 @@ Background work gets supervision and recovery. The history of a home gets chapte
   - faux mode (`f23e291`, [D030](decisions/D030-previews-on-real-models.md))
   - the separate subscriptions extension and agent definition (`e099781`, [B13](bricks/B13-background-work.md))
   - question extraction by the summary model (`de87bde`, [B12](bricks/B12-human-in-the-loop.md))
-  - the ban on editor saves of definitions that overlays extend (`d3c39fd`, [B06](bricks/B06-project-specialization.md))
 
-Tobi Lütke's `d3c39fd` reached `main` through [HazAT/ultimate#2](https://github.com/HazAT/ultimate/pull/2), merged by `1b62f6b`. This pull request uses a different merge subject from the landing queue (`1b62f6b`).
+Tobi Lütke's `d3c39fd` reached `main` through [HazAT/ultimate#2](https://github.com/HazAT/ultimate/pull/2). Its merge commit `1b62f6b` has a GitHub subject, not a landing-queue subject, and carries trailer `360463` (an Ultimate conversation).
 
 ## Life of a change unit
 

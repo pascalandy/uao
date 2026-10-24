@@ -2,7 +2,7 @@
 
 Decided 2026-10-14. Source: upstream. Status: active.
 
-Ultimate removed the Canvas, a live map of conversations and their subagents, and the conclusion cards of the Canvas. The app now centers on conversations. The upstream branch `park/canvas` keeps the code.
+Ultimate removed the Canvas, a live map of conversations and their subagents, and the conclusion cards of the Canvas. The app centers on conversations. The upstream branch `park/canvas` keeps the code.
 
 **Why.** The commit says "Narrow the app to conversations" and gives no other reason (`deb65f8`).
 

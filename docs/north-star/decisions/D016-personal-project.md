@@ -6,4 +6,4 @@ Ultimate is a personal project that Daniel shares as inspiration. It is not a li
 
 **Why.** The commit gives no reason (`e445117`). The post says that "there are no guarantees about what stays and what changes" (section "Just Getting Started").
 
-**Evidence.** `e445117`. `README.md` and `CONTRIBUTING.md` hold the text.
+**Evidence.** `e445117`. `README.md` and `CONTRIBUTING.md` hold the text. `1b62f6b` merges an outside pull request (`d3c39fd`, by Tobi Lütke), an exception to this policy (inferred).
