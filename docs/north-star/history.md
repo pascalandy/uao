@@ -170,7 +170,7 @@ Since era 5, a change unit reaches `main` in these steps:
 3. A Git hook of the `bash` tool adds the trailer `Ultimate-Conversation: <n>` to each commit (`extensions/coding-tools/server.ts:59`)
 4. Workers commit in their isolates. The coordinator merges their Git branches and `main` into its own
 5. The coordinator calls `workspace submit`. Code of the landing queue merges the tip, then runs checks from `.ultimate/settings.json`
-6. The code sets `main` to the merge result, then pushes it. The landing queue records a landing note in the tally. Resumed branches get a catch-up. The lander agent acts only when a step fails ([D011](decisions/D011-lander-queue.md))
+6. The code sets `main` to the merge result, then pushes it. Lineage records a landing note in the tally when the landing event arrives (`extensions/lineage/server.ts:1450`). Resumed branches get a catch-up. The lander agent acts only when a step fails ([D011](decisions/D011-lander-queue.md))
 
 The landing queue uses `git merge` defaults (`extensions/workspaces/lander.ts:769`). Git makes a landing merge only if it cannot fast-forward. Its message is `Merge <sha> from #<n> into main` (`extensions/workspaces/lander.ts:819`).
 
