@@ -4,6 +4,8 @@ This file says where uao can change next, and the risk of each kind of change. [
 
 ## Change map
 
+A change goes live in the instance that runs the changed checkout. Work in an isolate reaches the running host only when it lands. Before that, a preview shows it (`extensions/prompt/server.ts:281`).
+
 Each row is one kind of change. The columns have these meanings:
 
 - **Layer**: a number from [Layers](architecture.md#layers). "Beside" means next to the layers. "None" means outside them
@@ -11,32 +13,32 @@ Each row is one kind of change. The columns have these meanings:
 - **Checks**: "Base" is `pnpm check` and the tests that cover the change ([Conventions](../../AGENTS.md#conventions)). After a submission, the landing queue runs the checks of `.ultimate/settings.json`: `pnpm check`, then `pnpm test` and `pnpm test:e2e` in parallel. `pnpm check` covers only the repository (`extensions/README.md`)
 - **Risk**: upstream commits that touch the path, from `git log --no-merges --oneline 33c05e9 -- <path> | wc -l`. High is 100 or more, medium is 20 to 99, and low is 1 to 19. "None" means outside the repository. Frequent upstream edits to a path increase the risk of merge conflicts when uao also edits it (inferred)
 
-| Change              | Place                             | Layer  | Goes live              | Checks            | Risk            |
-| ------------------- | --------------------------------- | ------ | ---------------------- | ----------------- | --------------- |
-| Web facet           | `extensions/<name>/web.tsx`       | 4 or 5 | Hot reload             | Base              | High, 312       |
-| Server facet        | `extensions/<name>/server.ts`     | 4 or 5 | Reinstall on save      | Base              | High, 509       |
-| Extension contract  | `extensions/<name>/api.ts`        | 4 or 5 | With its importers     | Base, `pnpm deps` | Medium, 46      |
-| New built-in        | A new folder in `extensions/`     | 5      | Like its facets        | Base              | Low, note 1     |
-| Project extension   | `.ultimate/extensions/<name>/`    | 6      | Note 2                 | Base              | Low, 16         |
-| Personal extension  | `~/.ultimate/extensions/<name>/`  | 6      | Like its facets        | None              | None            |
-| Helper              | `lib/`                            | Beside | With its importers     | Base              | Medium, 44      |
-| Web core            | `web/`                            | 3      | Hot reload             | Base              | High, 164       |
-| Core                | `server/`, `shared/`              | 2      | The `restart` tool     | Base              | High, 123       |
-| Supervisor          | `bin/`                            | None   | `pnpm start` only      | Base              | Medium, 22      |
-| Built-in definition | `agents/<name>.md`                | Beside | Note 3                 | Base              | Medium, 74      |
-| Project definition  | A new file in `.ultimate/agents/` | Beside | At its next start      | Base              | Low, note 4     |
-| Project setting     | `.ultimate/settings.json`         | Beside | Live                   | Base              | Medium, 24      |
-| Personal setting    | `~/.ultimate/settings.json`       | Beside | Live                   | None              | None            |
-| Project skill       | `.ultimate/skills/<name>/`        | Beside | Note 3                 | Base              | Low, 2          |
-| Pi patch            | `patches/`, `pnpm-workspace.yaml` | 1      | Note 5                 | Base, note 5      | Low, 18, note 5 |
-| Rule                | `AGENTS.md`                       | None   | Note 3                 | Base              | High, 121       |
-| North-star          | `docs/north-star/`                | None   | When an agent reads it | `check_links.py`  | None, 0         |
+| Change              | Place                             | Layer  | Goes live              | Checks                 | Risk            |
+| ------------------- | --------------------------------- | ------ | ---------------------- | ---------------------- | --------------- |
+| Web facet           | `extensions/<name>/web.tsx`       | 4 or 5 | Hot reload             | Base                   | High, 312       |
+| Server facet        | `extensions/<name>/server.ts`     | 4 or 5 | Reinstall on save      | Base                   | High, 509       |
+| Extension contract  | `extensions/<name>/api.ts`        | 4 or 5 | With its importers     | Base, `pnpm deps`      | Medium, 46      |
+| New built-in        | A new folder in `extensions/`     | 5      | Like its facets        | Base                   | Low, note 1     |
+| Project extension   | `.ultimate/extensions/<name>/`    | 6      | Note 2                 | Base                   | Low, 16         |
+| Personal extension  | `~/.ultimate/extensions/<name>/`  | 6      | Like its facets        | None                   | None            |
+| Helper              | `lib/`                            | Beside | With its importers     | Base                   | Medium, 44      |
+| Web core            | `web/`                            | 3      | Hot reload             | Base                   | High, 164       |
+| Core                | `server/`, `shared/`              | 2      | The `restart` tool     | Base                   | High, 123       |
+| Supervisor          | `bin/`                            | None   | `pnpm start` only      | Base                   | Medium, 22      |
+| Built-in definition | `agents/<name>.md`                | Beside | Note 3                 | Base                   | Medium, 74      |
+| Project definition  | A new file in `.ultimate/agents/` | Beside | At its next start      | Base                   | Low, note 4     |
+| Project setting     | `.ultimate/settings.json`         | Beside | Live                   | Base                   | Medium, 24      |
+| Personal setting    | `~/.ultimate/settings.json`       | Beside | Live                   | None                   | None            |
+| Project skill       | `.ultimate/skills/<name>/`        | Beside | Note 3                 | Base                   | Low, 2          |
+| Pi patch            | `patches/`, `pnpm-workspace.yaml` | 1      | Note 5                 | Base, note 5           | Low, 18, note 5 |
+| Rule                | `AGENTS.md`                       | None   | Note 3                 | Base                   | High, 121       |
+| North-star          | `docs/north-star/`                | None   | When an agent reads it | Base, `check_links.py` | None, 0         |
 
 Notes:
 
 1. A new folder has no upstream history. Only a later upstream folder with the same name can conflict (inferred). The guide requires a README (`extensions/README.md`). A web facet that imports a `.ts` file needs a line in `tsconfig.web.json`. That file has 39 commits, 37 also touching `extensions/`
 2. A project extension loads after the user trusts the project ([D009](decisions/D009-trust-before-project-setup.md)). Its code requires a coordinator branch ([D027](decisions/D027-project-code-through-branches.md)). Then it goes live like a built-in's facets (`extensions/README.md`)
-3. A new conversation reads the new text. At its next input, @ultimate also gets a note naming changed definition and instruction files. Other agents keep their initial instructions (`extensions/prompt/server.ts:80`). Skills enter the system prompt (`extensions/prompt/server.ts:264`)
+3. A new conversation reads the new text. At its next input, @ultimate also gets a note naming changed definition and instruction files. Other agents keep their initial instructions (`extensions/prompt/server.ts:80`). But a standing agent reads its definition again before a message reaches it (`extensions/messages/server.ts:350`). Skills enter the system prompt (`extensions/prompt/server.ts:264`)
 4. An overlay extends a built-in definition, not its copy ([Subagents](../subagents.md)). A new file has no upstream history. An edit to an upstream file in `.ultimate/agents/` meets 28 upstream commits
 5. A Pi patch goes live after `pnpm install` and a restart (inferred from `8b87d6f`). `test/e2e/pi-upstream.test.ts` checks the list in [Borrowed from Pi](../pi-upstream.md). Upstream upgraded Pi four times (`8d5dc26`, `e93d930`, `f7f0863`, `d7dd683`). Each upgrade renamed the Pi Durable patch file with the new version
 

@@ -82,8 +82,8 @@ This file defines the names in uao. Each thing has one name, and each name has o
 
 ## Messages and the user
 
-- **Message**: a durable delivery from one conversation to another. It wakes an idle recipient, except a subagent's one-way update to its parent, which is a note (`extensions/messages/README.md`). Code: the extension `messages`, with events named `board.*`
-- **Note**: context in another conversation. A note starts no turn. The recipient reads the note when its next turn starts. Code: the tool `note` (`AGENTS.md`), and a subagent's one-way update to its parent (`304e47e`). Not: another one-way message, which wakes its recipient (`extensions/messages/README.md`)
+- **Message**: a durable delivery from one conversation to another. It wakes an idle recipient, with two exceptions. A subagent's one-way update to its parent is a note. @ultimate's triage can keep a one-way message from a conversation as context, with no wake ([triage](../../extensions/messages/README.md#triage-for-the-primary-agent)). Code: the extension `messages`, with events named `board.*`
+- **Note**: context in another conversation. A note starts no turn. A note from the tool `note` reaches the model of the recipient with its next input (`extensions/lineage/README.md`). A subagent's one-way update reaches its parent with the next model request, also during a run (`extensions/messages/README.md`). Code: the tool `note` (`AGENTS.md`), and a subagent's one-way update to its parent (`304e47e`). Not: another one-way message, which can wake its recipient (`extensions/messages/README.md`)
 - **Notify**: a request to know when another conversation finishes. Code: the tool `notify` (`AGENTS.md`)
 - **Steer**: a message that enters a run in progress, after the current tool calls (`extensions/messages/README.md`)
 - **Question**: a message that expects a reply from the user. An answer card stays open until the user answers or dismisses it (`extensions/questions/README.md`)

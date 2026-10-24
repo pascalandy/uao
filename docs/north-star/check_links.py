@@ -53,21 +53,29 @@ for f in files:
             continue
         if not (root / cand).exists():
             problems.append(f"{rel}: cited path does not exist: {token}")
+    for token in CODE.findall(body):
+        if re.fullmatch(r"[0-9a-f]{7,40}", token):
+            shas.setdefault(token, rel)
     for sha in SHA.findall(body):
         if re.search(r"\d", sha) and re.search(r"[a-f]", sha):
             shas.setdefault(sha, rel)
 
 for folder in ("bricks", "decisions"):
     index = ns / folder / "README.md"
-    linked = {target.partition("#")[0] for target in LINK.findall(index.read_text())}
+    visible = CODE.sub("", re.sub(r"<!--.*?-->", "", FENCE.sub("", index.read_text()), flags=re.S))
+    linked = {target.partition("#")[0] for target in LINK.findall(visible)}
     for md in sorted((ns / folder).glob("*.md")):
         if md.name != "README.md" and md.name not in linked:
             problems.append(f"{index.relative_to(root)}: index does not link {md.name}")
 
 if shas:
-    out = subprocess.run(["git", "-C", str(root), "cat-file", "--batch-check"],
-                         input="".join(f"{s}^{{commit}}\n" for s in shas), capture_output=True, text=True).stdout
-    for sha, line in zip(shas, out.splitlines()):
+    git = subprocess.run(["git", "-C", str(root), "cat-file", "--batch-check"],
+                         input="".join(f"{s}^{{commit}}\n" for s in shas), capture_output=True, text=True)
+    lines = git.stdout.splitlines()
+    if git.returncode or len(lines) != len(shas):
+        problems.append(f"git cat-file failed, so no SHA was checked: {git.stderr.strip() or 'wrong output'}")
+        lines = []
+    for sha, line in zip(shas, lines):
         if line.endswith("missing") or "ambiguous" in line:
             problems.append(f"{shas[sha]}: SHA is not a commit: {sha}")
         elif subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor", line.split()[0], "HEAD"]).returncode:

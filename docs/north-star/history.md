@@ -230,4 +230,4 @@ Behavior rules live in prompts ([Principle 11](principles.md), `6b8477d`). These
 - Era 7: `63da866` restores the scout, adds the designer, and pins the worker to GPT-6.1 Sol
 - Era 8: `556eb4c` keeps previews with the coordinator. `2f68182` lets @ultimate restart after core landings without asking. `8883ef7` sets Claude Code Opus 5.5 in the project coordinator definition. But `branch` does not use that model ([Known drift](upstream.md#known-drift-in-upstream-docs))
 
-[Subagents](../subagents.md) describes the team at the snapshot, and each definition names its model.
+[Subagents](../subagents.md) describes the team at the snapshot. A definition can set a model. Without one, the agent uses the model of its parent (`lib/agents.ts:49`).
