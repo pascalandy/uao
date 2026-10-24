@@ -1,6 +1,6 @@
 # Glossary
 
-This file fixes the names in uao: one name for each thing, and one meaning for each name. Use these names in the north-star, in commits, and in prompts.
+This file defines the names in uao. Each thing has one name, and each name has one meaning. Use these names in the north-star, in commits, and in prompts.
 
 ## Reading conventions
 
@@ -23,12 +23,12 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 - **Clone**: the checkout of Ultimate's code that the host runs from. Code: `host.ultimateRoot` (`extensions/update/README.md`). Not: the project
 - **Home**: the folder that holds the state of one project, by default under `~/.ultimate/projects/` (`docs/running.md`)
 - **Conversation**: one durable transcript with its agent, tools, and tasks (`docs/durability.md`)
-- **Root**: the top conversation of a project's tree. It accepts no input and runs no turns. It holds the project memory and the tally. A project has one root (`extensions/lineage/README.md`)
+- **Root**: the top conversation of a project's tree. It becomes a tally when its first branch starts, and then it accepts no input and runs no turns (`extensions/lineage/server.ts`). It holds the project memory and the tally. A project has one root (`extensions/lineage/README.md`)
 - **Tally**: the record that a root keeps of its tree. It holds one intent line for each branch, the latest abstract of each conversation, notes, and landings. UI: **context**. Code: `lineage.tally` (`b99106e`). Not: the context window of a model
 - **Forest**: the word that `AGENTS.md` uses for a project's conversation trees. Since `86ed900`, a project has one root, so its forest holds one tree (inferred)
 - **Branch**: a conversation that forks from the root or from a branch to do one feature, fix, or experiment. Its prompt is its first input (`extensions/lineage/README.md`). Not: a subagent
 - **Intent**: the one line that names a branch in the tally. The full prompt stays in the branch (`ad1b2dd`)
-- **Abstract**: the summary of one conversation in the tally. It changes with the work, and a landing freezes it (`fc99691`)
+- **Abstract**: the summary of one conversation in the tally. The abstract changes with the work. A landing keeps the abstract unchanged (`fc99691`)
 - **Project memory**: the decisions, facts, and lessons that a root keeps by slug. A new branch starts from a brief of this memory. Code: `lineage.memory`, tool `remember` (`4c1b652`)
 - **Catch-up**: the update that a branch receives when it resumes. It holds the new tally events of its tree, then the new commits on its target (`extensions/lineage/README.md`)
 - **Conclude**: to close a conversation when its work is done. A concluded conversation stays readable and can resume. Roots and standing agents are never concluded (`AGENTS.md`)
@@ -37,17 +37,18 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 
 ## Agents
 
-- **Agent definition**: a Markdown file with frontmatter that sets the model, thinking level, tools, and instructions of an agent. Built-ins are in `agents/` (`docs/subagents.md`). Early commits call it a "profile" (`703b104`)
+- **Agent definition**: a Markdown file with frontmatter that sets the model, thinking level, tools, and instructions of an agent. Built-in agent definitions are in `agents/` (`docs/subagents.md`). Early commits call it a "profile" (`703b104`)
 - **Overlay**: an agent definition with the name of an earlier definition and an `addTools` key. It can change settings, add tools, and append text, but it keeps the earlier instructions (`docs/subagents.md`, `9d40a9b`)
 - **@ultimate**: the standing agent that the user talks to. It starts and steers branches, and it relays their questions (`agents/ultimate.md`). Code: definition `ultimate`
 - **Standing agent**: an agent with one permanent conversation in a project. Nobody concludes it, so it keeps what it learned (`8a1c100`). Code: `resident: true`. Examples: @ultimate and @lander
-- **Coordinator**: the agent that runs a branch. It plans, decides, and verifies, and it delegates execution but never judgment (`agents/coordinator.md`). UI: `branch · coordinator`
-- **Subagent**: a child conversation that a tool call starts for bounded work. The conversation that started it owns it (`extensions/subagents/README.md`). Not: a branch, which has no owner
+- **Coordinator**: the agent that runs a branch. It plans, decides, and verifies. It delegates execution but never judgment (`agents/coordinator.md`). UI: `branch · coordinator`
+- **Subagent**: a child conversation that a tool call starts for bounded work. The parent conversation owns the subagent (`extensions/subagents/README.md`). Not: a branch, which has no owner
 - **Worker**: a subagent that does one bounded task in its own isolate and makes one focused commit (`agents/worker.md`)
 - **Scout**: a read-only subagent for one code question (`agents/scout.md`)
 - **Designer**: a subagent for front-end work (`agents/designer.md`)
 - **Reviewer**: a read-only subagent that reviews one fixed commit range. Here, it leads three specialist reviewers (`.ultimate/README.md`)
-- **Lander**: the queue that lands submissions, and the standing agent that owns it. Code does the merge, the checks, the fast-forward, and the push. The model works only on a failure or a message (`agents/lander.md`). UI: @lander
+- **Landing queue**: the durable queue of submissions. The lander takes them one at a time ([D011](decisions/D011-lander-queue.md))
+- **Lander**: the standing agent that owns the landing queue. The code of the landing queue does the merge, the checks, the fast-forward, and the push. The model works only on a failure or a message (`agents/lander.md`). UI: @lander
 
 ## Change and landing
 
@@ -59,16 +60,16 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 - **Preview**: a separate Ultimate instance that runs one checkout on its own port with the configured models. Code: the extension `instance` (`extensions/instance/README.md`)
 - **Supervisor**: the small process in `bin/ultimate.ts` that holds the port and the lock, and starts each generation (`docs/running.md`)
 - **Generation**: one core process that the supervisor starts. `ULTIMATE_GENERATION` labels it (`docs/running.md`)
-- **Swap**: the change from one generation to the next. The supervisor prepares and type-checks the new generation first, and a failed boot keeps the old one (`docs/running.md`)
+- **Swap**: the change from one generation to the next. The supervisor prepares and type-checks the new generation first. If the new generation fails to boot, the supervisor keeps the old generation (`docs/running.md`)
 - **Restart**: the tool that requests a swap after a change to `server/` or `shared/` (`AGENTS.md`). Not: a human restart with `pnpm start`, which only a change to `bin/` needs
 
 ## Extensions
 
 - **Extension**: a folder that adds agent behavior, UI, or both. A later folder with the same name replaces an earlier one (`extensions/README.md`)
 - **Built-in**: an extension in the `extensions/` folder of the clone (`docs/settings.md`)
-- **Facet**: one side of an extension. `server.ts` holds agent behavior, and `web.tsx` holds UI. Each facet loads and fails alone (`fff6d4b`)
+- **Facet**: one side of an extension. `server.ts` holds agent behavior, and `web.tsx` holds UI. Each facet loads and fails independently (`fff6d4b`)
 - **Core tier**: the extensions that settings cannot turn off. A core-tier extension depends only on other core-tier extensions (`docs/extensions.md`). Code: `tier = 'core'` in `api.ts`
-- **Extension API**: a typed contract that one extension provides and another uses, with `need` when it is required or `want` when it is optional (`docs/extensions.md`)
+- **Extension API**: a typed contract that one extension provides and another uses. The second extension uses `need` for a required contract or `want` for an optional contract (`docs/extensions.md`)
 - **Point**: a contract that a lower extension declares and a higher extension fills, so that dependencies go one way (`docs/extensions.md`)
 - **Durable event**: a typed fact that an extension appends in the same commit as its cause (`docs/extensions.md`)
 - **Reactor**: a named handler that reads durable events in order, across crashes (`docs/extensions.md`)
@@ -76,13 +77,13 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 - **Action**: a typed JSON call from the browser or from codemode to a server facet (`extensions/README.md`)
 - **Slot**: a named place in the shell where a web facet adds UI, such as the sidebar or the status line (`extensions/README.md`)
 - **Panel**: a tab in the right panel (`extensions/README.md`)
-- **Surface**: a full-screen app that the user switches to. The Agent surface is the conversation, and the agent stays one keystroke away on every surface (`790c34e`)
+- **Surface**: a full-screen app that the user switches to. The Agent surface is the conversation. The agent is accessible with one keystroke on every surface (`790c34e`)
 - **Codemode**: a tool that runs one JavaScript script in a QuickJS sandbox. The script can call tools and read Ultimate's state (`extensions/codemode/README.md`)
 
 ## Messages and the user
 
 - **Message**: a durable delivery from one conversation to another. It wakes an idle recipient, except a subagent's one-way update to its parent, which is a note (`extensions/messages/README.md`). Code: the extension `messages`, with events named `board.*`
-- **Note**: context in another conversation that starts no turn. The recipient reads it when its next turn starts. Code: the tool `note` (`AGENTS.md`), and a subagent's one-way update to its parent (`304e47e`). Not: another one-way message, which wakes its recipient (`extensions/messages/README.md`)
+- **Note**: context in another conversation. A note starts no turn. The recipient reads the note when its next turn starts. Code: the tool `note` (`AGENTS.md`), and a subagent's one-way update to its parent (`304e47e`). Not: another one-way message, which wakes its recipient (`extensions/messages/README.md`)
 - **Notify**: a request to know when another conversation finishes. Code: the tool `notify` (`AGENTS.md`)
 - **Steer**: a message that enters a run in progress, after the current tool calls (`extensions/messages/README.md`)
 - **Question**: a message that expects a reply from the user. An answer card stays open until the user answers or dismisses it (`extensions/questions/README.md`)
@@ -97,7 +98,7 @@ This file fixes the names in uao: one name for each thing, and one meaning for e
 - **Automation**: a schedule that runs an agent prompt as its own conversation (`extensions/automations/README.md`)
 - **Subscription**: a supervised script that wakes a conversation when its output says `FIRE` (`extensions/subscriptions/README.md`)
 - **Pause**: a hold on new tasks for the whole host. Current work finishes, and Play releases the queue (`extensions/pause/README.md`)
-- **Trace**: the record of nested calls of services, actions, reactors, and tools, with their parents (`docs/extensions.md`)
+- **Trace**: the record of nested calls of services, actions, reactors, and tools, together with the parents of those calls (`docs/extensions.md`)
 - **Summary model**: the small model for titles, summaries, and abstracts. Code: `summaryModel` (`docs/settings.md`)
 - **Chapter**: one named conversation database in a home. Chapters stay side by side, and a journaled switch changes the active chapter (`4c94093`)
 - **Dream**: a session in which Ultimate studies its memory, failures, and tools, and then proposes changes. A dream can seed a new chapter (`extensions/dream/README.md`)

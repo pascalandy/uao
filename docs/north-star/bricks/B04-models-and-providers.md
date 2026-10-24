@@ -7,7 +7,7 @@ The user picks a model and a thinking level for each conversation. The user can 
 ## Where it lives
 
 - `extensions/models/`: model picker and provider login
-- `extensions/claude-code/`: the Claude Code CLI provider
+- `extensions/claude-code/`: the provider for the Claude Code CLI
 - `extensions/fast/`: the priority tier
 - `extensions/health/`: provider health
 - `extensions/classify/`: typed judgments from a TypeSafe model, for other extensions
@@ -21,6 +21,6 @@ The user picks a model and a thinking level for each conversation. The user can 
 
 - `692ca8f` shares Pi's models and logins
 - `ecc5a3d` moves login into the `models` extension
-- `787b454` adds the Claude Code CLI provider
+- `787b454` adds the provider for the Claude Code CLI
 - `dc59e4a` makes the summary model a setting
 - `56c1fe4` adds the priority tier

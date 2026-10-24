@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-Ultimate studies its own memory, failures, tools, and corrections, and then proposes what to codify or remove. A dream can seed a fresh chapter, a new conversation database that starts with the selected memory and work. Old chapters stay readable.
+Ultimate studies its own memory, failures, tools, and corrections, and then proposes what to codify or remove. "Codify" is the name of the fifth pass of a dream (`extensions/dream/README.md`). A dream can seed a fresh chapter, a new conversation database that starts with the selected memory and work. Old chapters stay readable.
 
 ## Where it lives
 

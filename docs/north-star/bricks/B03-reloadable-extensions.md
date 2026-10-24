@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-Each feature that is not core plumbing is an extension folder, with a server facet for agent behavior and a web facet for UI (`README.md`). A user or a project adds, replaces, or turns off a feature with no change to the core. A surface lets an extension be a full-screen app, with the agent one keystroke away.
+Each feature that is not core infrastructure is an extension folder, with a server facet for agent behavior and a web facet for UI (`README.md`). A user or a project adds, replaces, or disables a feature with no change to the core. A surface lets an extension be a full-screen app, with the agent one keystroke away.
 
 ## Where it lives
 
@@ -18,7 +18,7 @@ Each feature that is not core plumbing is an extension folder, with a server fac
 - [D004](../decisions/D004-ui-from-extensions.md) Build the UI from extensions
 - [D007](../decisions/D007-surfaces.md) Make apps surfaces beside the agent
 - [D024](../decisions/D024-typed-contracts-core-tier.md) Connect extensions through typed contracts
-- [D031](../decisions/D031-resource-built-ins-off.md) Ship resource-needing built-ins off
+- [D031](../decisions/D031-resource-built-ins-off.md) Disable by default the built-ins that need resources
 
 ## Evidence
 
@@ -27,4 +27,4 @@ Each feature that is not core plumbing is an extension folder, with a server fac
 - `f466038` adds typed APIs
 - `7463db5` adds durable events
 - `0edd691` adds the core tier
-- `5323967` ships the resource-needing built-ins off
+- `5323967` disables by default the built-ins that need resources

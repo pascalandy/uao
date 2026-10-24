@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-Ultimate edits its own code while the conversation that edits it keeps running. A change to the UI or to an extension goes live at once, and a change to the core goes live through a checked swap. This capability is the premise of the [first prompt](../sources/first-prompt.md): "we built ultimate with ultimate".
+Ultimate edits its own code while the conversation that edits the code continues. A change to the UI or to an extension goes live at once. A change to the core goes live through a checked swap. This capability is the premise of the [first prompt](../sources/first-prompt.md): "we built ultimate with ultimate".
 
 ## Where it lives
 
@@ -21,6 +21,6 @@ Ultimate edits its own code while the conversation that edits it keeps running. 
 
 - `9b341af` seeds the layer table
 - `e3f76bb` adds the swap and crash recovery
-- `083fd2a` rolls back a failed swap
+- `083fd2a` reverts a failed swap
 - `8233269` adds the build identity
 - `56b0e1c` adds the emergency terminal agent

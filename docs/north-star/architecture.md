@@ -21,20 +21,20 @@ flowchart LR
   sup -. "swap" .-> next
 ```
 
-- The supervisor, `bin/ultimate.ts`, lives long. It holds the public port and `ultimate.lock`, forwards to one generation, and starts a crashed generation again (`docs/running.md`)
+- The supervisor, `bin/ultimate.ts`, is a long-lived process. It holds the public port and `ultimate.lock`. It forwards to one generation. It restarts a generation after a crash (`docs/running.md`)
 - A generation, `server/main.ts`, is one core process. It embeds Vite, loads the extensions, and opens the Pi Durable harness (`docs/running.md`)
 - The browser keeps a live copy of the state from `/api/events`, and it sends commands to `server/api.ts` (`web/src/sdk/store.ts`)
-- A preview runs `server/main.ts` with no supervisor, on its own port and home, so it cannot restart (`docs/running.md`)
+- A preview runs `server/main.ts` on its own port and uses its own home. It has no supervisor, so it cannot restart (`docs/running.md`)
 - `bin/cli.ts` is the emergency terminal agent. It opens no server, no Vite, and no storage (`docs/running.md`)
 - Subscriptions, lander checks, and previews run as child process groups (`lib/process-group.ts`)
 - The services in the terminal dashboard are status reports, not processes (`README.md`)
 
 ## Layers
 
-The layers go from the foundation up. A layer depends only on the layers below it, and `pnpm check` enforces the boundaries between extensions (`AGENTS.md`).
+The layers go from the foundation up. A layer depends only on the layers below it. `pnpm check` enforces the boundaries between extensions (`AGENTS.md`).
 
 1. **Pi and Pi Durable.** Durable conversations, tasks, hooks, and providers. The packages are pinned, and `patches/` holds local patches ([Borrowed from Pi](../pi-upstream.md))
-2. **Core.** `server/` holds the harness, the storage, the HTTP API, discovery, and the Vite hookup. `shared/protocol.ts` holds the contracts between server and browser
+2. **Core.** `server/` holds the harness, the storage, the HTTP API, discovery, and integration with Vite. `shared/protocol.ts` holds the contracts between server and browser
 3. **Web core.** `web/` holds the surface host and its primitives, the SDK, the transcript, the composer, and the palette
 4. **Core tier.** The extensions that are always on. Each depends only on the core tier. [Core tier](../extensions.md#core-tier) names them
 5. **Optional built-ins.** The other built-ins. They reach the core tier through points or events
@@ -52,7 +52,7 @@ Three folders sit beside the layers. `lib/` holds helpers that extensions share 
   - `chapters.json`, `chapters/`, and `pending-chapter.json`: the other chapters and a pending switch (`lib/chapters.ts`)
   - `lander/`: the lander's integration checkout (`extensions/workspaces/README.md`)
 - **The user layer**, `~/.ultimate/`: `settings.json`, `trust.json`, `secrets.json`, `health.json`, `AGENTS.md`, `skills/`, `agents/`, and `extensions/` (`docs/settings.md`, `extensions/secrets/README.md`, `extensions/health/README.md`)
-- **Pi**, `~/.pi/agent/`: logins, models, and settings that Ultimate shares with Pi. Each machine logs in alone (`README.md`)
+- **Pi**, `~/.pi/agent/`: logins, models, and settings that Ultimate shares with Pi. Each machine logs in separately (`README.md`)
 - **The project**, `.ultimate/` in the repository: committed settings, extensions, agents, skills, and subscriptions (`docs/settings.md`)
 - **The UI**: durable UI state in the `ultimate.ui` document of the root conversation. Drafts and scroll positions stay in the browser (`docs/durability.md`)
 
@@ -64,8 +64,8 @@ Three folders sit beside the layers. `lib/` holds helpers that extensions share 
 
 These five flows connect the parts at the snapshot. The linked files hold the mechanics.
 
-- **A user message.** The composer sends the input to `conversation.submit` in `server/api.ts`. Pi Durable admits the input, and a second commit records the event. A crash between the two commits loses the event, not the input (`server/api.ts:543`). The browser gets each committed change from `/api/events` (`web/src/sdk/store.ts`)
-- **A change goes live.** The loader loads each server facet through Vite (`server/extensions.ts:508`), and Vite reloads each web facet. A change to `server/` or `shared/` goes live through a checked swap of the generation ([the layer table](../../AGENTS.md#layers-and-how-they-reload))
+- **A user message.** The composer sends the input to `conversation.submit` in `server/api.ts`. Pi Durable accepts the input, and a second commit records the event. A crash between the two commits loses the event, not the input (`server/api.ts:543`). The browser gets each committed change from `/api/events` (`web/src/sdk/store.ts`)
+- **A change goes live.** The loader loads each server facet through Vite (`server/extensions.ts:508`). Vite reloads each web facet. A change to `server/` or `shared/` goes live through a checked swap of the generation ([the layer table](../../AGENTS.md#layers-and-how-they-reload))
 - **A feature lands.** [How a change lands](history.md#how-a-change-lands) gives the steps from @ultimate to `main`
 - **A crash.** The supervisor starts a new generation (`bin/ultimate.ts:459`). The generation opens the storage of the active chapter, and the harness resumes (`server/harness.ts:236`). A reactor commits its writes and its cursor in one transaction (`server/events.ts:182`). Messages and the lander keep receipts and checkpoints, so a second run does no harm (`extensions/messages/server.ts:890`, `extensions/workspaces/lander.ts:735`). [Durability](../durability.md) holds the rules
 - **A question to the user.** Only @ultimate sends messages to the user ([D022](decisions/D022-route-through-ultimate.md)). The questions extension asks the summary model to extract the questions of an open message into a card (`extensions/questions/server.ts:86`). The answer goes to the sender as a reply, but only while the message is open (`extensions/messages/server.ts:1236`)
