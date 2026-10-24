@@ -9,6 +9,7 @@ These rules override the upstream text that they name, such as the push permissi
 - A commit uses `pascalandy@users.noreply.github.com` as the author and committer email
 - Before a commit, run `pnpm check` and the tests that cover the change (`AGENTS.md`)
 - Before a commit that changes the north-star, run `python3 docs/north-star/check_links.py`. It must print `ok`
+- `check_links.py` checks links, anchors, and cited paths. It also checks that each cited SHA is an ancestor of `HEAD`, and that each index links to each file in its folder
 
 ## Keep the north-star true
 

@@ -1,6 +1,11 @@
-"""Check docs/north-star: relative links and anchors resolve, cited repo paths exist, cited SHAs are commits.
+"""Check docs/north-star. Print each problem, or `ok`, and exit 1 on any problem.
 
-Usage: python3 docs/north-star/check_links.py [repository root]. Prints each problem, or `ok`. Exit 1 on any problem.
+- Relative links and anchors resolve, so each linked file exists
+- Cited repository paths exist
+- Cited SHAs are commits and ancestors of HEAD, so no citation reaches past the snapshot
+- Each index (bricks/README.md, decisions/README.md) links to each file in its folder
+
+Usage: python3 docs/north-star/check_links.py [repository root]
 """
 import re, subprocess, sys
 from pathlib import Path
@@ -52,12 +57,21 @@ for f in files:
         if re.search(r"\d", sha) and re.search(r"[a-f]", sha):
             shas.setdefault(sha, rel)
 
+for folder in ("bricks", "decisions"):
+    index = ns / folder / "README.md"
+    linked = {target.partition("#")[0] for target in LINK.findall(index.read_text())}
+    for md in sorted((ns / folder).glob("*.md")):
+        if md.name != "README.md" and md.name not in linked:
+            problems.append(f"{index.relative_to(root)}: index does not link {md.name}")
+
 if shas:
     out = subprocess.run(["git", "-C", str(root), "cat-file", "--batch-check"],
                          input="".join(f"{s}^{{commit}}\n" for s in shas), capture_output=True, text=True).stdout
     for sha, line in zip(shas, out.splitlines()):
         if line.endswith("missing") or "ambiguous" in line:
             problems.append(f"{shas[sha]}: SHA is not a commit: {sha}")
+        elif subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor", line.split()[0], "HEAD"]).returncode:
+            problems.append(f"{shas[sha]}: SHA is not an ancestor of HEAD: {sha}")
 
 print("\n".join(problems) if problems else "ok")
 sys.exit(1 if problems else 0)
