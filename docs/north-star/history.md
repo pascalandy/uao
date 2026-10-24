@@ -1,6 +1,6 @@
 # History
 
-This file says how upstream reached the [snapshot](upstream.md#snapshot): its eras, how a change lands, and how the rules and the team changed. The [bricks](bricks/README.md) say what each part does, and the [decisions](decisions/README.md) say why.
+This file says how upstream reached the [snapshot](upstream.md#snapshot): its eras, the life of a change unit, and how the rules and the team changed. [upstream.md](upstream.md#fork-point) says what uao added after the snapshot. The [bricks](bricks/README.md) say what each part does, and the [decisions](decisions/README.md) say why.
 
 Each date is an author date, as `git log --date=short` shows it. Each count is for upstream at `33c05e9`.
 
@@ -13,7 +13,7 @@ Each date is an author date, as `git log --date=short` shows it. Each count is f
 
 ## Eras
 
-Upstream went through eight eras. An era is a span of days with one main theme. `git log --format=%ad --date=short 33c05e9 | sort | uniq -c` gives the commits of each day. A landing merge puts a change unit on `main` ([How a change lands](#how-a-change-lands)). A change unit counts in the era of its first work commit. Commits before 2026-10-14 have no trailer, so the table counts no change unit for them.
+Upstream went through eight eras. An era is a span of days with one main theme. `git log --format=%ad --date=short 33c05e9 | sort | uniq -c` gives the commits of each day. A landing merge puts a change unit on `main` ([Life of a change unit](#life-of-a-change-unit)). A change unit counts in the era of its first work commit. Commits before 2026-10-14 have no trailer, so the table counts no change unit for them.
 
 | Era                  | Dates (2026)   | Commits | Landing merges | Change units | Decisions    |
 | -------------------- | -------------- | ------: | -------------: | -----------: | ------------ |
@@ -84,9 +84,9 @@ A project's conversations form a tree that its root records.
   - divergence (`7d29e8f`)
   - one review lead (`79cef07`)
 - Reworked:
-  - one root becomes several (`bbb0e3e`), then tallies that run no turns (`00cdf3a`, [D015](decisions/D015-root-is-a-tally.md))
+  - one root becomes several roots (`bbb0e3e`), and then the roots become tallies that run no turns (`00cdf3a`, [D015](decisions/D015-root-is-a-tally.md))
   - tests split into fast and browser runs (`d48d30a`)
-  - lander checks: tests dropped for a time, then back in one parallel group (`58250b7`, `c09e551`)
+  - the lander checks drop the tests for a time, and then run them again in one parallel group (`58250b7`, `c09e551`)
 - Removed: Canvas (`deb65f8`, [D014](decisions/D014-remove-canvas.md)), exclusive commands (`89676a2`), and scout and researcher definitions (`638ccf9`)
 
 ### Era 5: One front door
@@ -106,7 +106,7 @@ The user talks to @ultimate. Standing agents and messages do the rest.
   - updates become notes (`304e47e`, [D021](decisions/D021-updates-are-notes.md))
   - only @ultimate messages the user (`4d3605e`, [D022](decisions/D022-route-through-ultimate.md))
   - tally named "context" in the UI (`b99106e`, [D023](decisions/D023-context-and-tally.md))
-  - the cloud copies conversations (`8b5d5ac`), then adds a writer lease and moves (`d8f80cb`)
+  - the cloud copies conversations (`8b5d5ac`), then adds a writer lease and project moves between machines (`d8f80cb`)
   - Ultimate becomes a personal project (`e445117`, [D016](decisions/D016-personal-project.md))
 - Removed: Board surface (`eeae136`) and manual conversation creation (`64f3bc4`)
 
@@ -140,7 +140,7 @@ Branches start from project memory. The cloud keeps only backups.
   - project code needs a coordinator branch (`6dfc9e8`, [D027](decisions/D027-project-code-through-branches.md))
   - overlays extend built-in definitions (`9d40a9b`)
   - the cloud keeps only backups (`67caeb6`, [D028](decisions/D028-cloud-only-backs-up.md))
-- Removed: model evaluations (`d9ae72d`), @sync, the writer lease, and moves (`67caeb6`)
+- Removed: model evaluations (`d9ae72d`), @sync, the writer lease, and project moves (`67caeb6`)
 - Also removed: a home's standby state (`0146ec6`) and machine home (`1708844`)
 
 ### Era 8: Recoverable work
@@ -161,7 +161,7 @@ Background work gets supervision and recovery. The history of a home gets chapte
   - eight built-ins are off by default (`5323967`, [D031](decisions/D031-resource-built-ins-off.md))
 - Removed: root tools `new_root`, `seed_tally`, and `compact_tally` (`86ed900`), and faux mode (`f23e291`, [D030](decisions/D030-previews-on-real-models.md))
 
-## How a change lands
+## Life of a change unit
 
 Since era 5, a change unit reaches `main` in these steps:
 
@@ -170,11 +170,11 @@ Since era 5, a change unit reaches `main` in these steps:
 3. A Git hook of the `bash` tool adds the trailer `Ultimate-Conversation: <n>` to each commit (`extensions/coding-tools/server.ts:59`)
 4. Workers commit in their isolates. The coordinator merges their Git branches and `main` into its own
 5. The coordinator calls `workspace submit`. Code of the landing queue merges the tip, then runs checks from `.ultimate/settings.json`
-6. The code sets `main` to the merge result, then pushes it. It records a landing note in the tally. Resumed branches get a catch-up. The lander agent acts only when a step fails ([D011](decisions/D011-lander-queue.md))
+6. The code sets `main` to the merge result, then pushes it. The landing queue records a landing note in the tally. Resumed branches get a catch-up. The lander agent acts only when a step fails ([D011](decisions/D011-lander-queue.md))
 
 The landing queue uses `git merge` defaults (`extensions/workspaces/lander.ts:769`). Git makes a landing merge only if it cannot fast-forward. Its message is `Merge <sha> from #<n> into main` (`extensions/workspaces/lander.ts:819`).
 
-The 81 landing merges with `#<n>` name 79 conversations. 75 of these conversations are among the 365 change units, and the other 4 have no trailer on their commits. The other change units landed by a fast-forward, or in the Git branch of another unit (inferred).
+The 81 landing merges with `#<n>` name 79 conversations. 75 of these conversations are among the 365 change units, and no work commit carries the trailer of the other 4. Their commits carry the trailer of a child conversation. The other change units landed by a fast-forward, or in the Git branch of another unit (inferred).
 
 Landings and their commit trailers can name different conversations. `0eb16c0` names `#209732`. Its commit `8c44921` has trailer `216060`.
 
@@ -182,21 +182,21 @@ Landings and their commit trailers can name different conversations. `0eb16c0` n
 
 `git log --merges --format=%s 33c05e9` shows 289 merges in six shapes:
 
-| Shape                   | Subject                                       | Merges |
-| ----------------------- | --------------------------------------------- | -----: |
-| Landing merge           | `Merge <sha> from #<n> into main`             |     81 |
-| Landing merge, old name | `Merge <sha> from W<n> into main`             |     15 |
-| Catch-up merge          | `Merge branch 'main' into ultimate/...`       |     73 |
-| Merge of a child        | `Merge branch 'ultimate/<hash>-<m>' into ...` |     72 |
-| Merge by hand           | `chore(integration): merge ...`               |     24 |
-| Other                   | Free text                                     |     24 |
+| Shape                         | Subject                                       | Merges |
+| ----------------------------- | --------------------------------------------- | -----: |
+| Landing merge                 | `Merge <sha> from #<n> into main`             |     81 |
+| Landing merge, old name       | `Merge <sha> from W<n> into main`             |     15 |
+| Merge of `main` into a branch | `Merge branch 'main' into ultimate/...`       |     73 |
+| Merge of a child              | `Merge branch 'ultimate/<hash>-<m>' into ...` |     72 |
+| Merge by hand                 | `chore(integration): ...`                     |     24 |
+| Other                         | Free text                                     |     24 |
 
 The catch-up row also counts merges of `origin/main` or of a local path. 91 landing merges have no trailer. The other 5 list conflicts and carry the trailer of conversation 30726, such as `23f26ba`. That conversation is the lander, which fixed the conflicts (inferred).
 
 ### How the process changed
 
 - Eras 1 and 2: each commit went to `main` directly. No merge predates 2026-10-12
-- Era 3: on 2026-10-12, the top-level agent made 20 manual `chore(integration)` merges, such as `d37887a`. The landing queue began on 2026-10-13 (`5c36dcd`). `1d94cbc6` is the first landing merge, and it names `W25966`
+- Era 3: on 2026-10-12, 20 `chore(integration)` merges, such as `d37887a`, put work on `main`. Git does not show which agent made them. The landing queue began on 2026-10-13 (`5c36dcd`). `1d94cbc6` is the first landing merge, and it names `W25966`
 - Era 4: `2166faa` is the first work commit with a trailer, on 2026-10-14. `19f960d` changed the label `W<n>` to `#<n>`, and `930d33e` is the first `#<n>` landing merge. 32 work commits on 2026-10-14 and 2026-10-15 have no trailer
 - Eras 5 to 8: each work commit has a trailer. @ultimate starts branches (`c685a27`)
 

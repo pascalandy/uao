@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-A project keeps one tree of conversations. The root runs no turns, and it keeps the project memory and the tally, the record of the tree. Each branch does one feature, fix, or experiment. The branch starts from a brief of the project memory. A branch that resumes receives a catch-up about the activity in its tree.
+A project keeps one tree of conversations. The root keeps the project memory and the tally, the record of the tree. When its first branch starts, the root becomes a tally and runs no more turns ([D015](../decisions/D015-root-is-a-tally.md)). Each branch does one feature, fix, or experiment. The branch starts from a brief of the project memory. A branch that resumes receives a catch-up about the activity in its tree.
 
 ## Where it lives
 

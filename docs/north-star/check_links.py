@@ -2,7 +2,8 @@
 
 - Relative links and anchors resolve, so each linked file exists
 - Cited repository paths exist
-- Cited SHAs are commits and ancestors of HEAD, so the map cites no upstream commit that uao has not merged
+- Cited SHAs are commits and ancestors of HEAD, so the map cites no upstream commit that uao has not merged.
+  The check does not read the snapshot: after a merge of upstream, move the snapshot before you cite a new commit
 - Each index (bricks/README.md, decisions/README.md) links to each file in its folder
 
 Usage: python3 docs/north-star/check_links.py [repository root]

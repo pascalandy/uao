@@ -8,8 +8,7 @@ These rules override the upstream text that they name, such as the push permissi
 - The [push permission](../../AGENTS.md#push-permission) in `AGENTS.md` is for Ultimate's top-level agent. It does not cover an outside agent
 - A commit uses `pascalandy@users.noreply.github.com` as the author and committer email
 - Before a commit, run `pnpm check` and the tests that cover the change (`AGENTS.md`)
-- Before a commit that changes the north-star, run `python3 docs/north-star/check_links.py`. It must print `ok`
-- `check_links.py` checks links, anchors, and cited paths. It also checks that each cited SHA is an ancestor of `HEAD`. It checks that each index links to each file in its folder
+- Before a commit that changes the north-star, run `python3 docs/north-star/check_links.py`. It must print `ok`. Its docstring lists what it checks
 
 ## Keep the north-star true
 
@@ -20,7 +19,7 @@ These rules override the upstream text that they name, such as the push permissi
 - Link to more specific files. Do not link to more general files. The [North star](../../AGENTS.md#north-star) table in `AGENTS.md` links to each file and index. The vision links to bricks. The principles and the bricks link to decisions. The bricks link to code and docs. A decision does not list the bricks that use it
 - Use the names in the [glossary](glossary.md). Before the first use of a new term, add the term to the glossary
 - Even when Pascal writes in French, write in English. Write the north-star in ASD-STE100 Simplified Technical English
-- Keep a full copy of a source only in `sources/`, and name its origin. In other files, quote at most 25 words, and name the section of the source
+- Copy a source word for word only in `sources/`. Name the origin of each copy
 
 ## Private notes
 
