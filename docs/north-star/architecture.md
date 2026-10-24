@@ -60,6 +60,16 @@ Three folders sit beside the layers. `lib/` holds helpers that extensions share 
 
 [The layer table](../../AGENTS.md#layers-and-how-they-reload) and [Running the server](../running.md) say how a change to each folder goes live.
 
+## Flows
+
+These five flows connect the parts at the snapshot. The linked files hold the mechanics.
+
+- **A user message.** The composer sends the input to `conversation.submit` in `server/api.ts`. Pi Durable admits the input, and a second commit records the event. A crash between the two commits loses the event, not the input (`server/api.ts:543`). The browser gets each committed change from `/api/events` (`web/src/sdk/store.ts`)
+- **A change goes live.** The loader loads each server facet through Vite (`server/extensions.ts:508`), and Vite reloads each web facet. A change to `server/` or `shared/` goes live through a checked swap of the generation ([the layer table](../../AGENTS.md#layers-and-how-they-reload))
+- **A feature lands.** [How a change lands](history.md#how-a-change-lands) gives the steps from @ultimate to `main`
+- **A crash.** The supervisor starts a new generation (`bin/ultimate.ts:459`). The generation opens the storage of the active chapter, and the harness resumes (`server/harness.ts:236`). A reactor commits its writes and its cursor in one transaction (`server/events.ts:182`). Messages and the lander keep receipts and checkpoints, so a second run does no harm (`extensions/messages/server.ts:890`, `extensions/workspaces/lander.ts:735`). [Durability](../durability.md) holds the rules
+- **A question to the user.** Only @ultimate sends messages to the user ([D022](decisions/D022-route-through-ultimate.md)). The questions extension asks the summary model to extract the questions of an open message into a card (`extensions/questions/server.ts:86`). The answer goes to the sender as a reply, but only while the message is open (`extensions/messages/server.ts:1236`)
+
 ## Code map
 
 | Path                      | Role                                                                     | Read first                                        |
