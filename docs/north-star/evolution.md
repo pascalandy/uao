@@ -61,6 +61,8 @@ Most changes go to the conversation lifecycle, the web app, and the agent defini
 | `shared/extension-api.ts`       |       5 |           1 | Stable                        |
 | `server/supervisor-protocol.ts` |       4 |           0 | Stable since 2026-10-12       |
 
+A count measures 23 days of history. A low count can mean a young path, not a stable one: `extensions/side-chat` exists only since 2026-10-22 (`34c3633`). A rename starts a new count: `extensions/messages` has 8 commits, and the folder of the Board extension had 94 before the rename (`28d657a`).
+
 Some parts did not last. Nine extension folders left `extensions/` before the snapshot. Upstream deleted eight, such as `canvas` (`deb65f8`), `sync` (`67caeb6`), and `faux` (`f23e291`). The ninth, the Board extension, became `extensions/messages` (`28d657a`). [history.md](history.md#eras) lists the removals of each era.
 
 ### Areas that change together
@@ -95,7 +97,7 @@ These areas changed most on 2026-10-22 and 2026-10-23, the last two days before 
 - **Dreams and chapters**: `extensions/dream` 23 and `lib/chapters.ts` 6. Both are new on 2026-10-23 (`34c001a`, `4c94093`). Subscriptions do not move into a new chapter yet ([B15](bricks/B15-dreams-and-chapters.md))
 - **The conversation tree**: `extensions/lineage` 22. A project keeps one root (`86ed900`), a branch starts with a title (`6c37b8f`), and catch-up waits for a ready checkout (`13cac20`) ([B07](bricks/B07-conversation-tree.md))
 - **Subscriptions**: `extensions/subscriptions` 19. Projects commit them (`8cc313c`), and a panel shows them (`cc54171`) ([B13](bricks/B13-background-work.md))
-- **The team**: `extensions/subagents` 16 and `agents/ultimate.md` 13. Tool denials (`556eb4c`), the watchdog (`fb51fea`), and the coordinator model (`8883ef7`) changed ([B09](bricks/B09-coordinators-and-subagents.md))
+- **The team**: `extensions/subagents` 16 and `agents/ultimate.md` 13. Tool denials (`556eb4c`), the watchdog (`fb51fea`), and the coordinator model (`8883ef7`) changed. The `branch` tool does not apply that model yet ([Known drift](upstream.md#known-drift-in-upstream-docs)) ([B09](bricks/B09-coordinators-and-subagents.md))
 - **Messages**: 17 commits touch the Board extension or `extensions/messages`, around the rename (`28d657a`) ([B11](bricks/B11-notes-and-messages.md))
 - **Isolates**: `extensions/workspaces` 12. The removal and the preparation of isolates changed (`9a0d246`, `3fcffd5`) ([B10](bricks/B10-isolates-previews-lander.md))
 - **Side chats**: `web/src` 21 and `extensions/side-chat` 5. Conversation scopes and side chats are new (`c18bdbb`, `34c3633`) ([B12](bricks/B12-human-in-the-loop.md))

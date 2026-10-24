@@ -2,7 +2,7 @@
 
 - Relative links and anchors resolve, so each linked file exists
 - Cited repository paths exist
-- Cited SHAs are commits and ancestors of HEAD, so no citation reaches past the snapshot
+- Cited SHAs are commits and ancestors of HEAD, so the map cites no upstream commit that uao has not merged
 - Each index (bricks/README.md, decisions/README.md) links to each file in its folder
 
 Usage: python3 docs/north-star/check_links.py [repository root]
@@ -17,7 +17,7 @@ top = {p.name for p in root.iterdir()} - {".git", "node_modules"}
 
 LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)")
 CODE = re.compile(r"`([^`\n]+)`")
-SHA = re.compile(r"(?<![\w/.-])([0-9a-f]{7,12})(?![\w/-])")
+SHA = re.compile(r"(?<![\w/.-])([0-9a-f]{7,40})(?![\w/-])")
 FENCE = re.compile(r"^```.*?^```", re.S | re.M)
 
 
