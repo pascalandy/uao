@@ -6,6 +6,8 @@ Work continues when no agent turn runs (`extensions/automations/README.md`). Aut
 
 User grants authorize named actions for dreams, compaction, or chapter switches (`extensions/automations/README.md`). The [automation mechanics](../../../extensions/automations/README.md#grants) hold the limits and the checks for those actions.
 
+An event filter can name a standing agent, so the automation follows that agent across chapters (`extensions/automations/triggers.ts`). Dream ships one built-in automation of this kind ([B15](B15-dreams-and-chapters.md)).
+
 ## Where it lives
 
 - `extensions/automations/`: triggers, actions, grants, the ledger, and the UI
@@ -23,3 +25,4 @@ User grants authorize named actions for dreams, compaction, or chapter switches 
 - `a7f32b5` adds event and context triggers
 - `d6c9628` adds user grants for named actions
 - `ab10dee` exposes triggers and grants in the UI
+- `6c1c6bc` resolves standing-agent names in event filters

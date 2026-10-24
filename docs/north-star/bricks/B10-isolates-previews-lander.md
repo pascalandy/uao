@@ -17,6 +17,7 @@ Each branch works in its own isolate, a git worktree, so several features run in
 - [D010](../decisions/D010-push-without-asking.md) Push landed work without asking again
 - [D011](../decisions/D011-lander-queue.md) Land through a durable queue
 - [D036](../decisions/D036-previews-on-instance-model.md) Preview every agent on one model
+- [D037](../decisions/D037-goals-delegate-approvals.md) Let a user-granted goal delegate approvals
 
 ## Evidence
 

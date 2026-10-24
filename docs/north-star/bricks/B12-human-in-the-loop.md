@@ -6,9 +6,14 @@ The user stays in control with no need to watch each conversation. Questions wai
 
 The cards render the structured questions of a message without a model (`extensions/questions/README.md`). A card offers choices, multiple choices, confirmation, text, or a scale, plus a separate comment field (`extensions/questions/README.md`).
 
+The user can start one hands-off goal and let @ultimate make goal decisions and give preview approvals ([D037](../decisions/D037-goals-delegate-approvals.md)). @ultimate records criteria and goal decisions, then leaves a goal report (`extensions/goal/README.md`). The user can end the goal early (`extensions/goal/README.md`).
+
+The user can enable **Play by itself** to release a rate-limit pause after a chosen delay (`extensions/pause/README.md`). This setting is off by default, and only the user can change it (`extensions/pause/server.ts`). A pause that the user starts always waits for Play (`extensions/pause/server.ts`).
+
 ## Where it lives
 
 - `extensions/questions/`: answer cards
+- `extensions/goal/`: hands-off goals, goal decisions, and goal reports
 - `extensions/messages/questions.ts`: the questions of a message and their validation
 - `extensions/todos/`: the to-do list
 - `extensions/review/`: diffs and line comments
@@ -19,6 +24,7 @@ The cards render the structured questions of a message without a model (`extensi
 ## Decisions
 
 - [D017](../decisions/D017-questions-get-proposals.md) Explore questions, act on instructions
+- [D037](../decisions/D037-goals-delegate-approvals.md) Let a user-granted goal delegate approvals
 - [D022](../decisions/D022-route-through-ultimate.md) Route agent messages for the user through @ultimate
 
 ## Evidence
@@ -32,3 +38,8 @@ The cards render the structured questions of a message without a model (`extensi
 - `de87bde` replaces question extraction with structured fields on the message tool
 - `a8445df` lets the user send @ultimate to work on an open to-do
 - `a63e2fb` and `787fa1a` pause the host on a retryable rate limit
+- `001a193d` adds hands-off goals
+- `65a251f` commits each goal change with its card's delivery task
+- `d3178ff` adds Play by itself for rate-limit pauses
+- `4a6aab5` records automatic Play before the scheduler resumes
+- `93dbff1` fixes the answer card's Undo countdown on phones

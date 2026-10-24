@@ -6,6 +6,8 @@ A project adds its own tools, panels, surfaces, agents, skills, and settings in 
 
 A trusted project can also share skills in `<project>/.agents/skills/` (`server/skills.ts`).
 
+The **Agents tab** saves an extended definition as an overlay, so the base still supplies its instructions and tools (`lib/agents.ts`). The **Agents tab** refuses changes that an overlay cannot express (`lib/agents.ts`).
+
 ## Where it lives
 
 - `.ultimate/`: the setup of this repository, an example
@@ -14,6 +16,7 @@ A trusted project can also share skills in `<project>/.agents/skills/` (`server/
 - `server/skills.ts`: skill discovery, diagnostics, scopes, and `/skill:name` commands
 - `extensions/onboarding/`: setup cards, the project choice, and the Extensions panel
 - `server/discovery.ts` and `server/project-setup.ts`: precedence and trust
+- `lib/agents.ts`: definition discovery and overlay saves
 
 ## Decisions
 
@@ -32,3 +35,5 @@ A trusted project can also share skills in `<project>/.agents/skills/` (`server/
 - `f23fbeb` adds skill scopes, diagnostics, and `/skill:name` commands
 - `9e00ce6` keeps personal skills in `~/.ultimate/skills/`
 - `bc3a786` adds three built-in skills for extensions and UI checks
+- `d3c39fd` lets the **Agents tab** save overlays
+- `ba7984e` keeps an overlay's `addTools` when its base inherits every tool

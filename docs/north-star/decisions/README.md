@@ -58,3 +58,4 @@ The date of a decision is the date of its commit: `git log -1 --format=%ad --dat
 | [D034](D034-follow-upstream.md)               | 2026-10-23 | uao      | active           | Follow upstream through merges                       |
 | [D035](D035-adopt-blog-direction.md)          | 2026-10-23 | uao      | active           | Adopt the direction of the post                      |
 | [D036](D036-previews-on-instance-model.md)    | 2026-10-24 | upstream | active           | Preview every agent on one model                     |
+| [D037](D037-goals-delegate-approvals.md)      | 2026-10-24 | upstream | active           | Let a user-granted goal delegate approvals           |

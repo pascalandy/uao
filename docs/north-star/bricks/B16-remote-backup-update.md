@@ -4,6 +4,8 @@ Status: shipped, at the snapshot. Source: upstream.
 
 The user reaches a running Ultimate from another machine over Tailscale. A project backs up to the user's own backup Worker. One command restores the project on another machine. A backup needs that Worker, which uao does not ship ([upstream.md](../upstream.md#what-still-points-at-hazat)). Each Ultimate instance shows the new commits on the origin of its clone. The instance updates by fast-forward only.
 
+Agents can start backups and clone updates through actions (`extensions/cloud/server.ts`, `extensions/update/server.ts`). The cloud join action remains user-only (`extensions/cloud/server.ts`).
+
 ## Where it lives
 
 - `extensions/tailscale/`: remote access
@@ -23,3 +25,4 @@ The user reaches a running Ultimate from another machine over Tailscale. A proje
 - `67caeb6` adds backups and `pnpm restore`
 - `a8fba5e` adds updates
 - `8ede22b` guards updates
+- `d3178ff` opens the backup and update actions to agents
