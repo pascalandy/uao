@@ -23,7 +23,7 @@ async function userCloudSettings(host: Pick<ExtensionHost, 'userHome'>) {
 export async function cloudConfig(
   host: Pick<ExtensionHost, 'userHome' | 'notice'>,
   env: NodeJS.ProcessEnv = process.env,
-): Promise<{ url: string; token: string; machine: string } | undefined> {
+): Promise<{ url: string; token: string; machine: string; satellite: boolean } | undefined> {
   if (!env.ULTIMATE_CLOUD_URL && env.ULTIMATE_INSTANCE_OWNER) return undefined
   const config = await userCloudSettings(host)
   const url = env.ULTIMATE_CLOUD_URL ?? (typeof config.url === 'string' ? config.url : undefined)
@@ -36,7 +36,8 @@ export async function cloudConfig(
   }
   const machine =
     env.ULTIMATE_CLOUD_MACHINE ?? (typeof config.machine === 'string' ? config.machine : hostname())
-  return { url, token, machine }
+  // A satellite runs the project beside the machine that backs it up; it must never replace that machine's backups.
+  return { url, token, machine, satellite: config.satellite === true }
 }
 
 /** The Worker's `GET /sync/register`: every project's latest backup and every machine that backed up. */

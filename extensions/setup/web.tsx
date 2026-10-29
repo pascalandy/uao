@@ -118,6 +118,7 @@ function Setup() {
         </div>
         <ul className="max-h-[60vh] overflow-y-auto px-3 py-1.5 text-[11.5px] leading-[1.5]">
           {data!.map((issue, index) => (
+            // oxlint-disable-next-line react/no-array-index-key -- Check results have no id; areas and failures may repeat.
             <Row issue={issue} key={`${issue.area}-${index}`} />
           ))}
         </ul>
@@ -127,7 +128,8 @@ function Setup() {
 }
 
 export default defineWebExtension({
-  slots: { 'statusline.right': [Setup] },
+  // Shown only while something needs setting up, so it stays on a phone's line too.
+  slots: { 'statusline.right': [{ component: Setup, phone: true }] },
   // The agent's note about setup changes; the user sees setup in the status line.
   entries: { 'setup.note': () => null },
 })

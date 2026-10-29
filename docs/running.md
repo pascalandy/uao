@@ -5,19 +5,23 @@
 - Project config belongs in `<project>/.ultimate/`: extensions, agents, skills, and optional `settings.json` (JSON object; `defaultSurface` selects the preferred surface). Discovery is built-in, user `~/.ultimate/`, then project config; later names win. User config is independent of `ULTIMATE_HOME`.
 - Server facets can export `actions`, a map of async `(args, ctx)` functions callable from codemode with `ultimate.action(extension, action, args?)` or from the UI by `POST /api/extensions/:name/actions/:action` with `{ args, conversationId? }`, returning `{ result }`. `ctx` has `host`, optional `conversationId`, `signal`, and `exec(command, args, { cwd?, timeout? })`; exec uses the project cwd, no shell, a 1 MiB output cap and a maximum 30 second timeout.
 - `pnpm dev` runs the core standalone; the `restart` tool requires `pnpm start`.
-- `pnpm cli` / `ultimate --cli [pi args…]` (`bin/cli.ts`) is the emergency terminal agent: Pi's interactive TUI with a recovery prompt, AGENTS.md, Ultimate's skills and the Claude Code provider, and Pi's default model. It opens no server, Vite or storage; sessions go to `<home>/cli-sessions`.
 - Call `restart` after editing `server/` or `shared/`, never for `web/`, `extensions/`, or `agents/`. `POST /api/restart` accepts the same swap; reconnect to events to observe the new generation. The supervisor type-checks and prepares a new child without storage, then waits for the old harness to close before opening the new one and resuming work. Failed checks/preparation keep the old child serving.
 - A crashed child restarts with backoff. After three failed boots the supervisor serves diagnostics and retries on changes in `server/`, `shared/`, or `extensions/`.
+- With Tailscale enabled, the server logs its HTTPS URL as `Ultimate: https://… (remote)` when Tailscale registers it (usually after startup), and logs again when it is no longer served; under the supervisor these are core log lines.
 - Binds only `127.0.0.1`; `--port` or `ULTIMATE_PORT` overrides selection, otherwise the supervisor chooses the first free port from `4747`.
-- `ULTIMATE_HOME` overrides state storage; the default is `~/.ultimate/projects/<basename>-<sha256(projectRoot) first 8 hex>/`. Different projects can run concurrently. Never run two storage owners on the same home.
+- `ULTIMATE_HOME` overrides state storage; the default is `~/.ultimate/projects/<basename>-<sha256(projectRoot) first 8 hex>/`. Different projects can run concurrently, each its own dedicated process, so one Ultimate can manage the others (see [One Ultimate or many](../README.md#one-ultimate-or-many)). Never run two storage owners on the same home.
 - `ULTIMATE_GENERATION` defaults to `1` and labels the process in system info.
 - Pi's models, settings, and auth are shared with `~/.pi/agent`; the `models` extension logs in to providers.
 - `pnpm check` checks format/lint/types; `pnpm test` runs the fast in-process tests with temporary homes (about 60 s today), each scripting its model responses on Pi's faux provider (`prepareHarness({ faux })`, test-only); `pnpm test:e2e` runs `test/e2e`, the tests that spawn real supervisors and instances, on a scripted OpenAI-compatible endpoint (`test/e2e/scripted-model.ts`). Test servers find no Tailscale CLI (`TAILSCALE_COMMAND`), so they stay off the tailnet.
 - UI and behaviour are verified on a preview: `instance start` runs a clean Ultimate with every agent on `instance.model` (default `openai-codex/gpt-6.1-sol`, fast; its own home; provider logins are read from `~/.pi/agent`, never copied). Seed it by prompting it as a user would, then look with screenshot or browser (the `verify-ui` skill has the checklist). It spends tokens; stop it when done.
 - Restart and chapter-switch flows need a supervised scratch server, since a preview runs `server/main.ts` without the
-  supervisor and cannot restart. From the checkout under test:
-  `ULTIMATE_HOME=$(mktemp -d) pnpm start --port 4799 --no-open`. Tailscale follows user settings, so with it on there
-  the scratch server publishes on the tailnet for Daniel to open remotely. Stop it and delete the scratch home when done.
+  supervisor and cannot restart. From the checkout under test, with the host's variables cleared (an agent's shell
+  inherits the live server's `ULTIMATE_*`):
+  `env $(env | grep -o '^ULTIMATE_[A-Z_]*' | sed 's/^/-u /') ULTIMATE_HOME=$(mktemp -d) pnpm start --port 4799 --no-open`.
+  The home must be its own: never the project's default home, which is the live server's. Tailscale follows user
+  settings, so with it on there the scratch server publishes on its own tailnet port (`https://<machine>:4799`,
+  registered under the scratch home) for the user to open remotely, and frees only that port when it stops; the live
+  server's address is untouched. Stop it and delete the scratch home when done.
   A state you cannot reach is reported as unverified, never faked by injecting entries.
 - `tsconfig.swap.json` is the server-only type-check gate for swaps.
 - `tsconfig.json` (server, tests, tooling) references `tsconfig.web.json` (browser: `web/src`, `extensions/**/*.tsx`).

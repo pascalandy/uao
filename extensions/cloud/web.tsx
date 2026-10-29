@@ -229,6 +229,16 @@ function CloudStatus() {
         not backed up
       </span>
     )
+  if (state.status === 'satellite')
+    return (
+      <span
+        className="flex items-center gap-1.5 text-muted-foreground/70"
+        title="This machine is a satellite (cloud.satellite): it never backs up, so it cannot replace another machine's backups"
+      >
+        <CloudIcon className="size-3" />
+        satellite · no backups
+      </span>
+    )
   const uploading = !!state.backup
   const status = uploading
     ? 'backing up…'
@@ -275,6 +285,6 @@ function CloudStatus() {
 export default defineWebExtension({
   slots: { 'statusline.right': [CloudStatus], overlay: [JoinDialog] },
   commands: [
-    { id: 'cloud.join', title: 'Join cloud fleet', run: (context) => context.open(joinDialog) },
+    { id: 'cloud.join', title: 'Join cloud backups', run: (context) => context.open(joinDialog) },
   ],
 })

@@ -1,4 +1,6 @@
+import { mkdtemp, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import { withAbortSignal } from '@earendil-works/chord/context'
 import { afterEach, expect, it, vi } from 'vitest'
 import { context } from '../server/harness.ts'
@@ -14,8 +16,8 @@ const runLanderCheck = (
   path: string,
   command: string,
   ctx: typeof context,
-  limits?: Parameters<typeof run>[4],
-) => run(path, command, ctx, tmpdir(), limits)
+  limits?: Parameters<typeof run>[5],
+) => run(path, command, ctx, tmpdir(), tmpdir(), limits)
 
 afterEach(() => {
   vi.resetAllMocks()
@@ -100,10 +102,20 @@ it('names the tests that failed before the watchdog fired, even when they left t
   expect(failure.match(/FAIL/g)).toHaveLength(1)
 })
 
+it('names the failed tests of a check that exits nonzero', async () => {
+  vi.mocked(runGroup).mockImplementation(async (_program, _args, options) => {
+    options.onOutput(' × test/models.test.ts > falls back on logout 12ms\n' + 'noise\n'.repeat(600))
+    return 1
+  })
+  const failure = (await runLanderCheck('.', 'pnpm test', context)).failure!
+  expect(failure).toMatch(
+    /^exit 1\nFailed tests:\n× test\/models.test.ts > falls back on logout 12ms\nnoise/,
+  )
+})
+
 const settings = (checks: unknown) =>
   landerSettings({
     projectSettings: async () => ({ lander: { checks } }) as never,
-    notice: () => {},
   })
 
 it('reads plain commands and commands with their own timeout from settings', async () => {
@@ -147,4 +159,17 @@ it('keeps successful summaries and clears both timers', async () => {
   })
   expect(await runLanderCheck('.', 'print', context)).toEqual({ summary: 'last' })
   expect(vi.getTimerCount()).toBe(0)
+})
+
+it('gives each check its own TMPDIR in the given directory and removes it afterwards', async () => {
+  const temp = await mkdtemp(join(tmpdir(), 'lander-tmp-'))
+  let seen: string | undefined
+  vi.mocked(runGroup).mockImplementation(async (_program, _args, options) => {
+    seen = options.env?.TMPDIR
+    await writeFile(join(seen!, 'left'), '')
+    return 1
+  })
+  await run('.', 'pnpm test', context, tmpdir(), temp)
+  expect(seen && dirname(seen)).toBe(temp)
+  expect(await readdir(temp)).toEqual([])
 })

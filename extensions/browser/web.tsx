@@ -43,6 +43,7 @@ function Errors({ errors }: { errors: readonly string[] }) {
   return (
     <ToolSection label={`${errors.length} error${errors.length === 1 ? '' : 's'} while loading`}>
       {errors.map((error, index) => (
+        // oxlint-disable-next-line react/no-array-index-key -- Loading errors are log lines and may repeat.
         <div className="break-words text-error" key={index}>
           {error}
         </div>
@@ -125,13 +126,17 @@ function Screenshot({ call }: { call: ToolCallView }) {
 
 type Step = Record<string, unknown>
 function describe(step: Step) {
-  const [action, value] = Object.entries(step)[0] ?? ['?', '']
+  const [action, value] = Object.entries(step).find(
+    ([key]) => key !== 'conversation' && key !== 'timeoutMs',
+  ) ?? ['?', '']
   const shown = Array.isArray(value)
     ? value.map((item) => JSON.stringify(item)).join(' ← ')
     : typeof value === 'string'
       ? value
       : JSON.stringify(value)
-  return { action, shown }
+  // `send` and `until` name the conversation they act on when it is not the page's own.
+  const conversation = typeof step.conversation === 'number' ? ` · #${step.conversation}` : ''
+  return { action, shown: shown + conversation }
 }
 
 function Browser({ call }: { call: ToolCallView }) {
@@ -182,6 +187,7 @@ function Browser({ call }: { call: ToolCallView }) {
               const { action, shown } = describe(step)
               const value = outcome?.startsWith('OK ') ? outcome.slice(3) : undefined
               return (
+                // oxlint-disable-next-line react/no-array-index-key -- Browser steps and outcomes are addressed by position.
                 <div className="flex min-w-0 items-start gap-2 leading-[1.7]" key={index}>
                   <span
                     className={cn(

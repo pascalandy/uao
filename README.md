@@ -2,9 +2,11 @@
 
 > [!NOTE]
 > **A personal project, shared as inspiration.** Ultimate is not a library or a product with users to support. Copy
-> what you like, fork it, do whatever you want with it. I don't review issues or pull requests, and I change things as
-> I go, fundamental ones included, without migration paths or regard for anyone building on top. Whether that works
-> for you is your call. See [CONTRIBUTING.md](CONTRIBUTING.md).
+> what you like, fork it, do whatever you want with it. To make it work your way, ask Ultimate to change itself; it
+> keeps your changes in `.ultimate/` folders that survive updates. I merge only clear-cut fixes to the core; feature
+> pull requests stay open, unmerged, as reference implementations. I change things as I go, fundamental ones
+> included, without migration paths or regard for anyone building on top. Whether that works for you is your call.
+> See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 `uao` stands for the Ultimate Agent Orchestrator.
 
@@ -42,39 +44,71 @@ place.
 
 ## Start
 
+Paste this into Claude Code (or any agent) to get set up:
+
+```text
+Set up Ultimate (https://github.com/HazAT/ultimate) on this machine and get me to my first prompt.
+
+Read these first; they are the source of truth, so follow them and don't invent steps: README.md (sections
+"Start", "Recommended models" and "In your project"), AGENTS.md ("How work is organised"), docs/running.md,
+and extensions/claude-code/README.md.
+
+Then:
+1. Check the prerequisites from README "Start": Node 26, pnpm, and a Chromium for the screenshot tools. Tell me
+   what is missing and how to install it on my system; ask before installing anything system-wide.
+2. Clone the repository unless I'm already in it, run `pnpm install`, then `pnpm link --global` so I get the
+   `ultimate` command; if pnpm's global bin is not on my PATH yet, `pnpm setup` adds it.
+3. Model login, per "Recommended models": for Claude Code, install the CLI and let me run `claude auth login`
+   myself; otherwise I log in from Ultimate's command palette (Ctrl+K, ⌘K on macOS) → "Log in to a provider".
+   Never read, copy or handle my credentials.
+4. Start it: `pnpm start` runs Ultimate on its own repository, `ultimate` inside one of my projects runs it there.
+   Tell me to open the URL it prints (http://127.0.0.1:4747 for the first one), where Get ready asks for a login
+   and a model the first time.
+5. In a few sentences, using AGENTS.md "How work is organised", explain what I'll see: @ultimate in the first
+   sidebar row, the command palette, and branches doing the work. Then suggest a first prompt, such as "Walk me through how you
+   work" or a small real task in my project.
+
+Stop and ask me whenever a step needs my password, a login or a decision.
+```
+
 By default you get Pi's coding agent in a web UI: read, write, edit, bash, codemode, and browser debugging tools,
 with the conversation, model and thinking controls, login, and footer, plus every other built-in building block.
 
-Needs Node 26 and pnpm, and a `pi` login (Ultimate shares `~/.pi/agent`: credentials, models, settings; personal skills and
-instructions go in `~/.ultimate/skills/` and `~/.ultimate/AGENTS.md`). The
+Needs Node 26 and pnpm; you log in to a model provider on first start, not before. Ultimate shares `~/.pi/agent` with
+`pi` (credentials, models, settings); personal skills and instructions go in `~/.ultimate/skills/` and
+`~/.ultimate/AGENTS.md`. The
 screenshot and browser tools need a Chromium: `/usr/bin/chromium`, Google Chrome, Playwright's cached Chromium, or
 `ULTIMATE_CHROMIUM=<path>`.
 
 ```bash
 pnpm install
+pnpm link --global  # once, in this clone, to get the `ultimate` command (`pnpm setup` first if pnpm's global bin is not on PATH)
 pnpm start          # Ultimate on its own repository; opens http://127.0.0.1:4747
-pnpm link --global  # once, in this clone, to get the `ultimate` command
-cd ~/Projects/app && ultimate
-pnpm cli            # emergency terminal agent when the UI, server or database is broken
+cd ~/Projects/app && ultimate  # or Ultimate on one of your projects
 ```
 
-- No `pi` login yet? Open the command palette (`Ctrl+K`, `⌘K` on macOS) → "Log in to a provider". Logins are shared
-  with `pi`, and so is logging out. Log in on each machine; never copy `~/.pi/agent/auth.json` between machines, since
-  a token refresh on one revokes the other's copy.
 - **First start** on a machine shows Get ready: log in to a provider and choose a model. Continue opens @ultimate,
   which offers inline setup cards, reads the project and writes the root's first context.
+- **Logins** happen inside the UI: Get ready, or later the command palette (`Ctrl+K`, `⌘K` on macOS) → "Log in to a
+  provider". Claude Code logs in with its own `claude auth login` (see "Recommended models"). Logins are shared with
+  `pi`, and so is logging out; already logged in to `pi`, you skip this step. Log in on each machine; never copy
+  `~/.pi/agent/auth.json` between machines, since a token refresh on one revokes the other's copy.
 - **A folder with its own `.ultimate/`** asks once: its setup or your global one. Its extensions, agents, and skills
   stay off until you choose it; @ultimate asks with an inline setup card during onboarding.
 - **The Extensions panel** (right panel, or `Ctrl+K` → "Extensions…") lists every extension and turns it on or off
   live, for this project or everywhere, and can change the project choice.
 - On another machine: `ssh -L 4747:127.0.0.1:4747 <host>`, then open `http://127.0.0.1:4747`. Ultimate only listens on
   loopback.
-- **When everything is broken:** `pnpm cli` in the clone (or `ultimate --cli` in a project) opens Pi's terminal agent
-  with Ultimate's instructions, skills, your default model and the Claude Code provider. It starts no server and opens
-  no database; further arguments go to Pi, e.g. `pnpm cli --model claude-code/claude-opus-5-5 "why won't it boot"`.
-- **Several machines, one project:** join the cloud on each (⌘K → **Join cloud fleet**), back the project up from the
-  status line, and `pnpm restore <name>` on the other machine; see
-  [Cloud backups](extensions/cloud/README.md#cloud-backups).
+
+### Recommended models
+
+We recommend running @ultimate on Claude Code Opus 5.5 (`claude-code/claude-opus-5-5`), and ideally the
+coordinators too; the other agents are your choice. Coordinators inherit @ultimate's model unless a definition pins
+one, so choosing Opus 5.5 for @ultimate covers both (this repository's `.ultimate/agents/coordinator.md` overlay pins
+it with high thinking). To set it up, install the CLI (`npm install -g @anthropic-ai/claude-code`), run
+`claude auth login`, then pick the model in the model picker; ⌘K → **Claude Code setup…** shows the login status. The
+[Claude Code provider](extensions/claude-code/README.md) is experimental: it depends on Claude Code's protocol and
+account limits, and subscription coverage is not guaranteed. This is a recommendation only; no default changes.
 
 ### Terminal status
 
@@ -106,6 +140,28 @@ the tools and the conversation work in your project.
 - **Actions** let an extension's UI call its server code: `export const actions = { … }` in `server.ts`, then
   `useAction(ref, args)` in `web.tsx`, with a typed `actionRef` from `@/sdk`. See [extensions/README.md](extensions/README.md).
 
+### One Ultimate or many
+
+Ultimate works both ways. Start it in one project and use it as an individual agent. Or run several: each project
+is its own dedicated Ultimate process, on one machine or across several, and one Ultimate manages the others. It
+reads their conversations, messages their @ultimate and watches their status; for example, a hub project whose
+@ultimate checks the other projects and starts work in them. That is why every project gets its own process and
+state home instead of one server for all of them.
+
+The building blocks that make it possible:
+
+- **Finding each other:** on one machine, every running instance shows up with its URL in `ultimate.projects()`
+  and answers over loopback; no Tailscale needed. Across machines, list each instance in the `remotes` user setting,
+  `{ "<machine>": { "<project>": "<url>" } }` ([Discovery and settings](docs/settings.md)).
+- **Reading:** codemode's `ultimate.conversations`, `entries`, `search`, `trace` and `doc` take `{ project }` and
+  read another running instance read-only ([Codemode](extensions/codemode/README.md#other-projects)).
+- **Messaging:** `ultimate.tell({ project, text })` messages another project's @ultimate, and its answer comes back
+  as a reply ([Messages](extensions/messages/README.md#other-projects-ultimates)).
+- **Watching:** the `status` action reports an instance's health, failures and extensions in one cheap call
+  ([Status](extensions/status/README.md)).
+- **Reaching other machines:** the [Tailscale](extensions/tailscale/README.md) extension serves each instance on
+  your tailnet, to your own login only.
+
 ## Building blocks
 
 Built-ins live in the clone's `extensions/`, and every one is on by default; `tailscale` exposes Ultimate only to your
@@ -128,7 +184,7 @@ stays docked on every surface, and the choice is durable: reloads, other tabs, a
 
 ## What to try
 
-- Start a new project with **Set up with @ultimate** on Start here (or Continue on the first-run Get ready page).
+- Start a new project with **Set up with @ultimate** on the Start here card in @ultimate's conversation (or Continue on the first-run Get ready page).
   Choose setup on the inline cards, steer its reading, then start your first coordinator branch from the project's context.
 - Ask it anything about this repository; watch tool calls, diffs, and thinking stream in.
 - "Build a surface for …" — a whole app with its UI, server actions, and the agent docked beside it; switch to it while

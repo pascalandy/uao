@@ -4,7 +4,7 @@ Encrypted project backups in the user's cloud, inert until configured. A project
 starts it on; the cloud holds its backups and a register of which machine backed up what, and `pnpm restore` installs
 a backup on another machine.
 
-Configure once in **user** settings (`~/.ultimate/settings.json`), or with ⌘K → **Join cloud fleet**:
+Configure once in **user** settings (`~/.ultimate/settings.json`), or with ⌘K → **Join cloud backups**:
 
 ```json
 { "cloud": { "url": "wss://example.com", "machine": "my-machine" } }
@@ -21,9 +21,28 @@ A project is its GitHub repository (`lib/project-identity.ts`): the `origin` rem
 `github.com/<owner>/<repo>`, lowercased. A project without a GitHub origin cannot be backed up; its status line says
 `not backed up`.
 
-`api.ts` exposes optional `CloudApi`: `status()` returns `off`, `local` or `on`, and `backup()` performs the same
-non-forced backup of the active chapter as the user action. Dream uses it for the final backup before falling asleep;
-missing, off or local-only cloud is skipped explicitly. Cloud still ships disabled by default.
+## Satellites
+
+A satellite is another machine that runs a project beside the machine that backs it up (the project's owner), for
+example a laptop doing platform work that it pushes as `satellite/*` branches for the owner to land. Its own history
+must never replace the owner's backups, so on the satellite set, in user settings:
+
+```json
+{ "cloud": { "url": "wss://example.com", "machine": "my-laptop", "satellite": true } }
+```
+
+Its backups then refuse before uploading anything, forced or not, for agents, Dream and the status line alike; the
+status line shows `satellite · no backups` with no backup buttons. The satellite still reads the register, so it
+reaches the owner (answers to its `tell`s included).
+
+A satellite never commits a backup, so the register holds no tailnet address for it. Machines that reach it name its
+address in the general `remotes` user setting ([Discovery and settings](../../docs/settings.md)), which is asked
+before the register.
+
+`api.ts` exposes optional `CloudApi`: `status()` returns `off`, `local`, `satellite` or `on`, and `backup()` performs the same
+non-forced backup of the active chapter as the user action; `lastBackup()` returns the chapter's last backup from
+`cloud-backup.json`, else from the Worker's register. Dream uses them for the final backup before falling asleep and
+the new chapter's first backup after it; missing, off, local-only or satellite cloud is skipped explicitly. Cloud still ships disabled by default.
 
 ## Cloud backups
 
@@ -90,7 +109,7 @@ Only that chapter's old state moves aside, into `~/.ultimate/backups/restore-<ti
 locks still guard the restore. Restoring a later chapter registers it in `chapters.json` if needed and makes it active.
 The first chapter keeps the original key, paths and restore behaviour.
 
-**Join** (⌘K → **Join cloud fleet**, or **Join** on the setup row) asks for the cloud URL, machine name and both
+**Join** (⌘K → **Join cloud backups**, or **Join** on the setup row) asks for the cloud URL, machine name and both
 secrets, checks `GET /sync/register` with the token (401: "The cloud refused the token"; anything else but 200:
 "Cannot reach <host>"), and only then stores the secrets and `cloud.url`/`cloud.machine`. It lists the projects the
 register knows. Backups read the configuration from the next start on.

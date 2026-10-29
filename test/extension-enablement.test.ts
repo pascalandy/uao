@@ -195,6 +195,46 @@ it.concurrent('keeps the replacement provider available while the old cleanup is
   expect(await lookup()).toEqual({ detail: 'replacement' })
 })
 
+it.concurrent('refuses a tool name another extension of the same layer already provides', async () => {
+  const { home, projectRoot, server } = await fixture('{}')
+  const facet = (name: string, version = '') => `
+    import { Type } from '@earendil-works/pi-ai'
+    import { defineExtension, defineTool } from '@earendil-works/pi-durable'
+    export default defineExtension({ name: '${name}', tools: [defineTool({
+      name: 'clash_tool', description: '${name}${version}', parameters: Type.Object({}),
+      execute: async () => ({})
+    })] })`
+  const files: Record<string, string> = {}
+  for (const name of ['aaa-clash', 'bbb-clash']) {
+    const folder = join(projectRoot, '.ultimate/extensions', name)
+    await mkdir(folder, { recursive: true })
+    files[name] = join(folder, 'server.ts')
+    await writeFile(files[name], facet(name))
+  }
+  const info = (name: string) => server.extensions.info().find((e) => e.name === name)
+  const clash = async () =>
+    (await server.root.agent(context)).tools.find((tool) => tool.name === 'clash_tool')?.description
+  await until(() => !!info('bbb-clash')?.server)
+  expect(info('bbb-clash')?.server?.error).toBe(
+    'Error: clash_tool is already provided by aaa-clash',
+  )
+  expect(await clash()).toBe('aaa-clash')
+  // A reload of the holder does not clash with its own name.
+  await writeFile(files['aaa-clash'], facet('aaa-clash', ' v2'))
+  server.vite.watcher.emit('change', files['aaa-clash'])
+  await until(async () => (await clash()) === 'aaa-clash v2')
+  expect(info('aaa-clash')?.server?.error).toBeUndefined()
+  // Once the holder is disabled, the other extension's next reload takes the name.
+  await writeFile(
+    join(home, '.ultimate/settings.json'),
+    JSON.stringify({ extensions: { disable: ['aaa-clash'] } }),
+  )
+  await until(() => info('aaa-clash')?.enabled === false)
+  server.vite.watcher.emit('change', files['bbb-clash'])
+  await until(async () => (await clash()) === 'bbb-clash')
+  expect(info('bbb-clash')?.server?.error).toBeUndefined()
+})
+
 const tools = async (server: Awaited<ReturnType<typeof fauxServer>>) =>
   (await server.root.agent(context)).tools.map((tool) => tool.name).toSorted()
 const web = async (server: Awaited<ReturnType<typeof fauxServer>>) =>
@@ -212,7 +252,7 @@ it.concurrent('layers settings live, installs and uninstalls tools and web facet
   await writeFile(settings, JSON.stringify({ extensions: { disable: ['automations'] } }))
   await until(async () => !(await tools(server)).includes('automation'))
   await until(async () => !(await web(server)).some((path) => path.includes('/automations/')))
-  expect(server.host.build().id).not.toBe(initialBuild)
+  await until(() => server.host.build().id !== initialBuild)
   expect(server.host.build().extensions.automations).toBeUndefined()
   expect(server.extensions.info().find((entry) => entry.name === 'prompt')?.server?.loadedAt).toBe(
     promptLoaded,
@@ -220,7 +260,7 @@ it.concurrent('layers settings live, installs and uninstalls tools and web facet
   await rm(settings)
   await until(async () => (await tools(server)).includes('automation'))
   await until(async () => (await web(server)).some((path) => path.includes('/automations/')))
-  expect(server.host.build().id).toBe(initialBuild)
+  await until(() => server.host.build().id === initialBuild)
   const folder = join(config, 'extensions/local')
   await mkdir(folder, { recursive: true })
   await writeFile(
@@ -361,10 +401,12 @@ it.concurrent('enables every built-in by default except the default-off ones', a
   const home = await temp()
   homes.push(home)
   const root = await sourceCopy(home)
-  const discovered = await discoverExtensions(root, root, home)
+  const projectRoot = join(home, 'project')
+  await mkdir(projectRoot)
+  const discovered = await discoverExtensions(root, projectRoot, home)
   const server = await fauxServer({
     ultimateRoot: root,
-    projectRoot: root,
+    projectRoot,
     userHome: home,
     home: join(home, 'state'),
   })
@@ -394,14 +436,33 @@ it.concurrent('turns a default-off built-in on from user or project settings', a
   )
   await writeFile(
     join(projectRoot, '.ultimate/settings.json'),
-    JSON.stringify({ extensions: { enable: ['update'] } }),
+    JSON.stringify({ extensions: { enable: ['health'] } }),
   )
   new ProjectTrustStore(join(home, '.ultimate')).set(projectRoot, true)
   const discovered = await discoverExtensions(resolve('.'), projectRoot, home)
   const enabled = (name: string) => discovered.find((entry) => entry.name === name)?.enabled
   expect(enabled('sounds')).toBe(true)
-  expect(enabled('update')).toBe(true)
+  expect(enabled('health')).toBe(true)
   expect(enabled('cloud')).toBe(false)
   expect(discovered.settings.layers.get('sounds')).toBe('user')
-  expect(discovered.settings.layers.get('update')).toBe('project')
+  expect(discovered.settings.layers.get('health')).toBe('project')
+})
+
+it.concurrent('turns the updater on by default, and keeps it off for a user who disabled it', async () => {
+  const home = await temp()
+  homes.push(home)
+  const projectRoot = join(home, 'project')
+  await mkdir(projectRoot)
+  const enabled = async () =>
+    (await discoverExtensions(resolve('.'), projectRoot, home)).find(
+      (entry) => entry.name === 'update',
+    )?.enabled
+  expect(defaultOff).not.toContain('update')
+  expect(await enabled()).toBe(true)
+  await mkdir(join(home, '.ultimate'), { recursive: true })
+  await writeFile(
+    join(home, '.ultimate/settings.json'),
+    JSON.stringify({ extensions: { disable: ['update'] } }),
+  )
+  expect(await enabled()).toBe(false)
 })

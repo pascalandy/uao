@@ -4,7 +4,7 @@ import { cloudConfig } from '../lib/cloud.ts'
 import { projectIdentity } from '../lib/project-identity.ts'
 import { backUp } from '../extensions/cloud/backup.ts'
 import { CloudApi } from '../extensions/cloud/api.ts'
-import cloud, { userActions } from '../extensions/cloud/server.ts'
+import cloud, { backup, userActions } from '../extensions/cloud/server.ts'
 import { apis } from './helpers.ts'
 
 vi.mock('../lib/cloud.ts', async (original) => ({
@@ -47,6 +47,7 @@ it('publishes optional status and non-forced backup services for the active chap
     url: 'https://cloud',
     token: 'token',
     machine: 'here',
+    satellite: false,
   })
   vi.mocked(projectIdentity).mockResolvedValue(undefined)
   expect(await service.status()).toBe('local')
@@ -71,4 +72,40 @@ it('publishes optional status and non-forced backup services for the active chap
   } finally {
     vi.unstubAllEnvs()
   }
+
+  // A restart between the Worker registering a backup and this home recording it: the register still names it, so a
+  // chapter's first backup is not taken twice.
+  const register = vi.fn<typeof fetch>(async () =>
+    Response.json({
+      projects: [
+        {
+          hash: 'h',
+          key: 'github.com/user/project@fresh-roots',
+          name: 'project',
+          latest: { ...done, parent: null },
+        },
+      ],
+      machines: [],
+    }),
+  )
+  vi.stubGlobal('fetch', register)
+  try {
+    expect(await service.lastBackup()).toEqual(done)
+    expect((register.mock.calls[0][0] as URL).href).toBe('https://cloud/sync/register')
+  } finally {
+    vi.unstubAllGlobals()
+  }
+
+  // A satellite never uploads, forced or not, so it cannot replace the owning machine's backups.
+  vi.mocked(backUp).mockClear()
+  vi.mocked(cloudConfig).mockResolvedValue({
+    url: 'https://cloud',
+    token: 'token',
+    machine: 'here',
+    satellite: true,
+  })
+  expect(await service.status()).toBe('satellite')
+  await expect(service.backup()).rejects.toThrow('This machine is a satellite')
+  await expect(backup(host, true)).rejects.toThrow('This machine is a satellite')
+  expect(backUp).not.toHaveBeenCalled()
 })

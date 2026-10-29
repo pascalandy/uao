@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { fauxProvider, fauxAssistantMessage, fauxText } from '@earendil-works/pi-ai/providers/faux'
 import { configure, ROOT_CONVERSATION_ID } from '@earendil-works/pi-durable'
-import type { Tx } from '@earendil-works/pi-durable'
+import type { ConversationId, Tx } from '@earendil-works/pi-durable'
 import type { JsonValue } from '@earendil-works/chord'
 import { afterEach, expect, it, vi } from 'vitest'
 import { context, prepareHarness } from '../server/harness.ts'
@@ -10,13 +10,14 @@ import type { ExtensionHost } from '../server/extensions.ts'
 import type { ActionContext } from '../server/actions.ts'
 import { callTrace } from '../server/trace.ts'
 import { Metadata } from '../server/metadata.ts'
-import { defineEvent } from '../shared/events.ts'
+import { defineEvent, UserInputEvent } from '../shared/events.ts'
 import { ContextUsageDoc } from '../extensions/conversations/api.ts'
 import { Standing } from '../extensions/subagents/api.ts'
 import type { SubagentsService } from '../extensions/subagents/api.ts'
 import { createChild } from '../extensions/subagents/children.ts'
 import automations, { actions, Automations } from '../extensions/automations/server.ts'
 import type { Automation } from '../extensions/automations/types.ts'
+import { IDLE_TICK } from '../extensions/automations/triggers.ts'
 import { temp, eventHost, until, apis } from './helpers.ts'
 
 const closes: (() => Promise<void>)[] = []
@@ -74,7 +75,12 @@ async function fixture() {
     },
   }
   host.provided.set('subagents', {
-    standing: async (name: string) => (name === 'ultimate' ? target : undefined),
+    // As the real one: the standing agent's conversation of the moment, the fixture's target before one is recorded.
+    standing: async (name: string) =>
+      name === 'ultimate'
+        ? ((await opened.harness.snapshot(Standing, ROOT_CONVERSATION_ID, context))?.ultimate ??
+          target)
+        : undefined,
     createChild: (tx: Tx, options: Parameters<SubagentsService['createChild']>[1]) =>
       createChild(host, tx, options),
   })
@@ -192,6 +198,48 @@ it("matches @ultimate's compaction by its conversation when the event comes, acr
   await f.emit('conversations.compacted', { conversation: f.target + 100, entry: 5 })
   await f.settle()
   expect((await f.record(a.id)).fires).toBe(2)
+})
+
+it('wakes an @name subscriber in the conversation the agent has when it fires, across a chapter change', async () => {
+  const f = await fixture()
+  const wake = async (id: ConversationId) =>
+    (await (await f.harness.conversation(id, context))!.context(context)).entries.filter(
+      (e) => e.kind === 'automations.fired',
+    ).length
+  const next = await f.harness.commit(async (tx) => {
+    const child = await tx.createConversation({ ownership: { kind: 'ownerless' } })
+    await configure(tx, child.id, {})
+    ;(await tx.doc(Standing, ROOT_CONVERSATION_ID)).ultimate = f.target
+    return child.id
+  }, context)
+  const a = (await f.action('create', {
+    name: 'Remind',
+    schedule: 'every 1d',
+    subscribers: ['@ultimate'],
+  })) as Automation
+  expect(a.subscribers).toEqual(['@ultimate'])
+  await f.action('run', { id: a.id })
+  await until(async () => (await wake(f.target)) === 1)
+  // A new chapter gives @ultimate a new conversation: the next fire goes there.
+  await f.harness.commit(async (tx) => {
+    ;(await tx.doc(Standing, ROOT_CONVERSATION_ID)).ultimate = next
+  }, context)
+  await f.action('run', { id: a.id })
+  await until(async () => (await wake(next)) === 1)
+  expect(await wake(f.target)).toBe(1)
+  // An automation that would reach nobody is refused.
+  await expect(f.action('unsubscribe', { id: a.id, to: '@ultimate' })).rejects.toThrow(
+    'At least one of prompt or subscribers',
+  )
+})
+
+it('returns the automation a key made instead of a second one, as a create that lost its receipt retries', async () => {
+  const f = await fixture()
+  const args = { name: 'Once', schedule: 'every 1d', key: 'caller:1' }
+  const first = (await f.action('create', args)) as Automation
+  const again = (await f.action('create', { ...args, name: 'Renamed' })) as Automation
+  expect(again).toMatchObject({ id: first.id, name: 'Once', key: 'caller:1' })
+  expect(Object.keys(await f.records())).toEqual([first.id])
 })
 
 it('skips events from its own prompt runs, by trace or by the conversation they name, however old', async () => {
@@ -333,6 +381,77 @@ it('uses context hysteresis and cooldown and catches a missed crossing on open o
   expect((await f.record(a.id)).fires).toBe(3)
 })
 
+it('fires an idle condition only after the pause, at the threshold, and re-arms below the line', async () => {
+  // The minute look is an interval: faked, so a tick runs when the test says.
+  vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+  const f = await fixture()
+  await f.harness.commit(async (tx) => {
+    ;(await tx.doc(Standing, ROOT_CONVERSATION_ID)).ultimate = f.target
+  }, context)
+  const HOUR = 3600_000
+  const a = (await f.action('create', {
+    name: 'Pause',
+    condition: { metric: 'context', of: '@ultimate', above: 50, idleFor: 8 * HOUR, cooldownMs: 0 },
+  })) as Automation
+  const plain = (await f.action('create', {
+    name: 'Plain',
+    condition: { metric: 'context', of: '@ultimate', above: 90 },
+  })) as Automation
+  const input = () =>
+    f.harness.commit(
+      (tx) =>
+        f.host.emit(tx, UserInputEvent, { conversation: f.target, kind: 'prompt', length: 1 }),
+      context,
+    )
+  const tick = async () => {
+    // The minute look reads only the idle condition: it measures it again, and leaves the plain one as it was.
+    await f.harness.commit(async (tx) => {
+      const ledger = (await tx.doc(Automations)).automations
+      delete ledger[a.id].condition!.value
+      delete ledger[plain.id].condition!.value
+    }, context)
+    vi.advanceTimersByTime(IDLE_TICK)
+    await until(async () => (await f.record(a.id)).condition?.value !== undefined)
+    expect((await f.record(plain.id)).condition?.value).toBeUndefined()
+  }
+  // Above the threshold right away: no pause yet.
+  await f.usage(60)
+  await until(async () => (await f.record(a.id)).condition?.value === 60)
+  expect((await f.record(a.id)).fires).toBe(0)
+  // The user writes at 7 h; at 14 h (7 h after it) it is still silent, then time alone crosses 8 h.
+  vi.setSystemTime(Date.now() + 7 * HOUR)
+  await input()
+  await f.settle()
+  expect((await f.record(a.id)).condition?.inputAt).toBe(Date.now())
+  vi.setSystemTime(Date.now() + 7 * HOUR)
+  await tick()
+  expect((await f.record(a.id)).fires).toBe(0)
+  vi.setSystemTime(Date.now() + HOUR + 1)
+  await tick()
+  expect((await f.record(a.id)).fires).toBe(1)
+  expect((await f.record(a.id)).condition?.armed).toBe(false)
+  // Disarmed: further pauses and ticks above the line do not fire again; dropping to 45% does not re-arm.
+  vi.setSystemTime(Date.now() + 9 * HOUR)
+  await f.usage(45)
+  await until(async () => (await f.record(a.id)).condition?.value === 45)
+  await tick()
+  expect((await f.record(a.id)).condition?.armed).toBe(false)
+  // Below 40% re-arms; past the pause but under the threshold stays silent.
+  await f.usage(39)
+  await until(async () => (await f.record(a.id)).condition?.armed === true)
+  await tick()
+  expect((await f.record(a.id)).fires).toBe(1)
+  // Back over 50% after the pause: the second fire.
+  await f.usage(51)
+  await until(async () => (await f.record(a.id)).fires === 2)
+  // Retargeted: the old target's input no longer counts; the pause starts afresh from the update.
+  await f.action('update', {
+    id: a.id,
+    condition: { metric: 'context', of: `#${f.target}`, above: 50, idleFor: 8 * HOUR },
+  })
+  expect((await f.record(a.id)).condition?.inputAt).toBe(Date.now())
+})
+
 it('sees a re-arm and the crossing after it even when both commit before evaluation', async () => {
   const f = await fixture()
   const a = (await f.action('create', {
@@ -421,12 +540,27 @@ it('lists ten event definitions and validates trigger inputs and kind changes', 
     name: 'Event',
     event: { name: 'health.changed' },
   })) as Automation
-  await expect(
-    f.action('update', { id: a.id, condition: { metric: 'context', of: '@ultimate', above: 80 } }),
-  ).rejects.toThrow('Cannot change trigger kind')
   await f.action('update', {
     id: a.id,
     event: { name: 'health.changed', where: { provider: 'openai' } },
   })
   expect((await f.record(a.id)).event?.where).toEqual({ provider: 'openai' })
+  // An event may become a condition (one trigger at a time), never a script.
+  await expect(
+    f.action('update', {
+      id: a.id,
+      event: { name: 'health.changed' },
+      condition: { metric: 'context', of: '@ultimate', above: 80 },
+    }),
+  ).rejects.toThrow('Cannot change trigger kind')
+  await expect(f.action('update', { id: a.id, ask: 'Watch something' })).rejects.toThrow(
+    'Cannot change trigger kind',
+  )
+  await f.action('update', {
+    id: a.id,
+    condition: { metric: 'context', of: '@ultimate', above: 80 },
+  })
+  const changed = await f.record(a.id)
+  expect(changed.event).toBeUndefined()
+  expect(changed.condition).toMatchObject({ of: '@ultimate', above: 80, armed: true })
 })

@@ -46,10 +46,14 @@ export function FirstRun({
   const models = useModels()
   const { agent } = useConversation()
   const commands = useCommands()
+  const ui = useUltimate()
   const model = models?.models.find(
     (m) => m.provider === agent.model?.provider && m.id === agent.model?.modelId,
   )
   const connected = models?.providers.some((p) => p.status.configured)
+  const opus = models?.models.find(
+    (m) => m.provider === 'claude-code' && m.id === 'claude-opus-5-5',
+  )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
   const primary = useRef<HTMLButtonElement>(null)
@@ -135,6 +139,28 @@ export function FirstRun({
               <span className="mt-1 block truncate font-mono text-xs text-muted-foreground">
                 {model?.id ?? 'No model chosen yet'}
               </span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                {model && model.contextWindow < 1_000_000
+                  ? `${Math.round(model.contextWindow / 1000)}k context. @ultimate works best with 1M+.`
+                  : '1M+ context recommended for @ultimate.'}
+              </span>
+              {(model?.provider !== 'claude-code' || model.id !== 'claude-opus-5-5') && (
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Recommended: Claude Code Opus 5.5 for @ultimate.
+                  {!opus?.available && commands.some((c) => c.id === 'claude-code.panel') && (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        className="underline underline-offset-2 hover:text-foreground"
+                        onClick={() => ui.runCommand('claude-code.panel')}
+                      >
+                        Set up Claude Code
+                      </button>
+                    </>
+                  )}
+                </span>
+              )}
             </span>
             {action('model.pick', model?.available ? 'Change' : 'Choose')}
           </li>

@@ -62,11 +62,11 @@ export const defaultOff: readonly string[] = [
   'cloud',
   'parallel',
   'tailscale',
-  'update',
   'health',
   'classify',
   'phase',
   'sounds',
+  'voice-live',
 ]
 
 /** Who provides and who consumes each API, as `host.catalogue()` reports it. */

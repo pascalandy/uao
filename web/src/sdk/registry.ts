@@ -3,9 +3,11 @@ import type { ConversationSummary } from '../../../shared/protocol.ts'
 import { events } from './events.ts'
 import { errorMessage } from './format.ts'
 import type {
+  CodeBlockRenderer,
   CompactCallTest,
   CompactDocs,
   CompactQuietTest,
+  CompactRow,
   CompactSummaryProps,
   CommandContribution,
   ComposerRenderer,
@@ -42,6 +44,7 @@ export interface SlotItem {
   extension: string
   version: number
   component: ComponentType
+  phone: boolean
 }
 export interface PanelItem extends PanelContribution {
   extension: string
@@ -89,13 +92,14 @@ const objectOf =
   (value) =>
     isObject(value) && !Array.isArray(value) && Object.values(value).every(item)
 const isContribution: Check = (value) =>
-  isFunction(value) || fields({ component: isComponent, order: optional(isNumber) })(value)
+  isFunction(value) ||
+  fields({ component: isComponent, order: optional(isNumber), phone: optional(isBoolean) })(value)
 
 /** What each contribution must look like; a facet that does not match keeps its previous version installed. */
 const shapes: Record<keyof WebExtension, [Check, string]> = {
   slots: [
     objectOf((value) => isContribution(value) || arrayOf(isContribution)(value)),
-    'an object of slot name → a component, { component, order? }, or an array of them',
+    'an object of slot name → a component, { component, order?, phone? }, or an array of them',
   ],
   panels: [
     arrayOf(
@@ -129,9 +133,11 @@ const shapes: Record<keyof WebExtension, [Check, string]> = {
   inbox: [isComponent, 'an inbox renderer component'],
   composer: [isComponent, 'a composer renderer component'],
   link: [isComponent, 'a link renderer component'],
+  codeBlocks: [objectOf(isComponent), 'an object of code block language → component'],
   messageActions: [arrayOf(isComponent), 'an array of message action components'],
   messageDetails: [arrayOf(isComponent), 'an array of message detail components'],
   answerLabels: [arrayOf(isComponent), 'an array of answer label components'],
+  userBubble: [arrayOf(isComponent), 'an array of user bubble components'],
   compact: [
     fields({
       when: isFunction,
@@ -139,8 +145,9 @@ const shapes: Record<keyof WebExtension, [Check, string]> = {
       docs: optional(arrayOf(isString)),
       quiet: optional(isFunction),
       summary: optional(isComponent),
+      thread: optional(isFunction),
     }),
-    'a { when, tools?, docs?, quiet?, summary? } object',
+    'a { when, tools?, docs?, quiet?, summary?, thread? } object',
   ],
   intro: [
     fields({
@@ -323,7 +330,9 @@ function normalize(value: Contribution | readonly Contribution[] | undefined) {
   if (!value) return []
   const list: readonly Contribution[] = Array.isArray(value) ? value : [value as Contribution]
   return list.map((item) =>
-    typeof item === 'function' ? { component: item, order: 0 } : { order: 0, ...item },
+    typeof item === 'function'
+      ? { component: item, order: 0, phone: false }
+      : { order: 0, phone: false, ...item },
   )
 }
 
@@ -337,21 +346,25 @@ export function slotItems(records: readonly ExtensionRecord[], slot: SlotName): 
         version,
         component: item.component,
         order: item.order ?? 0,
+        phone: item.phone ?? false,
       })),
     )
     .toSorted((a, b) => a.order - b.order)
     .map(({ order: _order, ...item }) => item)
 }
 
+/** Every facet that provides `point`, in discovery order: for points that combine their providers' values. */
+export function provisionsOf(records: readonly ExtensionRecord[], point: string) {
+  return records.flatMap(({ name, extension, version }) =>
+    (extension?.provides ?? [])
+      .filter((provision) => provision.point === point)
+      .map((provision) => ({ extension: name, version, use: provision.use })),
+  )
+}
+
 /** The facet that provides `point`: the last in discovery order. */
 export function provisionOf(records: readonly ExtensionRecord[], point: string) {
-  return records
-    .flatMap(({ name, extension, version }) =>
-      (extension?.provides ?? [])
-        .filter((provision) => provision.point === point)
-        .map((provision) => ({ extension: name, version, use: provision.use })),
-    )
-    .at(-1)
+  return provisionsOf(records, point).at(-1)
 }
 
 export function panelItems(records: readonly ExtensionRecord[]): PanelItem[] {
@@ -540,10 +553,26 @@ export function linkRenderers(
   })
 }
 
+/** Every code block renderer of `language` in discovery order: each receives the previous rendering as `core`. */
+export function codeBlockRenderers(
+  records: readonly ExtensionRecord[],
+  language: string,
+): { extension: string; version: number; component: CodeBlockRenderer }[] {
+  return records.flatMap((record) => {
+    const component = record.extension?.codeBlocks?.[language]
+    return component ? [{ extension: record.name, version: record.version, component }] : []
+  })
+}
+
+/** The languages some extension renders code blocks of. */
+export function codeBlockLanguages(records: readonly ExtensionRecord[]): string[] {
+  return [...new Set(records.flatMap((record) => Object.keys(record.extension?.codeBlocks ?? {})))]
+}
+
 /** Message contributions, preserving discovery order and each facet's array order. */
 export function messageItems(
   records: readonly ExtensionRecord[],
-  contribution: 'messageActions' | 'messageDetails' | 'answerLabels',
+  contribution: 'messageActions' | 'messageDetails' | 'answerLabels' | 'userBubble',
 ) {
   return records.flatMap(({ name, extension, version }) =>
     (extension?.[contribution] ?? []).map((component, index) => ({
@@ -573,6 +602,7 @@ export function compactTools(
   | {
       keeps: CompactCallTest
       quiet: CompactQuietTest
+      thread?: (row: CompactRow, docs: CompactDocs) => boolean
       summary?: {
         extension: string
         version: number
@@ -622,6 +652,18 @@ export function compactTools(
       })
       return verdicts.includes(true) || (verdicts.includes('hidden') ? 'hidden' : false)
     },
+    thread: matching.some(({ compact }) => compact.thread)
+      ? (row, docs) =>
+          matching.some(({ name, compact }) => {
+            try {
+              return compact.thread?.(row, docs) ?? false
+            } catch (error) {
+              report(name, error)
+              // A broken test keeps the row readable.
+              return true
+            }
+          })
+      : undefined,
     summary: matching.flatMap(({ name, version, compact }) =>
       compact.summary ? [{ extension: name, version, component: compact.summary }] : [],
     )[0],

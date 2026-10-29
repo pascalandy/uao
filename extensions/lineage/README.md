@@ -3,8 +3,10 @@ A project is a forest of conversation trees. Each root keeps a non-agent tally o
 The UI calls a root's tally its **context** ("what every new branch starts from"); "tally" stays the internal name of the
 document, tools and model-facing text, where agents and stored entries already use it.
 
-- **Branch** (action `branch`
-  `{ from, at?, prompt, title?, images?, isolated?, model?, thinkingLevel? }` → `{ id }`). It forks the source at `at` (default: its latest entry) as an
+- **Branch** (`LineageApi.branch`
+  `{ from, at?, prompt, title?, images?, isolated?, model?, thinkingLevel?, deliver?, by?, receipt? }` → `{ id }`; there
+  is no action: agents start branches with the messages extension's `branch` tool, whose reply-enabled first message
+  returns the branch's answer). It forks the source at `at` (default: its latest entry) as an
   ownerless conversation in the project root, optionally isolated in its own worktree. It inherits the source context
   (or, from a root with memories, starts at a memory brief: see Project memory), then the durable `lineage.prompt` task submits the prompt and images as its first
   input. Doc `lineage.branch` holds `{ from, at, intent }`; `inputAt` is when the branch was asked for, not inherited
@@ -39,14 +41,14 @@ document, tools and model-facing text, where agents and stored entries already u
   landings recorded `base` uses the landing before it, which is where the lander's serial queue left the target.
   Catch-up notes and abstracts are left out. The sidebar's Landed section, under the lander, shows the landings.
   Workspaces' `github` action gives the root page's landing cards the same range.
-  `compact` `{ id, instructions? }` → `{ taskId }` compacts a root's tally (see Compaction), for the history footer's
-  Compact and the palette's Compact command on a root.
+  `compact` `{ id, instructions? }` → `{ taskId }` compacts a root's tally (see Compaction), for the palette's Compact
+  command on a root.
 - **Tally**: conversation-scoped doc `lineage.tally` (latest history) holds
   `{ abstracts: Record<string, { anchor, at, text, title?, feature? }>, tokens: number, briefTokens?: number, since?: number }`:
   each conversation's open abstract, estimated model-visible context tokens, estimated tokens of the memory brief
   (absent without memories), and the entry where the root became a tally. Forks start with an empty doc,
   not the source's bookkeeping. Both counts are recounted after commits that append root entries (including resets and
-  compaction) or change its memory. The root footer and sidebar row show what a new branch starts from: "Memory · …
+  compaction) or change its memory. The sidebar's Memory row shows what a new branch starts from: "Memory · …
   tokens", the brief, or "Context · … tokens", the whole tally, while the root has no memories.
   `lineage.abstract` entries hold `{ conversation, at, text, title?, feature?, anchor? }`, with `at` pointing to the
   answer summarized. An abstract is liquid until its conversation lands, like an uncommitted working tree: the first
@@ -63,14 +65,8 @@ document, tools and model-facing text, where agents and stored entries already u
   `'root'` needs `source.from` and errors if it has no root. Successful landings leave a note in the submitter's root
   (unless it is that root or has none): the reactor `lineage/landing-notes` handles each `workspaces.landed` event
   once, placing the note in a tally inside its own transaction, or, for a root that is no tally yet, creating a
-  `lineage.landing-note` task in it that delivers the note as a write (request id `lander-root:<submission>`). A second
-  reactor, `lineage/conclude-landed`, starts a background `lineage.conclude-landed` task in a top-level submitter: it
-  waits for the lander's report (`lander:<submission>`) to be answered and the submitter and its subagents to go idle,
-  then concludes it through `ConversationsApi.concludeIn`, unless it is running or has queued input, has a reply-enabled
-  message still open, or a subagent still runs. That check, the conclusion and the task's next phase commit in one
-  transaction, so a replay never concludes twice; freeing the worktree follows as its own phase. A report that ends
-  unanswered (a provider error, a Stop, a reset) or a lander that goes idle without sending it (aborted) ends the task
-  and leaves the branch open, for watchdog's idle-branches note. Any later input resumes the branch. The
+  `lineage.landing-note` task in it that delivers the note as a write (request id `lander-root:<submission>`).
+  Concluding the landed branch and waking its starter is the lander's report (`extensions/workspaces/README.md`). The
   note has `source: 'lander'`, `sha`, `base`, `target`, `commits`, `paths`, `divergence` and
   `at`. Text includes the submitter's `#N/at` breadcrumb and `Diverged: …`, including "None"; the landing card shows
   divergence too (up to 10 commits and 8 changed paths). A landing is the commit of a liquid abstract: in a tally, a
@@ -94,11 +90,13 @@ document, tools and model-facing text, where agents and stored entries already u
   with `tool_search`. Tool `memory {read?, root?}`, offered to every agent, returns the index, one
   `slug [kind] — line (updated YYYY-MM-DD)` per memory, or with `read` one memory's body and source. User-only
   `forget {root, slug}` (`ForgetAction`) deletes one through the same path, as does `LineageApi.remember` for other
-  extensions. The root's context footer folds them to `Memory · N` (open state in UI state `ext.lineage.memoryOpen`),
-  newest first: kind, slug, line and age per row; a row expands to its Markdown body and source chip, and a trash icon
-  (always visible on touch) calls `forget`. The **Memory** panel (`MEMORY_PANEL` in `ui.tsx`, which the sidebar's
-  Memory row opens) shows every root's memory with the same rows, grouped into Decisions, Facts and Lessons (the brief's
-  size is on the sidebar row); `ui.tsx` also re-exports `MemoryDoc` for the sidebar's counts.
+  extensions. The **Memory** surface (`MEMORY_SURFACE` in `ui.tsx`, the sidebar beside a centred reading column;
+  the sidebar's Memory row opens it) shows every root's memory grouped into Decisions, Facts and Lessons, newest
+  first, under the `MemoryHeader` point (dream's Dream button), the count and brief size, and a filter over slug, line
+  and body: slug, line (two lines folded) and age per row; a row expands to its Markdown body and source chip, and a
+  trash icon (always visible on touch) calls `forget`. `useOpenMemory(slug?)` and `MemoryChip` (recall and remember
+  chips) open the surface on a memory, unfolded and scrolled into view (`MEMORY_FOCUS`); `ui.tsx` also re-exports
+  `MemoryDoc` for the sidebar's counts.
   **Brief**: a branch forked from a root that has memories does not start from the tally. Its fork gets a
   `pi.reset` (`head: 'self'`, `data.lineage.brief: {tally}`, the root tip it covers) right after the fork point,
   before its prompt, whose model text is `<project_memory root="#R">` with the index, the root's last 10 landings (`<sha7> <feature: title> (#conv)`) and
@@ -204,18 +202,15 @@ The user talks to @ultimate in its own conversation, opened by the first sidebar
 A branch is the conversation; the coordinator is the agent that runs it, so the header and System lanes label it `branch · coordinator`.
 There is no manual creation page or message-hover branch action. Coordinator branches keep their composers for steering.
 
-An empty root shows what the `EmptyRoot` point (`ui.tsx`) provides: onboarding's **Start here** card
-(`onboarding/survey.tsx`), an optional focus and **Set up with @ultimate**.
-This calls user action `onboarding.start` with that root and the focus verbatim as instructions, then opens @ultimate.
-Once started, it shows only a quiet **@ultimate is setting up this project · open** link from `onboarding.starts`.
-@ultimate reads the project and writes its first memories with `remember` before starting work.
-
-Listed roots with a tally or existing history replace their composer through the SDK's `composer` renderer with a
-read-only footer: **Memory** with the brief's estimated tokens, "What every new branch starts from. The context
-above is the browsable history; @ultimate maintains both.", the memory fold, and **Talk to @ultimate**. A root
-without memories shows **Context** with the tally's tokens instead, since its branches start from the tally. There is no text input. @ultimate maintains standing decisions in memory with
-`remember` and the memory review; on a root the palette's Compact runs lineage `compact` and its composer-focus
-command is hidden. A root's transcript shows no summary or assessment lines.
+A root is the project's read-only History page. Through the SDK's `composer` renderer, every listed root replaces
+its composer with one banner, "You're reading the project's history", with **Open in Zed** (lineage `openEditor`, user-only: the
+project folder in `zeditor` or `zed` on the machine Ultimate runs on; hidden on touch devices) and a small GitHub link
+when `origin` is there, and **Back to @ultimate** (`talkToUltimate`, like mod+0). The sidebar's project
+path opens it. There is no text input, memory list or compact button on the page: memory lives in the sidebar's Memory
+row and the Memory surface, and the palette's Compact on a root runs lineage `compact` while its composer-focus command
+is hidden. A new project starts in @ultimate's conversation instead, from onboarding's Start here card.
+@ultimate maintains standing decisions in memory with `remember` and the memory review. A root's transcript shows no
+summary or assessment lines.
 
 Old stored notes and survey inputs still render quietly, without creation controls. Old brief resets still render;
 a genesis reset shows a collapsible **Context starts here** card.

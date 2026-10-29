@@ -22,6 +22,7 @@ import {
   useExtensions,
   useIntro,
   useModels,
+  useStore,
 } from '../sdk/hooks.ts'
 import { isMac } from '../sdk/keys.ts'
 import { touchKeyboard } from '../sdk/viewport.ts'
@@ -29,12 +30,14 @@ import type { ModelsResponse } from '../../../shared/protocol.ts'
 import { ExtensionBoundary, Slot } from './boundary.tsx'
 import { composerRenderers, inboxRenderer } from '../sdk/registry.ts'
 import { column } from './layout.ts'
+import { storeImages, storedImages } from './draft-images.ts'
 import {
   atFirstLine,
   mergedSteer,
   previewParts,
   recallQueued,
   recalledText,
+  spliced,
   withdrawQueuedSteer,
 } from './queued.ts'
 
@@ -151,6 +154,9 @@ export function ComposerRedirect({ to, children }: { to?: ComposerTarget; childr
 
 export function Composer({ dock }: { dock?: boolean }) {
   const { id, entries } = useConversation()
+  // Keyed by the conversation it is for, also while that one loads: one mount per switch, not one for the loading state.
+  const scoped = useContext(ConversationIdContext)
+  const requested = useStore((state) => state.requested)
   const renderers = composerRenderers(useExtensions())
   const core = renderers.reduce<ReactNode>(
     (previous, renderer) => {
@@ -166,7 +172,7 @@ export function Composer({ dock }: { dock?: boolean }) {
         </ExtensionBoundary>
       )
     },
-    <ConversationComposer dock={dock} key={id} />,
+    <ConversationComposer dock={dock} key={id ?? scoped ?? requested} />,
   )
   return <TranscriptContext value={entries}>{core}</TranscriptContext>
 }
@@ -185,7 +191,7 @@ function createDraft(id: number | string | undefined) {
   const key = id === undefined ? undefined : `ultimate.draft.${id}`
   let value: Draft = {
     text: key ? (localStorage.getItem(key) ?? '') : '',
-    images: [],
+    images: key ? storedImages(key) : [],
     sending: false,
     revision: 0,
   }
@@ -200,7 +206,9 @@ function createDraft(id: number | string | undefined) {
       }
     },
     set: (change: Partial<Draft>) => {
+      const images = value.images
       value = { ...value, ...change }
+      if (key && value.images !== images) storeImages(key, value.images)
       for (const listener of listeners) listener()
     },
   }
@@ -216,6 +224,23 @@ export function fillComposer(id: number, text: string) {
   const draft = getDraft(id)
   draft.set({ text, revision: draft.get().revision + 1 })
   if (draft.key) localStorage.setItem(draft.key, text)
+}
+
+/**
+ * Insert `text` into conversation `id`'s draft at its editor's cursor (or at the end without one), with a space on
+ * each side where the neighbouring text needs one, as typing it would. The composer keeps focus as it was.
+ */
+export function insertIntoComposer(id: number, text: string) {
+  const draft = getDraft(id)
+  const current = draft.get().text
+  const editor = document.querySelector<HTMLTextAreaElement>(`textarea[data-conversation="${id}"]`)
+  const start = editor?.selectionStart ?? current.length
+  const end = editor?.selectionEnd ?? current.length
+  const { text: next, cursor } = spliced(current, start, end, text)
+  draft.set({ text: next, revision: draft.get().revision + 1 })
+  if (draft.key) localStorage.setItem(draft.key, next)
+  // The cursor follows the inserted text once React has rendered the new value.
+  requestAnimationFrame(() => editor?.setSelectionRange(cursor, cursor))
 }
 
 function clearDraft(
@@ -353,6 +378,7 @@ function ConversationComposer({ dock }: { dock?: boolean }) {
           readOnly={loading || sending}
           onPaste={(event) => void paste(event)}
           id={scoped === undefined ? 'composer-input' : `composer-input-${scoped}`}
+          data-conversation={id}
           onChange={(event) => update(event.target.value)}
           onKeyDown={onKeyDown}
           placeholder={
@@ -364,10 +390,11 @@ function ConversationComposer({ dock }: { dock?: boolean }) {
           value={text}
         />
         <PromptInputFooter className="@container">
-          <PromptInputTools>
+          {/* The toolbar gives way first, so Send and the composer actions always stay in reach. */}
+          <PromptInputTools className="overflow-hidden">
             <Slot name="composer.toolbar" variant="inline" />
           </PromptInputTools>
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex max-w-full min-w-0 shrink-0 items-center gap-2">
             <span
               className={cn(
                 'truncate font-mono text-[11px]',
@@ -382,6 +409,7 @@ function ConversationComposer({ dock }: { dock?: boolean }) {
                   </span>
                 ) : null)}
             </span>
+            {!target && <Slot name="composer.actions" variant="inline" />}
             {busy && (
               <PromptInputSubmit
                 mode="stop"

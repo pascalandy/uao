@@ -18,7 +18,7 @@ import type {
   LiveState,
   UsageState,
 } from '@earendil-works/pi-durable'
-import { actions, allCommands, regionKeys, shellKeys, shownSurface } from './actions.ts'
+import { actions, allCommands, ownDefault, regionKeys, shellKeys, shownSurface } from './actions.ts'
 import type { Region } from './actions.ts'
 import { actionMessage, ROOT } from './api.ts'
 import { EVENT_FEED } from '../../../shared/events.ts'
@@ -246,7 +246,7 @@ export function useRegionOpen(region: Region) {
   const [shared] = useUiState<boolean>(key, fallback)
   const on = useViewport()
   const own = useStore((state) =>
-    on === 'desktop' ? false : (state.ui.open?.[on]?.[region] ?? false),
+    on === 'desktop' ? false : (state.ui.open?.[on]?.[region] ?? ownDefault(region, on)),
   )
   return on === 'desktop' ? shared : own
 }
@@ -319,7 +319,11 @@ export function useCompactQuiet() {
   const { compact, docs } = useCompactConfig()
   return useMemo(
     () =>
-      compact && { quiet: (row: CompactRow) => compact.quiet(row, docs), summary: compact.summary },
+      compact && {
+        quiet: (row: CompactRow) => compact.quiet(row, docs),
+        summary: compact.summary,
+        thread: compact.thread && ((row: CompactRow) => compact.thread!(row, docs)),
+      },
     [compact, docs],
   )
 }
@@ -522,6 +526,23 @@ export function useAction<Args, T>(
   }, [call, enabled])
   const current = state.key === key ? state : { key, loading: enabled }
   return { data: current.data, error: current.error, loading: current.loading, refetch: call }
+}
+
+/** `copy(text)` puts text on the clipboard; `copied` is true for 1.2 s after, and a failure becomes an error notice. */
+export function useCopy() {
+  const [copied, setCopied] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const copy = (text: string) =>
+    void navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        setCopied(true)
+        clearTimeout(timer.current)
+        timer.current = setTimeout(() => setCopied(false), 1200)
+      })
+      .catch((error: unknown) => store.notify({ level: 'error', message: errorMessage(error) }))
+  return { copied, copy }
 }
 
 /** The current time, updated every `intervalMs` while `active`. */

@@ -14,8 +14,6 @@ import {
   defineTool,
   GenerationTask,
   hook,
-  InboxDoc,
-  LiveDoc,
   ROOT_CONVERSATION_ID,
   section,
   UsageDoc,
@@ -36,17 +34,14 @@ import { implementAction } from '../../lib/actions.ts'
 import { actingAs } from '../../lib/acting-as.ts'
 import type { ActionInput } from '../../lib/actions.ts'
 import type { ActionContext } from '../../server/actions.ts'
-import { imageMimeTypes, maxImageBytes, maxImages } from '../../shared/protocol.ts'
 import type { ExtensionHost } from '../../server/extensions.ts'
 import { SubmissionLanded, WorkspacesApi } from '../workspaces/api.ts'
 import type { LandedData } from '../workspaces/api.ts'
 import { Branch, Branched, LineageApi, Rooted, Roots } from './api.ts'
-import { ConversationsApi, Release, Trees } from '../conversations/api.ts'
-import { Standing, Started, Subagents } from '../subagents/api.ts'
-
-/** The fields of a message the landed-branch check reads. */
-type MessageRow = { from: unknown; reply: boolean; state: string }
-import { CompactAction, ForgetAction, RecentAction, TallyDoc } from './refs.ts'
+import { ConversationsApi, Trees } from '../conversations/api.ts'
+import { Standing, Started } from '../subagents/api.ts'
+import { spawn } from 'node:child_process'
+import { CompactAction, ForgetAction, OpenEditorAction, RecentAction, TallyDoc } from './refs.ts'
 import {
   applyMemoryOps,
   Memorized,
@@ -61,6 +56,7 @@ import { rewindActions, rewindTask } from './rewind.ts'
 import type { Tree } from './catchup.ts'
 import type { RootEvent } from './types.ts'
 import { compareUrl } from '../../lib/compare.ts'
+import { hasLogin, hostDefaultModel } from '../../lib/agents.ts'
 import { admitCompaction } from '../../lib/compaction.ts'
 import { githubRepo } from '../../lib/project-identity.ts'
 
@@ -100,7 +96,18 @@ export const Tally = defineDoc<TallyState>({
 
 export const docs = [Roots, Branch, Tally, Seen, Memory]
 /** Going back sets a conversation's path aside, and forgetting drops a memory: only the user decides those. */
-export const userActions = ['rewind', 'forget', 'compact']
+export const userActions = ['rewind', 'forget', 'compact', 'openEditor']
+
+/** Starts `editor` on `folder`, detached, once it has spawned; rejects when it is not on PATH. */
+const launch = (editor: string, folder: string) =>
+  new Promise<void>((resolve, reject) => {
+    const child = spawn(editor, [folder], { detached: true, stdio: 'ignore' })
+    child.once('error', reject)
+    child.once('spawn', () => {
+      child.unref()
+      resolve()
+    })
+  })
 
 const ASK_TOKENS = 8192
 
@@ -406,7 +413,7 @@ function lineage(host: ExtensionHost) {
   })
   const Notify = defineTask<
     { target: ConversationId; wake: boolean },
-    { phase: 'wait' } | { phase: 'deliver'; title?: string; text: string; answer?: number },
+    { phase: 'wait' } | { phase: 'deliver'; title?: string; text: string; answer: number },
     null
   >({
     name: 'lineage.notify',
@@ -474,11 +481,10 @@ function lineage(host: ExtensionHost) {
       },
       deliver: async (task, runtime, ctx) => {
         const { target, wake } = task.input
-        // A checkpoint from before answers were tracked has none: it delivers as it did then and records nothing.
         const { title, text, answer } = task.state.checkpoint as {
           title?: string
           text: string
-          answer?: number
+          answer: number
         }
         // Keyed by the answer, so a task that replaced one aborted between submit and record finds its delivery.
         const requestId = answer
@@ -518,7 +524,7 @@ function lineage(host: ExtensionHost) {
             requestId,
           })
         await runtime.commit(async (tx) => {
-          if (answer !== undefined) (await tx.doc(Notified, caller)).answers[target] = answer
+          ;(await tx.doc(Notified, caller)).answers[target] = answer
           return { status: 'terminal', outcome: { status: 'completed', result: null } }
         }, ctx)
       },
@@ -547,121 +553,7 @@ function lineage(host: ExtensionHost) {
     abort: (_task, runtime, ctx) =>
       runtime.commit(() => ({ status: 'terminal', outcome: { status: 'aborted' } }), ctx),
   })
-  const conversations = host.need(ConversationsApi)
   const done = { status: 'terminal', outcome: { status: 'completed', result: null } } as const
-  /**
-   * Concludes a conversation whose submission landed, once the lander's report reached it and it and its subagents are
-   * idle. Background, so it never keeps its own conversation busy. A branch that still waits on a reply or runs a
-   * subagent then stays open; any later input resumes a concluded one.
-   */
-  const ConcludeLanded = defineTask<
-    { id: ConversationId; submission: string; lander: number },
-    { phase: 'wait' } | { phase: 'conclude' } | { phase: 'release' },
-    null
-  >({
-    name: 'lineage.conclude-landed',
-    version: 1,
-    initial: () => ({ phase: 'wait' }),
-    phases: {
-      wait: async (task, runtime, ctx) => {
-        const { id, submission, lander } = task.input
-        const report = `lander:${submission}`
-        // The lander sends the report before its task moves on: once its conversation is idle without one (an aborted
-        // lander), none comes, and the branch stays open.
-        // Started only while no report exists, and only ever awaited through Promise.race, which handles its rejection
-        // when this task's context is cancelled.
-        let landerIdle: Promise<'idle'> | undefined
-        for (;;) {
-          // Subscribed before reading, so the report's settlement after the read still ends the wait.
-          const changed = Promise.withResolvers<void>()
-          // Not a reactor: a short wait inside this task for the report's submission record, a Pi record.
-          const unsubscribe = host.harness().subscribeCommits((publication) => {
-            if (
-              publication.changes.some(
-                (change) => change.type === 'submission' && change.value.conversationId === id,
-              )
-            )
-              changed.resolve()
-          })
-          try {
-            const record = await host
-              .harness()
-              .commit((tx) => tx.submissionByRequest(id, report), ctx)
-            // Only an answered report concludes: one that ended unanswered (a provider error, a Stop, a reset) left the
-            // branch's work unfinished, so it stays open and watchdog's idle-branches note brings it up.
-            if (record?.status === 'unanswered') return runtime.commit(() => done, ctx)
-            if (record?.status === 'done') break
-            // Admitted, the report settles on its own; before that, the lander going idle means none is coming.
-            const woke = await awaitWithContext(
-              record
-                ? changed.promise
-                : Promise.race([
-                    changed.promise,
-                    (landerIdle ??= (async () => {
-                      await (
-                        await runtime.conversation(lander as ConversationId, ctx)
-                      )?.waitForIdle(ctx)
-                      return 'idle' as const
-                    })()),
-                  ]),
-              ctx,
-            )
-            if (woke === 'idle') {
-              const late = await host
-                .harness()
-                .commit((tx) => tx.submissionByRequest(id, report), ctx)
-              if (!late) return runtime.commit(() => done, ctx)
-            }
-          } finally {
-            unsubscribe()
-          }
-        }
-        // The report starts a run (the branch tells @ultimate it landed); wait for it and its foreground subagents.
-        await (await runtime.conversation(id, ctx))?.waitForIdle(ctx)
-        await runtime.commit(() => ({ status: 'running', checkpoint: { phase: 'conclude' } }), ctx)
-      },
-      // The check, the conclusion and this task's next state commit together: an input that arrives first keeps the
-      // branch open, one that arrives after resumes it, and a replay never concludes it a second time.
-      conclude: (task, runtime, ctx) =>
-        runtime.commit(async (tx) => {
-          const { id } = task.input
-          if (await keepsWorking(tx, id)) return done
-          try {
-            await conversations.concludeIn(tx, [id])
-          } catch (error) {
-            // Roots and standing agents refuse concluding before any write; they stay open by design.
-            host.notice(`Not concluding #${id} after landing: ${String(error)}`)
-            return done
-          }
-          return { status: 'running', checkpoint: { phase: 'release' } }
-        }, ctx),
-      // At least once, like the Conclude action's release: it frees only what a concluded, idle branch holds.
-      release: async (task, runtime, ctx) => {
-        await host.want(Release)?.release([task.input.id], ctx)
-        await runtime.commit(() => done, ctx)
-      },
-    },
-    abort: (_task, runtime, ctx) =>
-      runtime.commit(() => ({ status: 'terminal', outcome: { status: 'aborted' } }), ctx),
-  })
-  /** Inside `tx`: whether `id` is busy or has input queued, waits on a reply it asked for, or has a subagent running. */
-  async function keepsWorking(tx: Tx, id: ConversationId) {
-    if ((await tx.doc(LiveDoc, id)).run || (await tx.doc(InboxDoc, id)).items.length) return true
-    // Read by kind: messages depends on lineage, so lineage cannot import messages.
-    const log = host.doc('board')
-    const messages = (
-      log && ((await tx.doc(log, ROOT_CONVERSATION_ID)) as { messages?: MessageRow[] })
-    )?.messages
-    if (
-      messages?.some(
-        (m) => m.from === id && m.reply && (m.state === 'sent' || m.state === 'delivered'),
-      )
-    )
-      return true
-    for (const child of Object.values((await tx.doc(Subagents, id)).agents))
-      if ((await tx.doc(LiveDoc, child.conversationId)).run) return true
-    return false
-  }
   /**
    * Wakes @ultimate once its manual compaction `compaction` placed a summary: one follow-up input, queued behind a
    * running turn and the summary itself. Created by the compaction's own hook, so no crash between them loses it.
@@ -701,7 +593,7 @@ function lineage(host: ExtensionHost) {
     abort: (_task, runtime, ctx) =>
       runtime.commit(() => ({ status: 'terminal', outcome: { status: 'aborted' } }), ctx),
   })
-  return { Notify, Prompt, LandingNote, ConcludeLanded, Woken }
+  return { Notify, Prompt, LandingNote, Woken }
 }
 
 const WOKEN_TEXT =
@@ -902,9 +794,16 @@ async function forkBranch(
     caller = `#${input.by}${name ? ` (@${name})` : ''}`
   }
   const fork = await tx.forkConversation(from, at, { ownership: { kind: 'ownerless' } })
+  // Without a model given, the fork keeps its source's as of `at` while that has a login here, else the default.
+  const source = (await tx.doc(AgentDoc, fork.id)).model
+  const model =
+    input.model ??
+    (hasLogin(host.modelRuntime.getAvailableSnapshot(), source)
+      ? undefined
+      : hostDefaultModel(host))
   await configure(tx, fork.id, {
     cwd: host.projectRoot,
-    ...(input.model ? { model: input.model } : {}),
+    ...(model ? { model } : {}),
     ...(input.thinkingLevel ? { thinkingLevel: input.thinkingLevel } : {}),
   })
   // A branch gets ordinary tools whatever its source ran with.
@@ -1228,32 +1127,6 @@ export function compareLinks(
   })
 }
 
-/** Validates a new branch's prompt and configuration. */
-function rootInput(args: JsonValue) {
-  const input = (args ?? {}) as Partial<BranchInput>
-  if (typeof input.prompt !== 'string') throw new Error('prompt must be a string')
-  if (input.title !== undefined && typeof input.title !== 'string')
-    throw new Error('title must be a string')
-  if (
-    input.model !== undefined &&
-    (typeof input.model?.provider !== 'string' || typeof input.model.modelId !== 'string')
-  )
-    throw new Error('model must be { provider, modelId }')
-  if (input.images !== undefined) {
-    if (!Array.isArray(input.images) || input.images.length > maxImages)
-      throw new Error(`images must be an array of at most ${maxImages}`)
-    for (const image of input.images)
-      if (
-        !imageMimeTypes.includes(image?.mimeType) ||
-        typeof image.data !== 'string' ||
-        !image.data ||
-        Buffer.byteLength(image.data, 'base64') > maxImageBytes
-      )
-        throw new Error('Expected supported image MIME type and base64 data of at most 2 MiB')
-  }
-  return input
-}
-
 export const actions = {
   ...rewindActions,
   /** The roots, and with `{ id }` that conversation's tree root and its branch state when it is a branch. */
@@ -1264,14 +1137,6 @@ export const actions = {
     const root = await rootOf(host, id, context)
     const branch = (await host.harness().snapshot(Branch, id, context))?.branch
     return { roots, ...(root === undefined ? {} : { root }), ...(branch ? { branch } : {}) }
-  },
-  async branch(args: JsonValue, { host }: ActionContext) {
-    const input = rootInput(args)
-    for (const key of ['from', 'at'] as const)
-      if (input[key] !== undefined && (!Number.isSafeInteger(input[key]) || input[key] < 1))
-        throw new Error(`${key} must be a positive integer`)
-    if (input.from === undefined) throw new Error('from must be a positive integer')
-    return startBranch(host, input as BranchInput, context)
   },
   /**
    * `{id, limit?, types?}`: the newest landings, notes, branches and compactions in root `id`, newest first (default
@@ -1342,6 +1207,18 @@ export const actions = {
     }, context)
     return { roots }
   },
+  /** Open the project folder in Zed on this machine: `zeditor` (Arch's name), else `zed`. User-only. */
+  openEditor: implementAction(OpenEditorAction, async (_args, { host }) => {
+    for (const editor of ['zeditor', 'zed'])
+      try {
+        await launch(editor, host.projectRoot)
+        return { editor }
+      } catch (error) {
+        // Not on PATH: try the next name; anything else is a real failure.
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      }
+    throw new Error('Zed is not installed on this machine (no zeditor or zed on PATH)')
+  }),
   /** `{root, slug}`: delete one memory of root `root`. User-only. */
   forget: implementAction(ForgetAction, async (args, { host }) => {
     const { root, slug } = (args ?? {}) as { root?: unknown; slug?: unknown }
@@ -1408,6 +1285,24 @@ export default function lineageExtension(host: ExtensionHost) {
     leaveNote: (to, text, source) => leaveNote(host, to, text, source),
     remember: (root, ops, ctx, now) =>
       host.harness().commit((tx) => applyMemoryOps(tx, root, ops, now), ctx),
+    memoryBrief: async (id, ctx) => {
+      const roots = await rootsOf(host, ctx)
+      const root = (await rootOf(host, id, ctx)) ?? (roots.length === 1 ? roots[0] : undefined)
+      if (root === undefined) return undefined
+      return host.harness().commit(async (tx) => {
+        const brief = await memoryBrief(tx, root)
+        if (!brief) return undefined
+        const { memories } = await tx.doc(Memory, root)
+        return { root, text: brief.text, memories: Object.keys(memories).length }
+      }, ctx)
+    },
+    memoriesOf: async (id, ctx) => {
+      const roots = await rootsOf(host, ctx)
+      const root = (await rootOf(host, id, ctx)) ?? (roots.length === 1 ? roots[0] : undefined)
+      if (root === undefined) return undefined
+      const doc = await host.harness().snapshot(Memory, root, ctx)
+      return { root, memories: doc?.memories ?? {} }
+    },
   })
   // What summaries need to know of a conversation's tree, through conversations' extension point.
   host.implement(Trees, {
@@ -1425,18 +1320,7 @@ export default function lineageExtension(host: ExtensionHost) {
     const { title } = data as { title?: string }
     await conversations.generatedTitle(tx, id, intentLine(data.intent, title))
   })
-  const { Notify, Prompt, LandingNote, ConcludeLanded, Woken } = lineage(host)
-  // A landed branch is done: conclude it once its report run ends. Background, in the submitter's conversation.
-  host.react('conclude-landed', [SubmissionLanded], async (tx, { data: landing }) => {
-    const id = landing.conversationId as ConversationId
-    const record = await tx.conversation(id)
-    if (!record || record.owner) return
-    await tx.createTask(
-      ConcludeLanded,
-      { id, submission: landing.submission, lander: landing.lander },
-      { conversationId: id, ownership: { kind: 'conversation' }, background: true },
-    )
-  })
+  const { Notify, Prompt, LandingNote, Woken } = lineage(host)
   // Every landing notes its submitter's tree root once: a tally in this reactor's transaction, any other root through
   // a delivery task created in it. The submitter's own root and conversations outside any tree get none.
   host.react('landing-notes', [SubmissionLanded], async (tx, { data: landing }) => {
@@ -1493,7 +1377,7 @@ export default function lineageExtension(host: ExtensionHost) {
   watchTally(host, context)
   return defineExtension({
     name: 'lineage',
-    tasks: [Notify, Prompt, LandingNote, ConcludeLanded, Woken, Memorize, rewindTask(host)],
+    tasks: [Notify, Prompt, LandingNote, Woken, Memorize, rewindTask(host)],
     sections: [section('lineage', (input, ctx) => lineageSection(host, input.conversationId, ctx))],
     hooks: [
       hook(GenerationTask, {
@@ -1529,8 +1413,13 @@ export default function lineageExtension(host: ExtensionHost) {
             if (!agent.model) return undefined
             const root = (await rootsOf(host, ctx)).includes(api.conversationId)
             const intent = (await api.snapshot(Branch, api.conversationId, ctx))?.branch?.intent
-            // The model's view of the replaced entries, with edits applied: an omitted abstract stays omitted.
-            const replaced = new Set(compaction.entries.map((entry) => entry.id))
+            // The model's view of the replaced entries, with edits applied: an omitted abstract stays omitted. Entries
+            // marked `transient` (a voice session's brief, placed afresh each time) stay out of the summary.
+            const replaced = new Set(
+              compaction.entries
+                .filter((entry) => !(entry.data as { transient?: unknown } | undefined)?.transient)
+                .map((entry) => entry.id),
+            )
             const view = await (await host
               .harness()
               .conversation(api.conversationId, ctx))!.context(ctx)

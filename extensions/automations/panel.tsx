@@ -46,8 +46,6 @@ import {
   BusyDot,
   Dot,
   Heading,
-  GrantBadge,
-  GrantEditor,
   KindIcon,
   RunIcon,
   Tag,
@@ -170,13 +168,17 @@ function Trigger({ automation, now }: { automation: Automation; now: number }) {
   )
 }
 
+/** A subscriber as people address it: `#12` or `@ultimate`. */
+const address = (subscriber: number | string) =>
+  typeof subscriber === 'number' ? `#${subscriber}` : subscriber
+
 /** What a fire does: wake conversations, start a prompt run, or both. */
 function actions(automation: Automation) {
   const wakes = automation.subscribers.length
   return [
     automation.script && (automation.script.once ? 'once' : 'every time'),
     wakes > 0 &&
-      `wakes ${wakes === 1 ? `#${automation.subscribers[0]}` : `${wakes} conversations`}`,
+      `wakes ${wakes === 1 ? address(automation.subscribers[0]) : `${wakes} conversations`}`,
     automation.prompt && 'runs a prompt',
   ]
     .filter(Boolean)
@@ -418,7 +420,6 @@ function AutomationRow({
           </div>
           <div className="pl-[18px]">
             <Trigger automation={automation} now={now} />
-            <GrantBadge automation={automation} />
           </div>
         </div>
         <span className="mt-0.5">
@@ -461,7 +462,7 @@ function AutomationRow({
           <ChevronRightIcon
             className={cn('size-3 transition-transform', expanded && 'rotate-90')}
           />
-          {automation.runs.length} run{automation.runs.length === 1 ? '' : 's'} · permissions
+          {automation.runs.length} run{automation.runs.length === 1 ? '' : 's'}
           {running && <BusyDot className="ml-0.5" />}
         </Button>
         <span className="min-w-0 truncate pl-1 font-mono text-[10.5px] text-muted-foreground/60">
@@ -578,14 +579,7 @@ function AutomationRow({
         </div>
       )}
       <ErrorLine error={error} />
-      {expanded && (
-        <>
-          <div className="px-3 pb-2">
-            <GrantEditor automation={automation} />
-          </div>
-          <Runs now={now} runs={automation.runs} />
-        </>
-      )}
+      {expanded && <Runs now={now} runs={automation.runs} />}
     </li>
   )
 }
@@ -799,7 +793,6 @@ function ScriptDetail({
           </span>
           <Toggle act={act} automation={automation} now={now} />
         </div>
-        <GrantBadge automation={automation} />
         <h2 className="mt-1 line-clamp-2 text-[13.5px] leading-snug font-medium">
           {automation.name}
         </h2>
@@ -813,9 +806,6 @@ function ScriptDetail({
           <span className="truncate">{actions(automation)}</span>
         </p>
       </header>
-      <div className="px-3 pb-2">
-        <GrantEditor automation={automation} />
-      </div>
       <ErrorLine error={error} />
       <Script act={act} automation={automation} live={live} now={now} />
     </div>
@@ -1015,11 +1005,13 @@ function Output({ text }: { text: string }) {
   if (!lines.some((line) => /^FIRE(\s|$)/.test(line))) return <AnsiOutput output={text} />
   return lines.map((line, index) =>
     /^FIRE(\s|$)/.test(line) ? (
+      // oxlint-disable-next-line react/no-array-index-key -- Log line positions; text may repeat.
       <div className="-mx-3 border-l-2 border-success bg-success/10 px-2.5" key={index}>
         <span className="font-semibold text-success">FIRE</span>
         {line.slice(4)}
       </div>
     ) : (
+      // oxlint-disable-next-line react/no-array-index-key -- Log line positions; text may repeat.
       <div key={index}>
         <AnsiOutput output={line || ' '} />
       </div>

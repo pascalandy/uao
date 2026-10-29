@@ -29,6 +29,7 @@ import type {
 import { afterEach, expect, it } from 'vitest'
 import watchdog, { diagnose } from '../extensions/watchdog/server.ts'
 import { idleNote } from '../extensions/watchdog/idle.ts'
+import type { WatchdogService } from '../extensions/watchdog/api.ts'
 import { Messages } from '../extensions/messages/api.ts'
 import { Branch } from '../extensions/lineage/api.ts'
 import { Standing, Subagents } from '../extensions/subagents/api.ts'
@@ -47,7 +48,7 @@ const error = (text = 'invalid model configuration') =>
   fauxAssistantMessage('', { stopReason: 'error', errorMessage: text })
 const overloaded = 'Our servers are currently overloaded. Please try again later.'
 const rateHint =
-  'Still rate limited after Pi’s retries, so Ultimate is paused; once the limit resets (or the agent has another model), press Play and resume this conversation with a message'
+  'Still rate limited after Pi’s retries; once the limit resets (or the agent has another model), resume this conversation with a message'
 const model = { provider: 'faux', modelId: 'faux-1' }
 const Anchor = defineTask<null, { phase: 'done' }, null>({
   name: 'watchdog-test.anchor',
@@ -91,7 +92,11 @@ async function fixture(
   const onOpen: (() => Promise<void>)[] = []
   const onClose: (() => Promise<void>)[] = []
   const notices: string[] = []
+  let service: WatchdogService | undefined
   const host = {
+    implement: (_api: unknown, implementation: WatchdogService) => {
+      service = implementation
+    },
     harness: () => harness,
     metadata: Metadata,
     notice: (text: string) => notices.push(text),
@@ -236,6 +241,7 @@ async function fixture(
     root,
     registry,
     host,
+    failures: (since: number) => service!.failures(since),
     ultimate,
     notices,
     conversation,
@@ -330,64 +336,17 @@ it('reports a branch failure once, with its title, error and last tool step; rep
   expect(await f.entries()).toHaveLength(1)
   expect(await f.tasks()).toHaveLength(1)
   expect(f.notices).toEqual([])
-})
-
-it('opens a store with a sleeping pre-watchdog reporter checkpoint and finishes it silently', async () => {
-  const f = await fixture()
-  const parent = await f.conversation('Coordinator')
-  const child = await f.conversation('Scout', parent)
-  const legacy = defineTask<
-    { conversationId: ConversationId; text: string; steer: boolean },
-    { phase: 'retry'; retryRequest: string; until: number },
-    null
-  >({
-    name: 'ultimate.subagent-reporter',
-    version: 1,
-    initial: () => ({ phase: 'retry', retryRequest: 'subagent-retry:old', until: 1_060_000 }),
-    phases: {
-      retry: (task, runtime, ctx) =>
-        runtime.sleepUntil(task.state.checkpoint.until, task.state.checkpoint, ctx),
+  expect(await f.failures(0)).toEqual([
+    {
+      conversation: branch,
+      title: 'Fix the build',
+      error: 'invalid model configuration',
+      step: 'read',
+      retried: false,
+      at: 1_000_000,
     },
-    abort: (_task, runtime, ctx) =>
-      runtime.commit(() => ({ status: 'terminal', outcome: { status: 'aborted' } }), ctx),
-  })
-  f.registry.install(defineExtension({ name: 'subagents', tasks: [legacy] }))
-  const id = await f.harness.commit(async (tx) => {
-    const reporter = await tx.createTask(
-      legacy,
-      { conversationId: child, text: 'old input', steer: false },
-      { conversationId: parent, ownership: { kind: 'conversation' }, background: true },
-    )
-    ;(await tx.doc(Subagents, parent)).actions.old = {
-      conversationId: child,
-      reporter,
-      status: 'unanswered',
-    }
-    return reporter
-  }, context)
-  await until(async () => (await f.harness.getTask(id, context))?.state.status === 'sleeping')
-  expect((await f.harness.getTask(id, context))?.state).toMatchObject({
-    status: 'sleeping',
-    checkpoint: { phase: 'retry', retryRequest: 'subagent-retry:old', until: 1_060_000 },
-  })
-  f.registry.install(
-    subagents({
-      ...f.host,
-      implement: () => {},
-      onOpen: () => {},
-      onClose: () => {},
-      need: () => ({}),
-    } as unknown as Parameters<typeof subagents>[0]),
-  )
-  await f.reopen()
-  f.advance(60_000)
-  await until(async () => (await f.harness.getTask(id, context))?.state.status === 'terminal')
-  expect((await f.harness.snapshot(Subagents, parent, context))?.actions.old.status).toBe('failed')
-  expect(await f.entries(parent, 'subagents.report')).toHaveLength(0)
-  expect(
-    (await f.host.scanSubmissions({ conversationId: child }, 100, undefined, context)).items,
-  ).toHaveLength(0)
-  expect(f.notices).toEqual([])
+  ])
+  expect(await f.failures(1_000_001)).toEqual([])
 })
 
 it('routes an owned child failure only to its parent', async () => {
@@ -861,6 +820,12 @@ it.each([
     undefined,
   ],
   ['Overloaded (529)', true, undefined],
+  // A conversation pinned to a provider whose login was removed (rog, 2026-10-25).
+  [
+    'Provider is not configured: openrouter',
+    false,
+    'openrouter has no login here. Log in again (⌘K → Log in to a provider), or message the conversation: its next run switches to a model that has one',
+  ],
   [
     'Claude Code is not installed. Install it with `npm install -g @anthropic-ai/claude-code` or set PI_CLAUDE_CODE_COMMAND to the executable.',
     false,

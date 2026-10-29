@@ -8,14 +8,14 @@ import {
   NetworkIcon,
   XIcon,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { api, cn, errorMessage, useAction, useDialog, useRestart } from '@/sdk'
+import { api, cn, errorMessage, useAction, useCopy, useDialog, useRestart } from '@/sdk'
 import { JoinAction, JoinStateAction } from './refs.ts'
 import type { JoinResult, JoinState, JoinStep } from './refs.ts'
 
-/** The dialog id the "Join cloud fleet" command opens. */
+/** The dialog id the "Join cloud backups" command opens. */
 export const joinDialog = 'cloud.join'
 
 const steps: { id: JoinStep | 'done'; label: string }[] = [
@@ -71,20 +71,12 @@ function Steps({ result }: { result: JoinResult | 'running' }) {
 
 /** `pnpm setup:machine` as a code chip that copies itself. */
 function Command({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  useEffect(() => () => clearTimeout(timer.current), [])
+  const { copied, copy } = useCopy()
   return (
     <button
       aria-label={`Copy ${value}`}
       className="group flex w-full items-center gap-2 rounded-md border border-border/80 bg-background px-2 py-1.5 text-left text-foreground/90 transition-colors outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring"
-      onClick={() =>
-        void navigator.clipboard.writeText(value).then(() => {
-          setCopied(true)
-          clearTimeout(timer.current)
-          timer.current = setTimeout(() => setCopied(false), 1200)
-        })
-      }
+      onClick={() => copy(value)}
       title="Copy"
       type="button"
     >
@@ -329,7 +321,7 @@ function JoinForm({ state, onJoined }: { state: JoinState; onJoined: () => void 
 }
 
 /**
- * Join your fleet: on a machine without cloud backups, the form; once joined, "Joined as <machine> · <host>" with a
+ * Join cloud backups: on a machine without cloud backups, the form; once joined, "Joined as <machine> · <host>" with a
  * Change link that opens the form again.
  */
 export function JoinCard() {
@@ -353,7 +345,7 @@ export function JoinCard() {
               <span className="text-muted-foreground/60"> · {joined.host}</span>
             </>
           ) : (
-            'Join your fleet'
+            'Join cloud backups'
           )}
         </span>
         {joined && !form && (
@@ -388,13 +380,13 @@ export function JoinCard() {
   )
 }
 
-/** The "Join cloud fleet" command's dialog. */
+/** The "Join cloud backups" command's dialog. */
 export function JoinDialog() {
   const [open, setOpen] = useDialog(joinDialog)
   return (
     <Dialog onOpenChange={setOpen} open={open}>
       <DialogContent className="gap-0 p-0 sm:max-w-md" showCloseButton={false}>
-        <DialogTitle className="sr-only">Join cloud fleet</DialogTitle>
+        <DialogTitle className="sr-only">Join cloud backups</DialogTitle>
         <DialogDescription className="sr-only">
           Store the cloud URL, this machine's name and the two cloud secrets.
         </DialogDescription>
