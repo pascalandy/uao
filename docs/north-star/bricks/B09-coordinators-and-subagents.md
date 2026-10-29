@@ -37,3 +37,6 @@ An overlay can give a coordinator deferred tools, even when its base inherits ev
 - `1c8a97e` tells agents to reuse passed tests on an unchanged tree
 - `a7495cb` shortens the idle threshold and tells coordinators to continue unfinished work
 - `d3178ff` passes deferred tools from overlays to coordinator branches
+- `9291eab5` requires tests for core behavior and actual bugs, with other edge cases proved once
+- `3b711c55` requires the source of each decision and conclusion of terminal branches
+- `fa6830aa` keeps model fallback within confirmed logins ([D038](../decisions/D038-models-follow-logins.md))

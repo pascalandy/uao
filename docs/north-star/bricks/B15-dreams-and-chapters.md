@@ -2,27 +2,32 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-Ultimate studies its own memory, failures, tools, and corrections, and then proposes what to codify or remove. "Codify" is the name of the fifth pass of a dream (`extensions/dream/README.md`). A dream can seed a fresh chapter, a new conversation database that starts with the selected memory and work. Old chapters stay readable.
+A dream is ordinary branch work (`be1608a7`). @ultimate writes its handoff, starts one dream branch, and receives proposals from six read-only passes (`extensions/dream/DREAM.md`). The passes include project-specific improvements (`743a0b65`). The [dream workflow](../../../extensions/dream/DREAM.md) owns the process.
 
-The built-in **Dream after compaction** automation starts a dream after @ultimate compacts, once other top-level conversations stop work (`extensions/dream/after-compaction.ts`). The user can pause or delete this automation (`extensions/dream/README.md`). @ultimate decides the dream's proposals only when the user grants `dream` on that automation (`agents/ultimate.md`).
+Dream before compaction fires at 70% context by default (`1353fb6b`). Dream after a pause fires above 50% after eight hours without user input (`6c37a236`). Both are ordinary context automations that wake @ultimate (`extensions/dream/built-ins.ts`).
 
-After this dream settles, `dream.asleepAfter` sets how many landed or applied changes justify a fresh chapter (`extensions/dream/after-compaction.ts`). At or above the threshold, an `asleep` grant permits the checked switch (`extensions/dream/after-compaction.ts`). Without that grant, or if the grant is refused, the user gets a question (`extensions/dream/after-compaction.ts`). The [dream mechanics](../../../extensions/dream/README.md#dream-after-compaction) hold the defaults and gates. The new chapter carries @ultimate's latest compaction summary so its work can continue (`extensions/dream/seed.ts`).
+Approved proposals become ordinary branches or memory writes (`extensions/dream/DREAM.md`). @ultimate can prepare a fresh chapter, but only the user can press Fall asleep ([D040](../decisions/D040-dream-as-ordinary-work.md)). The switch preserves memory and open work through a seed, backups, and a journaled restart (`extensions/dream/server.ts`, `extensions/dream/seed.ts`).
+
+Old chapters remain readable, and the user can switch back (`extensions/dream/README.md`). A seeded chapter starts its first backup when cloud backups are available (`ef1883dc`, `5704358d`). The [chapter mechanics](../../../extensions/dream/README.md#chapters) own the checks and recovery rules.
 
 ## Where it lives
 
-- `extensions/dream/`: dream sessions
-- `extensions/dream/after-compaction.ts`: the built-in automation, its wait, and its chapter check
-- `agents/dream-pass.md`: the read-only pass
+- `extensions/dream/DREAM.md`: instructions for @ultimate and the dream branch
+- `extensions/dream/built-ins.ts`: the two context automations
+- `extensions/dream/server.ts`: preparation and user-only chapter changes
+- `extensions/dream/seed.ts`: memory and open work for the next chapter
+- `agents/dream-pass.md`: the read-only passes
 - `lib/chapters.ts`: chapter databases and the switch journal
+
+## Decisions
+
+- [D039](../decisions/D039-remove-automation-grants.md) Remove automation grants
+- [D040](../decisions/D040-dream-as-ordinary-work.md) Make dreaming ordinary work
 
 ## Evidence
 
-- `34c001a` adds dreams
-- `4c94093` adds chapters
-- `74f38c9` seeds a chapter from a dream
-- `af3b3a3` gates the chapter switch
-- `7c0a3f4` lets a user grant authorize a dream or a checked chapter switch
-- `11d1d4c` keeps a refused chapter switch from releasing another switch's lock
-- `6c1c6bc` starts dreams after @ultimate compacts and checks whether a fresh chapter is justified
-- `1223ae5` and `fc92c4e` recover the exact built-in automation after a lost receipt
-- `4195ad4` keeps old chapter seeds from deleting the built-in automation
+- `34c001a` adds dreams, and `4c94093` adds chapters
+- `09008b66` moves the dream trigger before compaction
+- `ef738270` removes automation grants and makes Fall asleep user-only
+- `be1608a7` removes tracked dream sessions, proposal states, `dream.asleepAfter`, and the scratch-instance chapter gate
+- `d3da2f74` preserves pending delivery request IDs and refuses older pending seeds with a recovery path

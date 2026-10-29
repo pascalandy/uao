@@ -6,15 +6,16 @@ This file says how uao relates to `HazAT/ultimate`: the snapshot, the fork point
 
 Each status in the north-star is true at the snapshot:
 
-- Upstream: `HazAT/ultimate` at `4aaa074`, 2026-10-24
-- Fork: `pascalandy/uao` at `342b1e2`, 2026-10-24, the merge of this snapshot
+- Upstream: `HazAT/ultimate` at `17d186b`, 2026-10-29
+- Fork: `pascalandy/uao` at `58a9e05`, 2026-10-29, the merge of this snapshot
 
-`git log --oneline 4aaa074..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
+`git log --oneline 17d186b..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
 
 ### Sync log
 
 - 2026-10-23: upstream `11d1d4c` (2026-10-24), merged into uao by `01a53cc`
 - 2026-10-24: upstream `4aaa074` (2026-10-24), merged into uao by `342b1e2`
+- 2026-10-29: upstream `17d186b` (2026-10-29), merged into uao by `58a9e05`
 
 ## Fork point
 
@@ -32,13 +33,12 @@ uao forked from upstream `33c05e9` on 2026-10-23. Its first commit after the for
 uao does not change these files ([D034](decisions/D034-follow-upstream.md)). Read each pointer with its meaning in uao:
 
 - [Push permission](../../AGENTS.md#push-permission) and `docs/worktrees.md` name `origin` as `HazAT/ultimate`. In uao, `origin` is `pascalandy/uao`
-- `docs/worktrees.md` gives an example path under `/home/haza/`, the home folder of Daniel's machine
-- `AGENTS.md` and `extensions/cloud/README.md` place the backup Worker in the private repository `HazAT/ultimate-fleet`. The Worker code is absent from this repository (`67caeb6`), so a backup from uao needs a Worker that uao does not ship (inferred)
-- `docs/running.md` says that a scratch server is "for Daniel to open remotely"
-- `extensions/pause/README.md` names Daniel's wish for a pause that waits for him. Play by itself, a user setting that is off by default, can end that pause ([B12](bricks/B12-human-in-the-loop.md))
-- `CONTRIBUTING.md` keeps the upstream policy: a personal project, with no review of issues or pull requests
-- `extensions/update/` compares the clone with `origin`. In uao, the extension follows `pascalandy/uao`, not upstream (inferred from `extensions/update/README.md` and the remotes)
+- `extensions/cloud/README.md` still places the backup Worker in `HazAT/ultimate-fleet`. The Worker code remains absent, so uao needs its own Worker for backups (inferred from `67caeb6` and `extensions/cloud/README.md`)
+- `README.md` gives a setup prompt for `HazAT/ultimate`. A uao setup must use `pascalandy/uao` instead (inferred from the remotes)
+- `CONTRIBUTING.md` and `extensions/dream/DREAM.md` search `HazAT/ultimate` for feature reference PRs (`465cf344`). The contribution policy now accepts selected core improvements ([D016](decisions/D016-personal-project.md))
+- `extensions/update/` compares the clone with `origin`. In uao, the extension follows `pascalandy/uao` (inferred from `extensions/update/README.md` and the remotes)
 - `.ultimate/settings.json` sets `"push": "origin"`, so the lander pushes to `pascalandy/uao` (inferred from the remotes)
+  The old machine-specific paths and user names in `docs/worktrees.md`, `docs/running.md`, and `extensions/pause/README.md` are gone (`eb5b61d2`). `AGENTS.md` no longer advertises the private backup Worker (`55544315`).
 
 ## Sync rule
 
@@ -62,7 +62,11 @@ These upstream texts disagree with the code at the snapshot. uao records these d
 - `AGENTS.md` calls a project "a forest of conversation trees", and it also says "A project has one root" (`86ed900`)
 - `AGENTS.md` says "Roots run no turns". A root becomes a tally and refuses turns only when its first branch starts (`extensions/lineage/server.ts`, [D015](decisions/D015-root-is-a-tally.md))
 - `extensions/README.md` says that `lib/` "holds no state", but `lib/chapters.ts` reads SQLite and writes journal files
-- `docs/subagents.md` says that only `scout`, `worker`, and `designer` pin their models. `agents/watcher.md` and `agents/dream-pass.md` pin models too
-- `docs/settings.md` says that `health` reports provider health with backups. `69a367a` stopped sending provider health with backups
-- `extensions/automations/README.md` names `act` in its text, but its list of 14 tool operations omits it. The tool exposes `act` (`extensions/automations/server.ts`)
+- `docs/subagents.md` says that only `scout`, `worker`, and `designer` pin models. `agents/watcher.md` and `agents/dream-pass.md` still pin models at `17d186b`
 - `docs/extensions.md` says that `workspaces.check`, `health.changed`, `cloud.backup`, and `conversations.compacted` are recorded for the history and the system stream. The event triggers of automations also react to them (`extensions/automations/triggers.ts`, `a7f32b5`)
+- `extensions/models/README.md` still describes model selection for the lander. The lander runs no model (`cfd0e93b`, `extensions/workspaces/lander.ts`)
+- `extensions/pause/README.md` still describes model triage and its running status. Message delivery removed triage (`136d9c01`, `extensions/messages/delivery.ts`)
+- `docs/settings.md` says Update checks hourly. The timer compares every five minutes; only fetches have an hourly gate (`extensions/update/server.ts`, `extensions/update/README.md`)
+- `extensions/onboarding/README.md` lists seven default-off built-ins. `defaultOff` has eight, including `voice-live` (`ab959a36`, `shared/extension-api.ts`)
+
+The former health-backup claim is fixed in settings and health docs (`f6a7d570`, `e766c96e`). The former mismatch around automation `act` is gone because grants and `act` were removed (`ef738270`).

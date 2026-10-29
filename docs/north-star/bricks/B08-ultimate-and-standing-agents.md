@@ -6,6 +6,10 @@ The user talks to one agent, @ultimate, which knows the project and stays the sa
 
 @ultimate can also pursue a user-granted hands-off goal ([B12](B12-human-in-the-loop.md), `agents/ultimate.md`).
 
+The first-run walkthrough introduces Ultimate before project setup (`79107fdd`). It supports replay and skipping the remaining steps (`79107fdd`, `skills/how-ultimate-works/SKILL.md`). Start here stays in @ultimate's conversation until setup runs or the user dismisses it (`c5ec041a`, `08c63235`).
+
+Voice can be a standing agent when live voice is enabled ([B12](B12-human-in-the-loop.md), `f3b257b6`). The lander is now code with a log conversation ([D042](../decisions/D042-model-free-landing.md)).
+
 ## Where it lives
 
 - `agents/ultimate.md`: the definition of @ultimate
@@ -27,3 +31,4 @@ The user talks to one agent, @ultimate, which knows the project and stays the sa
 - `4d3605e` routes messages for the user through @ultimate
 - `eeae136` replaces the Board surface with the @ultimate button
 - `001a193d` adds the goal role to @ultimate
+- `33f42e7f` lets an experienced user turn onboarding off in user settings

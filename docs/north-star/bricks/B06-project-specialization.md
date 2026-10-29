@@ -8,6 +8,10 @@ A trusted project can also share skills in `<project>/.agents/skills/` (`server/
 
 The **Agents tab** saves an extended definition as an overlay, so the base still supplies its instructions and tools (`lib/agents.ts`). The **Agents tab** refuses changes that an overlay cannot express (`lib/agents.ts`).
 
+An enabled extension can ship agent definitions in its own `agents/` folder (`ab959a36`). Disabling the extension removes those definitions (`ab959a36`).
+
+Extensions declare their required secrets for setup and the Secrets panel (`457c5a53`, `40b17d20`). A named provider's login can satisfy a declared secret (`07172eed`).
+
 ## Where it lives
 
 - `.ultimate/`: the setup of this repository, an example
@@ -17,6 +21,7 @@ The **Agents tab** saves an extended definition as an overlay, so the base still
 - `extensions/onboarding/`: setup cards, the project choice, and the Extensions panel
 - `server/discovery.ts` and `server/project-setup.ts`: precedence and trust
 - `lib/agents.ts`: definition discovery and overlay saves
+- `skills/adopt-ultimate-setup/SKILL.md`: selection and adaptation of this repository's project setup
 
 ## Decisions
 
@@ -37,3 +42,5 @@ The **Agents tab** saves an extended definition as an overlay, so the base still
 - `bc3a786` adds three built-in skills for extensions and UI checks
 - `d3c39fd` lets the **Agents tab** save overlays
 - `ba7984e` keeps an overlay's `addTools` when its base inherits every tool
+- `710be091` adds a tour that adapts selected project setup without copying the whole folder
+- `e342ebe8` preserves symlinks during atomic JSON writes

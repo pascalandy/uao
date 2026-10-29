@@ -1,11 +1,11 @@
 # D011 Land through a durable queue
 
-Decided 2026-10-13. Source: upstream. Status: active.
+Decided 2026-10-13. Source: upstream. Status: replaced by D042.
 
-`workspace submit` queues the tip of a clean isolate. Code lands each submission in order. The code merges, runs the configured checks, fast-forwards the target, and pushes without force. The lander's model works only when a step fails or a user messages the lander.
+The original queue merged clean submissions, ran checks, fast-forwarded the target, and pushed without force (`5c36dcd`). Its lander model handled failures and messages (`5c36dcd`). [D042](D042-model-free-landing.md) replaces that model with failure reports to the submitter.
 
 **Why.** Coordinators spent many turns to merge, check, land, and push. Also, `workspace land` often failed on a target that advanced or on an unrelated dirty file (`5c36dcd`).
 
-**Rejected.** Synchronous `workspace land` as the default end of a branch. It stays as an alternative that never pushes (`docs/worktrees.md`).
+**Rejected.** Synchronous `workspace land` as the default end of a branch (`5c36dcd`). `cfd0e93b` later removes it ([D042](D042-model-free-landing.md)).
 
-**Evidence.** `5c36dcd` adds the queue. `extensions/workspaces/README.md` and `agents/lander.md` hold the mechanics.
+**Evidence.** `5c36dcd` adds the queue and its former lander definition. `extensions/workspaces/README.md` holds the current model-free mechanics.

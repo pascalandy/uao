@@ -4,6 +4,8 @@ Status: shipped, at the snapshot. Source: upstream.
 
 Each feature that is not core infrastructure is an extension folder, with a server facet for agent behavior and a web facet for UI (`README.md`). A user or a project adds, replaces, or disables a feature with no change to the core. A surface lets an extension be a full-screen app, with the agent one keystroke away.
 
+Web facets can register code-block renderers by language (`61b25245`). Linked user and project extensions keep their current code and Tailwind styles after a link changes (`4ddbece8`, `027057d3`).
+
 ## Where it lives
 
 - `extensions/`: the built-ins, each with a README
@@ -29,3 +31,5 @@ Each feature that is not core infrastructure is an extension folder, with a serv
 - `0edd691` adds the core tier
 - `5323967` disables by default the built-ins that need resources
 - `0104d7a` replaces repeated cards and time helpers with shared SDK exports
+- `faed7909` refuses duplicate tool names from extensions in the same layer
+- `27e615d0` and `70f56ce5` carry a tab's event subscriptions on one connection

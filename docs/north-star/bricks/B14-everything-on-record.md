@@ -6,6 +6,10 @@ Conversations stay on record, so Ultimate can study its own behavior (`docs/dura
 
 Hands-off goals keep goal decisions and any attached screenshots in goal reports ([B12](B12-human-in-the-loop.md), `extensions/goal/cards.tsx`).
 
+The status action gives dashboards a compact read-only summary of one instance (`ca5dec4c`). It includes discovered extensions and their source, state, and load error (`6b44de7b`).
+
+Tasks group runs and deliveries by meaning and show open messages (`b3462787`, `03d967f4`). Upstream removed the conversation minimap (`6dfcf451`). Rejected ideas use tombstones in project memory, replacing the graveyard folder (`63f87af5`).
+
 ## Where it lives
 
 - `server/trace.ts`: the call trace
@@ -16,6 +20,7 @@ Hands-off goals keep goal decisions and any attached screenshots in goal reports
 - `extensions/debug/`: the read-only debug tool
 - `extensions/info/`: runtime facts
 - `extensions/conversations/context.ts`: server records of each conversation's context use
+- `extensions/status/`: the dashboard summary
 
 ## Evidence
 
@@ -27,3 +32,5 @@ Hands-off goals keep goal decisions and any attached screenshots in goal reports
 - `e3f355c` keeps async failures visible
 - `ed0bb8a` publishes context use for the status line and automation triggers
 - `001a193d` adds goal decisions and their evidence to the record
+- `8402cb41` counts a tool's returned error result as a failed trace call
+- `d0afb3e1` uses SQLite NORMAL for trace commits, so recent diagnostics can be lost on power failure
