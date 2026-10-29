@@ -15,7 +15,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **uao**: the repository `pascalandy/uao`, which is Pascal's fork of Ultimate. The name means "Ultimate Agent Orchestrator" (`7698625`)
 - **Upstream**: Daniel's repository, `HazAT/ultimate`. See [upstream.md](upstream.md)
 - **Pi**: Earendil's minimal coding agent. Ultimate shares its logins, models, and settings in `~/.pi/agent` (`docs/running.md`)
-- **Subscription login**: a provider login that Pi marks as a subscription. A conversation on a subscription login never falls back to a pay-per-token login (`extensions/models/fallback.ts`). Not: a subscription, the retired name for a script trigger
+- **Subscription login**: a provider login that Pi marks as a subscription, except `anthropic`. Ultimate treats `anthropic` as the pay-per-token Anthropic API, because Claude uses its subscription only through Claude Code. A conversation on a subscription login never falls back to a pay-per-token login (`extensions/models/fallback.ts`). Not: a subscription, the retired name for a script trigger
 - **Pi Durable**: the library `@earendil-works/pi-durable`. It stores each conversation and its tasks, and it resumes them after a crash (`docs/durability.md`)
 
 ## Work model
