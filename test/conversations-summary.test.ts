@@ -18,7 +18,7 @@ import {
   LiveDoc,
   ROOT_CONVERSATION_ID,
 } from '@earendil-works/pi-durable'
-import { afterAll, beforeAll, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, expect, it, vi } from 'vitest'
 import { context } from '../server/harness.ts'
 import { Metadata } from '../server/metadata.ts'
 import { Overview } from '../extensions/conversations/overview.ts'
@@ -123,7 +123,8 @@ it.each(['agent', 'lander'])(
 
 const luna = { provider: 'openai-codex', id: 'gpt-6-luna', thinking: 'medium' } as const
 const servers: Awaited<ReturnType<typeof fauxServer>>[] = []
-afterAll(async () => {
+// Each test's servers close when it ends: closing every test's servers at once overruns the hook timeout under load.
+afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.close()))
 })
 // One read-only copy of the source for every server here, instead of a copy per launch.
@@ -195,11 +196,12 @@ async function launch(subagents = false, initialIntent = false, root = false, br
   }))
   const questionsRequested = vi.fn<() => Promise<void>>(async () => {})
   const install = (registry = server.host.registry) => {
-    vi.spyOn(server.host.modelRuntime, 'getAvailableSnapshot').mockImplementation(() =>
-      server.host.modelRuntime
+    vi.spyOn(server.host.modelRuntime, 'getAvailableSnapshot').mockImplementation(() => [
+      server.host.faux!.getModel(),
+      ...server.host.modelRuntime
         .getModels()
         .filter((model) => model.provider === 'openai-codex' && model.id === 'gpt-6-luna'),
-    )
+    ])
     const existing = registry.snapshot().extension('conversations')!
     registry.install(
       defineExtension({

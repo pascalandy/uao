@@ -10,9 +10,9 @@ import type { Todo } from '../todos/refs.ts'
 import { Roots } from '../lineage/api.ts'
 import { Messages } from '../messages/api.ts'
 import type { Automation } from '../automations/types.ts'
-import { AfterCompactionDoc, compactionSummary } from './after-compaction.ts'
+import { BuiltInDoc, PauseDoc } from './built-ins.ts'
 import { deliver } from './delivery.ts'
-import type { Session } from './refs.ts'
+import type { Prepared } from './refs.ts'
 import type { Seed } from './types.ts'
 
 /** Application and automation receipts on conversation 1; the seed file itself stays on disk. */
@@ -26,6 +26,13 @@ export const SeedState = defineDoc<{ applied?: number; automations: string[] }>(
   initial: () => ({ automations: [] }),
 })
 
+/**
+ * Whether a seeded trigger is made again in the new chapter: it has a prompt run or a standing agent to wake, and does
+ * not watch a numbered conversation, which does not exist there. Others become to-dos to recreate by hand.
+ */
+const carries = (item: Seed['automations'][number]) =>
+  (!!item.prompt || !!item.subscribers?.length) && !item.condition?.of.startsWith('#')
+
 /** Exported conversation documents are resolved at call time, including after a facet reload. */
 async function document<T>(host: ExtensionHost, tx: Tx, kind: string, id = 1): Promise<T> {
   const token = host.doc(kind)
@@ -33,16 +40,12 @@ async function document<T>(host: ExtensionHost, tx: Tx, kind: string, id = 1): P
   return (await tx.doc(token, id as ConversationId)) as unknown as T
 }
 
-/** Read the settled dream and project context without importing another facet's implementation. */
-export async function buildSeed(host: ExtensionHost, session: number): Promise<Seed> {
+/** Read what @ultimate `prepared` and the project context without importing another facet's implementation. */
+export async function buildSeed(host: ExtensionHost, prepared: Prepared): Promise<Seed> {
   const signal = new AbortController().signal
   // These ledgers are session-scoped, not exported conversation docs; their list actions read them.
   const automations = (await host.invoke('automations', 'list', null, signal)) as Automation[]
   return host.harness().commit(async (tx) => {
-    const found = (
-      await document<{ sessions: Session[] }>(host, tx, 'dream.sessions')
-    ).sessions.find((item) => item.id === session)
-    if (!found?.journal) throw new Error(`Dream session ${session} has no journal`)
     const roots = (await tx.doc(Roots, ROOT_CONVERSATION_ID)).roots
     // A null prototype: `constructor` and the like are valid memory slugs.
     const memories = Object.create(null) as Record<string, MemoryItem>
@@ -74,25 +77,29 @@ export async function buildSeed(host: ExtensionHost, session: number): Promise<S
     const todos = (await document<{ items: Todo[] }>(host, tx, 'todos')).items
       .filter((item) => item.done === undefined)
       .map(({ text, owner }) => ({ text, owner }))
-    // The built-in dream trigger is dream's own: the new chapter makes it again, as it was here.
-    const own = (await tx.doc(AfterCompactionDoc, ROOT_CONVERSATION_ID)).id
+    // The built-in dream triggers are dream's own: the new chapter makes them again, as they were here.
+    const own = (await tx.doc(BuiltInDoc, ROOT_CONVERSATION_ID)).id
     const builtIn = automations.find((item) => item.id === own)
-    // A compaction's dream continues what @ultimate was doing: its latest summary goes along.
+    const ownPause = (await tx.doc(PauseDoc, ROOT_CONVERSATION_ID)).id
+    const builtInPause = automations.find((item) => item.id === ownPause)
     const ultimate = (await tx.doc(Standing, ROOT_CONVERSATION_ID)).ultimate
-    const summary =
-      found.afterCompaction && ultimate !== undefined
-        ? await compactionSummary(tx, ultimate)
-        : undefined
+    if (ultimate === undefined) throw new Error('@ultimate has no conversation yet')
     const triggers = automations
       .filter(
         (item) =>
-          item.id !== own && item.enabled && (item.schedule || item.event || item.condition),
+          item.id !== own &&
+          item.id !== ownPause &&
+          item.enabled &&
+          (item.schedule || item.event || item.condition),
       )
       .map((item) => {
         const { name, prompt, agent, model, thinking } = item
+        // A standing agent's @name means the same in the new chapter; a #id does not exist there.
+        const subscribers = item.subscribers.filter((s): s is string => typeof s === 'string')
         return {
           name,
           prompt,
+          ...(subscribers.length ? { subscribers } : {}),
           ...(item.schedule ? { schedule: item.schedule } : {}),
           ...(item.event
             ? {
@@ -109,6 +116,7 @@ export async function buildSeed(host: ExtensionHost, session: number): Promise<S
                   of: item.condition.of,
                   above: item.condition.above,
                   cooldownMs: item.condition.cooldownMs,
+                  ...(item.condition.idleFor ? { idleFor: item.condition.idleFor } : {}),
                 },
               }
             : {}),
@@ -138,8 +146,7 @@ export async function buildSeed(host: ExtensionHost, session: number): Promise<S
     return JSON.parse(
       JSON.stringify({
         from: { name: host.chapter.name, number: host.chapter.number },
-        session,
-        journal: { ...found.journal, proposals: found.proposals },
+        learned: prepared.learned,
         memories,
         todos,
         questions,
@@ -152,10 +159,9 @@ export async function buildSeed(host: ExtensionHost, session: number): Promise<S
           automations: triggers.length,
           scripts: watchers.length,
         },
-        afterCompaction: builtIn ? { enabled: builtIn.enabled } : null,
-        ...(summary && ultimate !== undefined
-          ? { continues: { conversation: ultimate, summary } }
-          : {}),
+        builtIn: builtIn ? { enabled: builtIn.enabled } : null,
+        builtInPause: builtInPause ? { enabled: builtInPause.enabled } : null,
+        continues: { conversation: ultimate, handoff: prepared.handoff },
       }),
     ) as Seed
   }, context)
@@ -168,23 +174,17 @@ function chapterText(host: ExtensionHost, seed: Seed) {
   const { from } = seed
   return [
     `We just woke up in Chapter ${host.chapter.number} · ${host.chapter.name}. Chapter ${from.number} · ${from.name} stays on disk: read it with codemode \`ultimate.entries(id, { chapter: '${from.name}' })\` / \`search\` / \`conversations\`; ids continue across chapters, so \`#123\` sources and links into it still name one conversation; write cross-chapter links as \`${from.name}#123\`.`,
-    ...seed.journal.learned.map((line) => `- ${line}`),
+    ...seed.learned.map((line) => `- ${line}`),
     `Carried: ${Object.entries(seed.counts)
       .map(([kind, count]) => `${count} ${kind}`)
       .join(', ')}.`,
-    ...(seed.continues
-      ? [
-          '',
-          `A compaction of your context started the dream that led here. Before it, you were working on this (your compaction summary, #${seed.continues.conversation} in ${from.name}):`,
-          '<summary>',
-          seed.continues.summary,
-          '</summary>',
-          '',
-          'Greet the user in one or two lines, say you are ready, then continue that work: check what is still open (branches, questions, to-dos) and pick it up. The user may check you in a side chat: what this project is, what is open, what the rules are and who you work with.',
-        ]
-      : [
-          'Greet the user in one or two lines and say you are ready. They check you next in a side chat: what this project is, what is open, what the rules are and who you work with.',
-        ]),
+    '',
+    `Before falling asleep, you wrote this handover to yourself (#${seed.continues.conversation} in ${from.name}):`,
+    '<handoff>',
+    seed.continues.handoff,
+    '</handoff>',
+    '',
+    'Greet the user in one or two lines, say you are ready, then continue that work: check what is still open (branches, questions, to-dos) and pick it up. The user may check you in a side chat: what this project is, what is open, what the rules are and who you work with.',
   ].join('\n')
 }
 
@@ -197,6 +197,14 @@ export async function applySeed(host: ExtensionHost) {
   if (!seed) return undefined
   const harness = host.harness()
   const state = await harness.snapshot(SeedState, ROOT_CONVERSATION_ID, context)
+  // A seed an older Ultimate wrote just before the restart that brought this code: the chapter opens empty, and the
+  // one it came from is as it was left, so the user goes back and falls asleep again.
+  if (state?.applied === undefined && !Array.isArray(seed.learned)) {
+    host.notice(
+      `Chapter ${host.chapter.name} has a seed from an older Ultimate and was not seeded: switch back to ${seed.from.name} with Chapters… and fall asleep again`,
+    )
+    return undefined
+  }
   if (state?.applied === undefined) {
     const ultimate = await host.need(SubagentsApi).standing('ultimate', context)
     await harness.commit(async (tx) => {
@@ -223,28 +231,25 @@ export async function applySeed(host: ExtensionHost) {
             text: `Recreate script ${id} (${name}): ${ask}${prompt ? ` · prompt: ${prompt}${agent ? ` (agent ${agent})` : ''}` : ''}`,
           })),
         ...seed.automations
-          .filter((item) => !item.prompt || item.condition?.of.startsWith('#'))
+          .filter((item) => !carries(item))
           .map(({ name, schedule, event, condition }) => ({
             owner: 'ultimate' as const,
             text: `Recreate ${schedule ? 'schedule' : event ? 'event' : 'context'} automation (${name}) with new ${condition?.of.startsWith('#') ? 'conversation target' : 'subscribers'}: ${JSON.stringify(schedule ?? event ?? condition)}`,
           })),
       ]
       for (const item of carried) todos.items.push({ ...item, id: todos.next++, at: Date.now() })
-      // A real chapter wakes @ultimate with it: its first turn is what the wake-up side chat forks from. The gate's
-      // preview only writes it, so no model runs there.
+      // It wakes @ultimate: its first turn is what the wake-up side chat forks from.
       await deliver(host, tx, ultimate, {
-        type: seed.gate ? 'write' : 'input',
-        session: seed.session,
+        type: 'input',
+        requestId: `dream.chapter:${host.chapter.name}`,
         kind: 'dream.chapter',
         // The morning card shows where we came from and what came along; the old chapter's documents stay there.
         data: {
           from: seed.from,
           number: host.chapter.number,
           name: host.chapter.name,
-          session: seed.session,
-          learned: seed.journal.learned,
+          learned: seed.learned,
           carried: seed.counts,
-          ...(seed.by ? { by: seed.by } : {}),
         },
         content: chapterText(host, seed),
       })
@@ -253,25 +258,16 @@ export async function applySeed(host: ExtensionHost) {
   }
   const signal = new AbortController().signal
   for (const automation of seed.automations) {
-    if (!automation.prompt || automation.condition?.of.startsWith('#')) continue
+    if (!carries(automation)) continue
     const receipt = await harness.snapshot(SeedState, ROOT_CONVERSATION_ID, context)
     if (receipt?.automations.includes(automation.name)) continue
-    if (seed.gate) {
-      // The gate's preview runs against the real project: it checks each schedule but creates nothing that could fire.
-      if (automation.schedule)
-        await host.invoke('automations', 'describe', { schedule: automation.schedule }, signal)
-    } else {
-      // Names are unique in a seed and the destination starts empty: a matching name is a create whose receipt was lost.
-      // A rediscovered project script may share the name: only a carried trigger counts as the lost create.
-      const current = (await host.invoke('automations', 'list', null, signal)) as Automation[]
-      if (
-        !current.some(
-          (item) =>
-            (item.schedule || item.event || item.condition) && item.name === automation.name,
-        )
-      )
-        await host.invoke('automations', 'create', automation, signal)
-    }
+    // Names are unique in a seed: a create whose receipt was lost gets its automation back from the key.
+    await host.invoke(
+      'automations',
+      'create',
+      { ...automation, key: `seed:${host.chapter.name}:${automation.name}` },
+      signal,
+    )
     await harness.commit(async (tx) => {
       const saved = await tx.doc(SeedState, ROOT_CONVERSATION_ID)
       if (!saved.automations.includes(automation.name)) saved.automations.push(automation.name)

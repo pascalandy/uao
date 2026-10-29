@@ -137,11 +137,14 @@ it.concurrent("lists a root's newest landings, notes, branches and compactions, 
       model: 'faux/faux-1',
     },
   ])
-  await until(async () => (await log.recent({ events: [Compacted] })).length === 1)
-  const [compacted] = await log.recent({ events: [Compacted] })
+  // Long fixture paths can push the branch over its own automatic compaction threshold; count only this root's.
+  const rootCompactions = async () =>
+    (await log.recent({ events: [Compacted] })).filter(({ data }) => data.conversation === 1)
+  await until(async () => (await rootCompactions()).length === 1)
+  const [compacted] = await rootCompactions()
   expect(compacted.data).toEqual({ conversation: 1, entry: expect.any(Number), reason: 'manual' })
   await server.harness.waitForIdle(context)
-  expect(await log.recent({ events: [Compacted] })).toHaveLength(1)
+  expect(await rootCompactions()).toHaveLength(1)
 })
 
 const landed = (entry: number, sha: string, base?: string) =>
@@ -553,7 +556,7 @@ it.concurrent('delivers a branch’s prompt once when the process stops before i
 
 it.concurrent('defaults a branch to its source’s configuration', async () => {
   const { server } = await fixture()
-  const model = { provider: 'faux', modelId: 'faux-b' }
+  const model = { provider: 'faux', modelId: 'faux-1' }
   const other = await server.harness.createConversation(
     { ownership: { kind: 'ownerless' }, agent: { model, thinkingLevel: 'high' } },
     context,
@@ -562,7 +565,7 @@ it.concurrent('defaults a branch to its source’s configuration', async () => {
     ;(await tx.doc(Roots, ROOT_CONVERSATION_ID)).roots.push(other.id)
   }, context)
   await seedTally(server.harness, other.id)
-  // Without a choice, the branch keeps its source's configuration.
+  // Without a choice, the branch keeps its source's configuration while its model has a login here.
   const agentOf = async (id: ConversationId) =>
     (await server.harness.conversation(id, context))!.agent(context)
   const followed = await branchFrom(server, { from: other.id, prompt: 'Follow B', isolated: false })

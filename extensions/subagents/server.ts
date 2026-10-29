@@ -38,6 +38,7 @@ import {
   definitionAgent,
   deleteDefinition,
   discoverAgents,
+  hostDefaultModel,
   saveDefinition,
   saveOverlay,
 } from '../../lib/agents.ts'
@@ -48,6 +49,7 @@ import { exec } from '../../lib/exec.ts'
 import { shortTitle } from '../../lib/title.ts'
 import { WorkspacesApi } from '../workspaces/api.ts'
 import { ConversationsApi } from '../conversations/api.ts'
+import { Pin } from '../models/api.ts'
 import { Profile, Standing, Subagents, SubagentsApi } from './api.ts'
 import {
   DefinitionAction,
@@ -104,9 +106,7 @@ function createReporter() {
       sourceEntry?: EntryId
       answer?: EntryId
     },
-    | { phase: 'deliver' }
-    | { phase: 'retry'; retryRequest: string; until: number }
-    | { phase: 'report'; report?: string; answer?: EntryId },
+    { phase: 'deliver' } | { phase: 'report'; report?: string; answer?: EntryId },
     null
   >({
     name: 'ultimate.subagent-reporter',
@@ -116,16 +116,6 @@ function createReporter() {
         ? { phase: 'deliver' }
         : { phase: 'report', report: input.text, answer: input.answer },
     phases: {
-      // Persisted pre-watchdog retry checkpoints must finish silently, without retrying again.
-      retry: (task, runtime, context) =>
-        runtime.commit(async (tx) => {
-          const state = await tx.doc(Subagents, runtime.conversationId)
-          const action = Object.values(state.actions).find(
-            (candidate) => candidate.reporter === task.id,
-          )!
-          action.status = 'failed'
-          return { status: 'running', checkpoint: { phase: 'report' } }
-        }, context),
       deliver: async (task, runtime, context) => {
         try {
           const child = (await runtime.conversation(task.input.conversationId, context))!
@@ -353,6 +343,9 @@ async function waitInterruptibly(
   }
 }
 
+/** Extension-owned standing definitions retire when their extension is disabled live. */
+export const reloadOnSettings = true
+
 /** Browser actions for the Agents tab. */
 export const actions = {
   /** `{name}`: open the current definition's standing conversation. */
@@ -409,7 +402,7 @@ export const actions = {
     const shown = definition ?? invalid
     if (!shown) throw new Error(`Unknown agent: ${name}`)
     const files: Source[] = []
-    for (const root of agentRoots(host.ultimateRoot, host.projectRoot, host.userHome))
+    for (const root of await agentRoots(host.ultimateRoot, host.projectRoot, host.userHome))
       if (existsSync(join(root.path, `${name}.md`))) files.push(root.source)
     return {
       ...(definition ? { definition } : {}),
@@ -431,18 +424,8 @@ export const actions = {
     if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter))
       throw new Error('frontmatter must be an object')
     if (typeof instructions !== 'string') throw new Error('instructions must be a string')
-    const {
-      description,
-      model,
-      thinking,
-      tools,
-      denyTools,
-      isolate,
-      resident,
-      onFailure,
-      fast,
-      summaries,
-    } = frontmatter
+    const { description, model, thinking, tools, denyTools, isolate, resident, fast, summaries } =
+      frontmatter
     if (typeof description !== 'string') throw new Error('description is required')
     if (model !== undefined && typeof model !== 'string') throw new Error('model must be a string')
     if (thinking !== undefined && typeof thinking !== 'string')
@@ -459,8 +442,6 @@ export const actions = {
       throw new Error('denyTools must be a list of tool names')
     if (isolate !== undefined && isolate !== 'none' && isolate !== 'worktree')
       throw new Error('isolate must be none or worktree')
-    if (onFailure !== undefined && onFailure !== 'diagnose' && onFailure !== 'fix')
-      throw new Error('onFailure must be diagnose or fix')
     if (resident !== undefined && typeof resident !== 'boolean')
       throw new Error('resident must be a boolean')
     if (fast !== undefined && typeof fast !== 'boolean') throw new Error('fast must be a boolean')
@@ -482,7 +463,6 @@ export const actions = {
       ...(denyTools?.length ? { denyTools } : {}),
       ...(isolate ? { isolate } : {}),
       ...(resident !== undefined ? { resident } : {}),
-      ...(onFailure ? { onFailure } : {}),
       ...(fast ? { fast } : {}),
       ...(!summaries ? { summaries } : {}),
     }
@@ -518,6 +498,7 @@ export default function subagents(
     | 'harness'
     | 'metadata'
     | 'modelRuntime'
+    | 'settings'
     | 'home'
     | 'projectSettings'
     | 'need'
@@ -574,6 +555,21 @@ export default function subagents(
       }
     }, ctx)
   }
+  // The definition a conversation runs as: children and standing agents record it, branches and the lander carry it
+  // as a label. Its pin, read fresh, is what a conversation whose model lost its login switches to first.
+  host.implement(Pin, {
+    async pin(tx, id) {
+      const name = (await tx.doc(Profile, id)).definition ?? (await tx.doc(host.metadata, id)).label
+      if (!name) return undefined
+      const { definitions } = await discoverAgents(
+        host.ultimateRoot,
+        host.projectRoot,
+        host.userHome,
+        host.modelRuntime,
+      )
+      return definitions.find((definition) => definition.name === name)?.model
+    },
+  })
   host.implement(SubagentsApi, {
     async createChild(tx, options) {
       const child = await createChild(host, tx, options)
@@ -598,14 +594,14 @@ export default function subagents(
         const index = await tx.doc(Standing, ROOT_CONVERSATION_ID)
         let id = Object.hasOwn(index, name) ? index[name] : undefined
         let created: ConversationRecord | undefined
-        // A new conversation starts on the main conversation's model; an existing one keeps the model and thinking
-        // level chosen in it, so a refresh changes them only where the definition pins them.
-        let base = main
+        // A new conversation starts on the default model; an existing one keeps the model and thinking level chosen
+        // in it, so a refresh changes them only where the definition pins them.
+        let base = { ...main, model: hostDefaultModel(host) }
         if (id !== undefined && (await tx.conversation(id))) {
           const own = await tx.doc(AgentDoc, id)
           base = {
             ...main,
-            model: own.model ?? main.model,
+            model: own.model ?? base.model,
             thinkingLevel: own.thinkingLevel ?? main.thinkingLevel,
           }
         } else {
@@ -1079,7 +1075,7 @@ export default function subagents(
                 request: `watchdog-retry:${(task.input as { failedTask: number }).failedTask}`,
               }))
             }, context)
-            const saved = await api.memo(
+            const target = await api.memo(
               'stopTarget',
               {
                 run: live?.run?.taskId ?? null,
@@ -1091,8 +1087,6 @@ export default function subagents(
               },
               context,
             )
-            // A stop interrupted before the watchdog saved no watchdogs; it captured none, so it cancels none.
-            const target = { ...saved, watchdogs: saved.watchdogs ?? [] }
             // Join delivery invocations before inspecting admissions that may have raced stop.
             // Capture watchdog identities too: Stop must not restart the child after its delay.
             for (const reporter of [

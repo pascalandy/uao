@@ -8,6 +8,8 @@ import { ExtensionsAction } from './refs.ts'
 export const projectDialog = 'onboarding.project'
 /** The start page's Isolated switch entry point; the overlay routes it to @ultimate. */
 export const gitDialog = 'onboarding.git'
+/** ⌘K Get ready…: the first run again, whatever the recorded state. */
+export const firstRunDialog = 'onboarding.first-run'
 
 export const sources: Record<ExtensionInfo['source'], string> = {
   builtin: 'built-in',
@@ -66,6 +68,7 @@ export function Line({ text, className }: { text: string; className?: string }) 
     <span className={className} title={text.replaceAll('`', '')}>
       {text.split('`').map((part, index) =>
         index % 2 ? (
+          // oxlint-disable-next-line react/no-array-index-key -- Code span positions in split text.
           <code className="font-mono text-[0.92em] text-foreground/75" key={index}>
             {part}
           </code>

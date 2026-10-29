@@ -18,6 +18,7 @@ import {
   cn,
   errorMessage,
   refreshModels,
+  useCopy,
   useDialog,
   useDoc,
   useModels,
@@ -25,7 +26,6 @@ import {
   useUltimate,
 } from '@/sdk'
 import type { AuthEvent, AuthPrompt } from '@/sdk'
-import { store } from '@/sdk/client'
 import { authLabel, dialogs, reopenPicker, useLoginProvider } from './state.tsx'
 import type { ProviderInfo } from './state.tsx'
 import { AnswerAction, CancelAction, LoginAction, LoginDoc, LogoutAction } from './refs.ts'
@@ -51,22 +51,11 @@ const typeLabel = (method: Method) => (method.type === 'api_key' ? 'API key' : '
 const seen = new Map<string, number>()
 
 function CopyButton({ value, label = 'Copy' }: { value: string; label?: string }) {
-  const [copied, setCopied] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  useEffect(() => () => clearTimeout(timer.current), [])
+  const { copied, copy } = useCopy()
   return (
     <Button
       className="h-7 gap-1.5 px-2 font-mono text-[11.5px]"
-      onClick={() => {
-        void navigator.clipboard
-          .writeText(value)
-          .then(() => {
-            setCopied(true)
-            clearTimeout(timer.current)
-            timer.current = setTimeout(() => setCopied(false), 1200)
-          })
-          .catch((error: unknown) => store.notify({ level: 'error', message: errorMessage(error) }))
-      }}
+      onClick={() => copy(value)}
       size="sm"
       variant="outline"
     >
@@ -341,6 +330,7 @@ function FlowView({
       <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-4 py-4">
         {flowId &&
           flow?.events.map((event, index) => (
+            // oxlint-disable-next-line react/no-array-index-key -- Login events append within this flow.
             <EventView event={event} flowId={flowId} index={index} key={index} />
           ))}
         {flow?.prompt && status === 'running' && flowId && (

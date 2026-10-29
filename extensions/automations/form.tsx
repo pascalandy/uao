@@ -33,10 +33,10 @@ import {
   useNow,
   useUltimate,
 } from '@/sdk'
-import { GrantEditor, GrantSwitches, clock, full, until, words } from './parts.tsx'
+import { clock, full, until, words } from './parts.tsx'
 import { DefinitionsAction } from '../subagents/ui.tsx'
-import { CreateAction, DescribeAction, EventsAction, GrantRef, UpdateAction } from './refs.ts'
-import type { Automation, GrantAction } from './refs.ts'
+import { CreateAction, DescribeAction, EventsAction, UpdateAction } from './refs.ts'
+import type { Automation } from './refs.ts'
 
 type Mode = 'cron' | 'at' | 'every'
 interface Draft {
@@ -46,8 +46,11 @@ interface Draft {
   filters: Record<string, string>
   filterTypes: Record<string, 'string' | 'number' | 'boolean'>
   of: string
-  above: number
-  cooldownMinutes: number
+  /** The number fields hold what was typed, so a cleared field stays empty instead of reading 0. */
+  above: string
+  cooldownMinutes: string
+  /** Hours without the user's input before it may fire; 0 for none. */
+  idleHours: string
   name: string
   prompt: string
   /** What a script watches for, in plain words; its watcher writes the script from it. */
@@ -103,8 +106,9 @@ function draftOf(automation?: Automation): Draft {
     filters: {},
     filterTypes: {},
     of: '@ultimate',
-    above: 80,
-    cooldownMinutes: 60,
+    above: '80',
+    cooldownMinutes: '60',
+    idleHours: '0',
     name: '',
     prompt: '',
     ask: '',
@@ -136,8 +140,9 @@ function draftOf(automation?: Automation): Draft {
         ]),
       ),
       of: automation.condition?.of ?? '@ultimate',
-      above: automation.condition?.above ?? 80,
-      cooldownMinutes: (automation.condition?.cooldownMs ?? 3600000) / 60000,
+      above: String(automation.condition?.above ?? 80),
+      cooldownMinutes: String((automation.condition?.cooldownMs ?? 3600000) / 60000),
+      idleHours: String((automation.condition?.idleFor ?? 0) / 3600000),
     }
   if (automation?.script)
     return {
@@ -187,6 +192,36 @@ function scheduleOf(draft: Draft): string | undefined {
   // A date and time without an offset is local to this browser, which runs on the machine Ultimate runs on.
   const local = /^\d{4}-\d\d-\d\d[ T]\d\d:\d\d(:\d\d)?$/.test(at) && new Date(at.replace(' ', 'T'))
   return `at ${local && Number.isFinite(local.getTime()) ? local.toISOString() : at}`
+}
+
+/** An empty field is no number: `Number('')` would read it as 0. */
+const amount = (text: string) => (text.trim() === '' ? Number.NaN : Number(text))
+
+/** The context condition the draft describes, or undefined while a field is empty or out of range. */
+export function contextCondition(
+  draft: Pick<Draft, 'of' | 'above' | 'cooldownMinutes' | 'idleHours'>,
+) {
+  const above = amount(draft.above)
+  const cooldownMinutes = amount(draft.cooldownMinutes)
+  const idleHours = amount(draft.idleHours)
+  if (
+    !/^(@[a-zA-Z0-9_-]+|#[1-9]\d*)$/.test(draft.of) ||
+    !Number.isInteger(above) ||
+    above < 1 ||
+    above > 99 ||
+    !Number.isFinite(cooldownMinutes) ||
+    cooldownMinutes < 0 ||
+    !Number.isFinite(idleHours) ||
+    idleHours < 0
+  )
+    return undefined
+  return {
+    metric: 'context' as const,
+    of: draft.of,
+    above,
+    cooldownMs: cooldownMinutes * 60000,
+    idleFor: idleHours * 3600000,
+  }
 }
 
 const matches = (draft: Draft, preset: Partial<Draft>) =>
@@ -420,9 +455,6 @@ export function AutomationForm({
 }) {
   const [draft, setDraft] = useState(() => draftOf(automation))
   const [saving, setSaving] = useState(false)
-  const [grants, setGrants] = useState<GrantAction[]>([])
-  // If granting fails after creation, retry the grant without creating a duplicate.
-  const created = useRef<Automation>(undefined)
   const eventChoices = useAction(EventsAction, null, { enabled: open, onError: () => {} })
   const [error, setError] = useState<string>()
   const ids = useId()
@@ -434,6 +466,7 @@ export function AutomationForm({
   const ultimate = draft.trigger === 'ultimate'
   const wakeable = script || ultimate
   const schedule = scheduleOf(draft)
+  const condition = contextCondition(draft)
   const prompt = draft.prompt.trim()
   // A fire needs something to do: wake a conversation, run a prompt, or both. An edit keeps its subscribers.
   const acts = !!prompt || (automation ? automation.subscribers.length > 0 : wakeable && draft.wake)
@@ -449,12 +482,7 @@ export function AutomationForm({
                 ? value === 'true' || value === 'false'
                 : draft.filterTypes[key] !== 'number' || Number.isFinite(Number(value))),
           )
-        : /^(@[a-zA-Z0-9_-]+|#[1-9]\d*)$/.test(draft.of) &&
-          Number.isInteger(draft.above) &&
-          draft.above >= 1 &&
-          draft.above <= 99 &&
-          Number.isFinite(draft.cooldownMinutes) &&
-          draft.cooldownMinutes >= 0
+        : condition !== undefined
       : schedule !== undefined
   const ready = draft.name.trim() && validTrigger && acts && !saving
   const save = async () => {
@@ -479,23 +507,15 @@ export function AutomationForm({
         : ultimate
           ? draft.ultimate === 'event'
             ? { event: { name: draft.event, where } }
-            : {
-                condition: {
-                  metric: 'context' as const,
-                  of: draft.of,
-                  above: draft.above,
-                  cooldownMs: draft.cooldownMinutes * 60000,
-                },
-              }
+            : { condition: condition! }
           : { schedule }
       const fields = { name: draft.name.trim(), ...trigger, ...(prompt ? { prompt } : {}) }
-      const existing = automation ?? created.current
-      let saved = existing
+      const saved = automation
         ? await api.action(UpdateAction, {
-            id: existing.id,
+            id: automation.id,
             ...fields,
             // An empty prompt removes the run action the automation had.
-            ...(!prompt && existing.prompt ? { prompt: '' } : {}),
+            ...(!prompt && automation.prompt ? { prompt: '' } : {}),
             ...(prompt ? { agent: draft.agent } : {}),
           })
         : await api.action(CreateAction, {
@@ -506,23 +526,10 @@ export function AutomationForm({
               ? { subscribers: [conversationId] }
               : {}),
           })
-      if (!automation) created.current = saved
-      if (!automation && saved.subscribers.length && (grants.length || saved.grant)) {
-        saved = await api.action(GrantRef, {
-          id: saved.id,
-          actions: grants,
-          source: 'Set in Automations form',
-        })
-      }
       onSaved(saved)
       onOpenChange(false)
     } catch (failure) {
-      const message = errorMessage(failure).replace(/^automations\/\w+: /, '')
-      setError(
-        created.current
-          ? `Automation ${created.current.id} exists. Could not finish saving: ${message}`
-          : message,
-      )
+      setError(errorMessage(failure).replace(/^automations\/\w+: /, ''))
     } finally {
       setSaving(false)
     }
@@ -715,7 +722,7 @@ export function AutomationForm({
                           id={`${ids}-above`}
                           max={99}
                           min={1}
-                          onChange={(event) => set({ above: Number(event.target.value) })}
+                          onChange={(event) => set({ above: event.target.value })}
                           type="number"
                           value={draft.above}
                         />
@@ -726,18 +733,38 @@ export function AutomationForm({
                           id={`${ids}-cooldown`}
                           min={0}
                           step="any"
-                          onChange={(event) => set({ cooldownMinutes: Number(event.target.value) })}
+                          onChange={(event) => set({ cooldownMinutes: event.target.value })}
                           type="number"
                           value={draft.cooldownMinutes}
                         />
                       </Field>
                     </div>
+                    <Field htmlFor={`${ids}-idle`} label="After a pause (hours without your input)">
+                      <input
+                        className={input}
+                        id={`${ids}-idle`}
+                        min={0}
+                        step="any"
+                        onChange={(event) => set({ idleHours: event.target.value })}
+                        placeholder="0: no pause needed"
+                        type="number"
+                        value={draft.idleHours}
+                      />
+                    </Field>
                     <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-                      Fires once, again after it drops below {draft.above - 10}% and{' '}
-                      {draft.cooldownMinutes === 60
-                        ? 'an hour has'
-                        : `${draft.cooldownMinutes} minutes have`}{' '}
-                      passed.
+                      {condition ? (
+                        <>
+                          {condition.idleFor > 0 &&
+                            `Waits until you gave it no input for ${condition.idleFor === 3600000 ? 'an hour' : `${condition.idleFor / 3600000} hours`}. `}
+                          Fires once, again after it drops below {condition.above - 10}% and{' '}
+                          {condition.cooldownMs === 3600000
+                            ? 'an hour has'
+                            : `${condition.cooldownMs / 60000} minutes have`}{' '}
+                          passed.
+                        </>
+                      ) : (
+                        'Fill in each number: context 1–99%, cooldown and pause 0 or more.'
+                      )}
                     </p>
                   </>
                 )}
@@ -923,19 +950,6 @@ export function AutomationForm({
                   <AgentPicker onChange={(agent) => set({ agent })} value={draft.agent} />
                 </Field>
               </>
-            )}
-            {automation ? (
-              <GrantEditor automation={automation} />
-            ) : (
-              <GrantSwitches
-                // A new automation that wakes no one gets no grant: the switches show it, nothing is skipped silently.
-                actions={!prompt || (wakeable && draft.wake) ? grants : []}
-                busy={saving}
-                // Without a prompt the caller is woken; with one, only when "Wake this conversation" is on.
-                wakes={!prompt || (wakeable && draft.wake)}
-                onChange={setGrants}
-                source="Set in Automations form"
-              />
             )}
             {error && (
               <p className="flex items-start gap-1.5 font-mono text-[11.5px] leading-snug break-words text-error">

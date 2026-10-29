@@ -33,6 +33,13 @@ export const CancelAction = actionRef<{ flowId: string }, null>('models', 'cance
 export const LogoutAction = actionRef<{ provider: string }, null>('models', 'logout')
 
 /**
+ * A `models.fallback` entry: the conversation's model (`provider/id`) had no login here, so its next run switched to
+ * `to`: the same model on another provider, its definition's pin or the default model. Without `to` nothing could
+ * replace it (or only a pay-per-token login could replace a subscription), so it kept its model and needs the user.
+ */
+export type Fallback = { from: string; to?: string; reason: 'same' | 'pin' | 'default' | 'none' }
+
+/**
  * A login or logout of model provider `provider` completed through Ultimate; react to it to drop what you knew about
  * that provider's credentials (health resets its record to unknown).
  */

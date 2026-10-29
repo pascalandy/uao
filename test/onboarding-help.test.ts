@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest'
 import { Messages } from '../extensions/messages/api.ts'
+import { Starts } from '../extensions/onboarding/server.ts'
 import { Standing } from '../extensions/subagents/api.ts'
 import { ROOT_CONVERSATION_ID } from '@earendil-works/pi-durable'
 import { context } from '../server/harness.ts'
@@ -28,6 +29,25 @@ it('opens setup help in the standing conversation without a message', async () =
     expect(
       (await server.harness.snapshot(Messages, ROOT_CONVERSATION_ID, context))?.messages ?? [],
     ).toEqual([])
+    // The walkthrough replays every time, never deduplicated like onboarding.start.
+    for (let run = 0; run < 2; run++) {
+      const walkthrough = await post(server, '/api/extensions/onboarding/actions/walkthrough', {})
+      expect(walkthrough.data.result.id).toBe(id)
+      await server.harness.waitForIdle(context)
+    }
+    const after = JSON.stringify((await conversation.context(context)).messages)
+    expect(after.match(/Walkthrough started: run how-ultimate-works/g)).toHaveLength(2)
+    // Dismissing Start here sticks for the project, and setup still starts afterwards (⌘K Get ready…).
+    expect((await post(server, '/api/extensions/onboarding/actions/dismiss', {})).status).toBe(200)
+    expect((await server.harness.snapshot(Starts, ROOT_CONVERSATION_ID, context))?.dismissed).toBe(
+      true,
+    )
+    const started = await post(server, '/api/extensions/onboarding/actions/start', {})
+    expect(started.data.result.id).toBe(id)
+    await server.harness.waitForIdle(context)
+    expect((await server.harness.snapshot(Starts, ROOT_CONVERSATION_ID, context))?.dismissed).toBe(
+      true,
+    )
     const invalid = await post(server, '/api/extensions/onboarding/actions/help', {
       args: { card: 'arbitrary' },
     })

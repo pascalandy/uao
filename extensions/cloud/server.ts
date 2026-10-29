@@ -5,7 +5,7 @@ import type { JsonValue } from '@earendil-works/chord'
 import type { ExtensionHost } from '../../server/extensions.ts'
 import type { EventToken } from '../../shared/events.ts'
 import { implementAction } from '../../lib/actions.ts'
-import { cloudConfig } from '../../lib/cloud.ts'
+import { cloudConfig, fetchRegister } from '../../lib/cloud.ts'
 import { projectIdentity } from '../../lib/project-identity.ts'
 import { readSecret } from '../../lib/secrets.ts'
 import { CloudApi } from './api.ts'
@@ -43,6 +43,7 @@ interface Running {
 async function setup(host: ExtensionHost) {
   const config = await cloudConfig(host)
   if (!config) return { status: 'off' as const }
+  if (config.satellite) return { status: 'satellite' as const, config }
   const identity = await projectIdentity(host.projectRoot)
   if (!identity) return { status: 'local' as const, config }
   const { chapter } = host
@@ -75,7 +76,11 @@ export async function backup(host: ExtensionHost, force: boolean) {
   try {
     const ready = await setup(host)
     if (ready.status === 'off')
-      throw new Error('Cloud backups are off: join the fleet with ⌘K → Join cloud fleet')
+      throw new Error('Cloud backups are off: join them with ⌘K → Join cloud backups')
+    if (ready.status === 'satellite')
+      throw new Error(
+        'This machine is a satellite (cloud.satellite in user settings): it never backs up, so it cannot replace the backups of the machine that owns this project',
+      )
     if (ready.status === 'local')
       throw new Error(`${host.projectRoot} has no GitHub origin remote, so it cannot be backed up`)
     return await upload(host, running, ready, force)
@@ -152,6 +157,8 @@ export const actions = {
     const ready = await setup(host)
     const running = runningIn(host)
     const name = basename(host.projectRoot)
+    if (ready.status === 'satellite')
+      return { status: 'satellite', name, machine: ready.config.machine }
     if (ready.status !== 'on') return { status: ready.status, name }
     const saved = await readBackup(ready.dir, ready.key)
     return {
@@ -169,7 +176,7 @@ export const actions = {
   backup: implementAction(BackupAction, (args, { host }) =>
     backup(host, (args as { force?: unknown } | null)?.force === true),
   ),
-  /** Whether this machine joined the fleet: `cloud.url` and both secrets, without their values. */
+  /** Whether this machine joined cloud backups: `cloud.url` and both secrets, without their values. */
   joinState: implementAction(JoinStateAction, (_args, { host }) => joinState(host.userHome)),
   /** User-only: the Join card's submit; checks the cloud, then stores the secrets and settings. */
   join: implementAction(JoinAction, async (args, { host }) => {
@@ -190,6 +197,19 @@ export const userActions = ['join']
 export default function cloud(host: ExtensionHost) {
   host.implement(CloudApi, {
     backup: () => backup(host, false),
+    lastBackup: async () => {
+      const ready = await setup(host)
+      if (ready.status !== 'on') return undefined
+      const saved = await readBackup(ready.dir, ready.key)
+      if (saved) return saved.last
+      // A backup the Worker registered before this home could record it (a restart in between) counts too.
+      const latest = (await fetchRegister(ready.config)).projects.find(
+        (project) => project.key === ready.key,
+      )?.latest
+      if (!latest) return undefined
+      const { id, at, machine, bytes, uploaded } = latest
+      return { id, at, machine, bytes, uploaded }
+    },
     status: async () => (await setup(host)).status,
   })
   // Optional services, resolved where they are called; declared here so the catalogue lists them.

@@ -12,7 +12,7 @@ import type { Device } from '../../shared/events.ts'
 import { resolveImages } from './images.ts'
 import type { ImagesRef } from './images.ts'
 import { append } from './log.ts'
-import { parentOf, resolve, senderName } from './addresses.ts'
+import { parentOf, resolve, senderName, starterOf } from './addresses.ts'
 import { delivery } from './delivery.ts'
 
 // The receipt commits with the message, closing the gap before api.memo records its id.
@@ -51,13 +51,22 @@ export async function send(
     questions?: Question[]
   },
   ctx: Context,
-  taskId?: TaskId,
-  callId?: string,
-  requestId?: string,
-  answerId?: number,
-  note?: boolean,
-  device?: Device,
+  options: {
+    /** The sending tool call: its task-scoped receipt deduplicates admission. */
+    taskId?: TaskId
+    callId?: string
+    /** A pipeline's request id, deduplicated in the sender conversation. */
+    requestId?: string
+    /** The user's answer or dismissal of open message `answerId`. */
+    answerId?: number
+    /** Place it as a note, which starts no run; by default one-way messages to the sender's starter are notes. */
+    note?: boolean
+    device?: Device
+    /** A branch's final answer routed as its report: the branch shows as awaiting its starter. */
+    report?: boolean
+  } = {},
 ) {
+  const { taskId, callId, requestId, answerId, device } = options
   if (requestId !== undefined && from !== 'user') {
     const sent = await host.harness().snapshot(Requests, from as ConversationId, ctx)
     if (sent?.ids[requestId] !== undefined) return sent.ids[requestId]
@@ -82,6 +91,7 @@ export async function send(
   const questions = input.questions === undefined ? undefined : checkQuestions(input.questions)
   // Checked before resolving, which may create a standing agent's conversation.
   const parent = from === 'user' ? undefined : await parentOf(host, from, ctx)
+  const starter = parent ?? (await starterOf(host, from, ctx))
   if (parent !== undefined && input.to.replace(/^#/, '') !== String(parent))
     throw new Error(
       `Subagents report to the conversation that started them: message only #${parent}. Your final answer reaches it anyway.`,
@@ -105,8 +115,8 @@ export async function send(
       if (!original || !openQuestion(original))
         throw new Error('These questions are no longer open')
     }
-    if (input.images !== undefined && (from === 'user' || to === 'user'))
-      throw new Error('images go along only to conversations and agents')
+    if (input.images !== undefined && from === 'user')
+      throw new Error('your images go along with what you submit, not with a message')
     const images =
       input.images === undefined
         ? undefined
@@ -115,23 +125,21 @@ export async function send(
     if (from === 'user' && input.re !== undefined)
       for (const m of (await tx.doc(Messages, ROOT_CONVERSATION_ID)).messages)
         if (openQuestion(m) && m.id === input.re) m.state = input.dismiss ? 'dismissed' : 'answered'
+    let re = input.re
     if (from !== 'user' && input.reply !== false) {
       const log = await tx.doc(Messages, ROOT_CONVERSATION_ID)
+      // Only a message the agent has read is owed; one still queued is unread and gets its own turn.
       const pending = log.messages.find(
-        (m) =>
-          m.to === from &&
-          m.from === to &&
-          m.reply &&
-          (m.state === 'sent' || m.state === 'delivered'),
+        (m) => m.to === from && m.from === to && m.reply && m.state === 'delivered',
       )
-      // Still queued, it is unread: answering it would answer what the agent has not seen.
-      if (pending && (to === 'user' || pending.state === 'sent'))
-        throw new Error(
-          `Your answer to ${toLabel}'s message ${pending.id} is sent back automatically. Answer instead of messaging.`,
-        )
+      // A message to the user who is owed an answer is that answer, with its questions and images.
+      if (pending && to === 'user') {
+        pending.state = 'answered'
+        re = pending.id
+      }
       // An agent messaging a sender whose message it has read and owes an answer is answering: this becomes the reply,
       // and that message's delivery, seeing it answered, keeps the final answer local.
-      if (pending) {
+      else if (pending) {
         pending.state = 'answered'
         const response = await append(tx, {
           from,
@@ -170,10 +178,11 @@ export async function send(
       text: input.text,
       reply: input.reply ?? true,
       state: to === 'user' ? 'delivered' : 'sent',
-      ...(input.re === undefined ? {} : { re: input.re }),
+      ...(re === undefined ? {} : { re }),
       ...(callId === undefined ? {} : { call: callId }),
       ...(images ? { images } : {}),
       ...(questions ? { questions } : {}),
+      ...(options.report ? { report: true as const } : {}),
     })
     await host.emit(tx, MessageSent, {
       message: message.id,
@@ -197,7 +206,7 @@ export async function send(
         {
           message,
           steer,
-          note: note ?? (parent === to && input.reply === false),
+          note: options.note ?? (starter === to && input.reply === false),
           fromLabel,
           toLabel,
         },

@@ -23,9 +23,9 @@ flowchart LR
 
 - The supervisor, `bin/ultimate.ts`, is a long-lived process. It holds the public port and `ultimate.lock`. It forwards to one generation. It restarts a generation after a crash (`docs/running.md`)
 - A generation, `server/main.ts`, is one core process. It embeds Vite, loads the extensions, and opens the Pi Durable harness (`docs/running.md`)
-- The browser keeps a live copy of the state from `/api/events`, and it sends commands to `server/api.ts` (`web/src/sdk/store.ts`)
+- Each browser tab uses one `/api/events` connection for all subscriptions (`27e615d0`, `70f56ce5`). The SDK manages this stream and sends actions to `server/api.ts` (`web/src/sdk/store.ts`)
 - A preview runs `server/main.ts` on its own port and uses its own home. It has no supervisor, so it cannot restart (`docs/running.md`)
-- `bin/cli.ts` is the emergency terminal agent. It opens no server, no Vite, and no storage (`docs/running.md`)
+- `17d186bf` removes the unused emergency terminal agent. Supervisor diagnostics remain in `bin/ultimate.ts` ([Running the server](../running.md))
 - Script triggers, lander checks, and previews run as child process groups (`lib/process-group.ts`, `extensions/automations/supervisor.ts`)
 - The services in the terminal dashboard are status reports, not processes (`README.md`)
 
@@ -40,7 +40,7 @@ The layers go from the foundation up. A layer depends only on the layers below i
 5. **Optional built-ins.** The other built-ins. They reach the core tier through points or events
 6. **Personal and project extensions.** Folders in `~/.ultimate/extensions/`, and in `<project>/.ultimate/extensions/` for a trusted project. A later folder with the same name replaces an earlier one
 
-Three folders sit beside the layers. `lib/` holds helpers that extensions share and imports no extension (`AGENTS.md`). `agents/` holds agent definitions (`lib/agents.ts`). `skills/` holds skills that the prompt lists and the agent reads on demand (`extensions/prompt/server.ts`, `server/skills.ts`).
+Three folders sit beside the layers. `lib/` holds helpers that extensions share and imports no extension (`AGENTS.md`). `agents/` and enabled extensions' `agents/` folders hold built-in definitions (`ab959a36`, `lib/agents.ts`). `skills/` holds skills that the prompt lists and the agent reads on demand (`extensions/prompt/server.ts`, `server/skills.ts`).
 
 ## Where state lives
 
@@ -50,11 +50,11 @@ Three folders sit beside the layers. `lib/` holds helpers that extensions share 
   - `ultimate.lock`, `storage.lock`, and `supervisor.log`: the supervisor and the storage owner (`bin/ultimate.ts`)
   - `project.json` and `conversations.json`: the manifest that other projects read (`docs/durability.md`)
   - `chapters.json`, `chapters/`, and `pending-chapter.json`: the other chapters and a pending switch (`lib/chapters.ts`)
-  - `lander/`: the lander's integration checkout (`extensions/workspaces/README.md`)
+  - `lander/` and `worktrees/`: integration and conversation checkouts, unless project settings choose another path (`2affc7ad`, `extensions/workspaces/README.md`)
 - **The user layer**, `~/.ultimate/`: `settings.json`, `trust.json`, `secrets.json`, `health.json`, `AGENTS.md`, `skills/`, `agents/`, `extensions/`, and `automations/`, which holds user script triggers and the state of all script triggers (`docs/settings.md`, `extensions/automations/README.md`, `extensions/secrets/README.md`, `extensions/health/README.md`)
 - **Pi**, `~/.pi/agent/`: logins, models, and settings that Ultimate shares with Pi. Each machine logs in separately (`README.md`)
 - **The project**, `.ultimate/` in the repository: committed settings, extensions, agents, and skills (`docs/settings.md`). Project script triggers live in `<project>/.ultimate/automations/<slug>/` (`extensions/automations/README.md`)
-- **The UI**: durable UI state in the `ultimate.ui` document of the root conversation. Drafts and scroll positions stay in the browser (`docs/durability.md`)
+- **The UI**: `ultimate.ui` stores durable UI state (`docs/durability.md`). Drafts, images, and scroll positions stay in browser storage (`docs/durability.md`, `4eb6a626`)
 
 ## How a change goes live
 
@@ -62,45 +62,51 @@ Three folders sit beside the layers. `lib/` holds helpers that extensions share 
 
 ## Flows
 
-These seven flows connect the parts at the snapshot. The linked files hold the mechanics.
+These flows connect the parts at the snapshot. The linked files hold the mechanics.
 
-- **A user message.** The composer sends the input to `conversation.submit` in `server/api.ts`. Pi Durable accepts the input, and a second commit records the event. A crash between the two commits loses the event, not the input (`server/api.ts:551`). The browser gets each committed change from `/api/events` (`web/src/sdk/store.ts`)
-- **A change goes live.** The loader loads each server facet through Vite (`server/extensions.ts:508`). Vite reloads each web facet. A change to `server/` or `shared/` goes live through a checked swap of the generation ([the layer table](../../AGENTS.md#layers-and-how-they-reload))
+- **A user message.** The composer sends the input to `conversation.submit` in `server/api.ts`. Pi Durable accepts the input, and a second commit records the event. A crash between the two commits loses the event, not the input (`server/api.ts`). The browser gets each committed change from `/api/events` (`web/src/sdk/store.ts`)
+- **A change goes live.** The loader loads each server facet through Vite (`server/extensions.ts`). Vite reloads each web facet. A change to `server/` or `shared/` goes live through a checked swap of the generation ([the layer table](../../AGENTS.md#layers-and-how-they-reload))
 - **A feature lands.** [Life of a change unit](history.md#life-of-a-change-unit) gives the steps from @ultimate to `main`
-- **A crash.** The supervisor starts a new generation (`bin/ultimate.ts:459`). The generation opens the storage of the active chapter, and the harness resumes (`server/harness.ts:240`). A reactor commits its writes and its cursor in one transaction (`server/events.ts:182`). Messages and the lander keep receipts and checkpoints, so a second run does no harm (`extensions/messages/send.ts:93`, `extensions/workspaces/lander.ts:735`). [Durability](../durability.md) holds the rules
-- **A question to the user.** Only @ultimate sends messages to the user ([D022](decisions/D022-route-through-ultimate.md)). The `message` tool accepts structured questions and validates them (`extensions/messages/questions.ts`). The questions extension renders those fields without a model (`extensions/questions/README.md`). The user can answer the questions, add a comment, or dismiss the message (`extensions/questions/README.md`). An answer returns to the sender only while the message is open (`extensions/messages/server.ts:92`, `extensions/messages/send.ts:101`). During a hands-off goal, @ultimate decides most of these questions itself ([D037](decisions/D037-goals-delegate-approvals.md))
-- **A compaction.** For a top-level conversation other than @ultimate, `compact` commits the compaction and its wake-up together (`extensions/lineage/server.ts:1653`). @ultimate's compaction hook creates its own wake-up (`extensions/lineage/server.ts:1505`). `compact` is a deferred tool, so an agent needs it in its definition (`extensions/lineage/server.ts`). Automatic compaction continues a subagent's run ([B01](bricks/B01-durable-conversations.md)). After @ultimate compacts, a built-in automation starts the dream flow ([B15](bricks/B15-dreams-and-chapters.md))
+- **A crash.** The supervisor starts a new generation (`bin/ultimate.ts`). The generation opens the storage of the active chapter, and the harness resumes (`server/harness.ts`). A reactor commits its writes and its cursor in one transaction (`server/events.ts`). Messages and the lander keep receipts and checkpoints, so a second run does no harm (`extensions/messages/send.ts`, `extensions/workspaces/lander.ts`). [Durability](../durability.md) holds the rules
+- **A question to the user.** Only @ultimate sends messages to the user ([D022](decisions/D022-route-through-ultimate.md)). The `message` tool accepts structured questions and validates them (`extensions/messages/questions.ts`). The questions extension renders those fields without a model (`extensions/questions/README.md`). The user can answer the questions, add a comment, or dismiss the message (`extensions/questions/README.md`). An answer returns to the sender only while the message is open (`extensions/messages/server.ts`, `extensions/messages/send.ts`). During a hands-off goal, @ultimate decides most of these questions itself ([D037](decisions/D037-goals-delegate-approvals.md))
+- **A compaction.** The deferred `compact` tool commits a compaction with its wake-up for a non-subagent conversation (`extensions/lineage/server.ts`). @ultimate's manual compaction uses its own hook (`extensions/lineage/server.ts`). Automatic compaction continues the current run (`extensions/lineage/server.ts`). Dreams start from separate context automations ([B15](bricks/B15-dreams-and-chapters.md))
 - **A hands-off goal.** The user's start action commits the goal and its delivery task (`extensions/goal/server.ts`). Each input reads the current goal into a note before @ultimate runs (`extensions/goal/server.ts`). @ultimate records goal decisions and ends with a goal report ([B12](bricks/B12-human-in-the-loop.md)). A queued start after the goal ends grants nothing (`65a251f`)
+- **A dream.** @ultimate starts an ordinary branch, relays its proposals, and can prepare a chapter ([D040](decisions/D040-dream-as-ordinary-work.md)). The user authorizes the switch (`extensions/dream/server.ts`)
+- **Another instance.** Codemode reads and `tell` share `lib/remote.ts`. Discovery tries local instances, user remotes, then the optional cloud register (`2a6d9e51`, `197a3e3f`)
+- **Live voice.** Browser WebRTC carries GPT-Live audio (`extensions/voice-live/README.md`). The standing Voice agent answers status or forwards work to @ultimate (`extensions/voice-live/agents/voice.md`)
 
 ## Code map
 
-| Path                      | Role                                                                                          | Read first                                            |
-| ------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `bin/`                    | The supervisor, the terminal dashboard, and the emergency terminal agent                      | [Running the server](../running.md)                   |
-| `server/main.ts`          | Starts a generation: HTTP, Vite, extensions, and the harness                                  | [Running the server](../running.md)                   |
-| `server/harness.ts`       | Opens Pi Durable on the active chapter                                                        | [Durability](../durability.md)                        |
-| `server/api.ts`           | HTTP routes, extension actions, UI writes, and the event stream                               | [Running the server](../running.md)                   |
-| `server/discovery.ts`     | Finds built-in, user, and project resources, in order                                         | [Discovery and settings](../settings.md)              |
-| `server/extensions.ts`    | Loads server facets with their tools, hooks, and actions                                      | [Extension mechanics](../extensions.md)               |
-| `server/trace.ts`         | The call trace                                                                                | [Tracing](../extensions.md#tracing)                   |
-| `shared/protocol.ts`      | Typed contracts between server and browser                                                    | `AGENTS.md`                                           |
-| `shared/extension-api.ts` | Extension API tokens, the core-tier reader, and `defaultOff`                                  | [Extension APIs](../extensions.md#extension-apis)     |
-| `lib/`                    | Shared helpers: exec, git, JSON files, settings, secrets, and chapters                        | `AGENTS.md`                                           |
-| `lib/agents.ts`           | Agent definitions, overlay saves, and deferred tools                                          | [Subagents](../subagents.md)                          |
-| `lib/ago.ts`              | The relative-time formatter that server code and the web SDK share                            | `0104d7a`                                             |
-| `web/src/`                | The app shell, the surface host, and the extension registry                                   | [Writing extensions](../../extensions/README.md)      |
-| `web/src/sdk/`            | The SDK that web facets import as `@/sdk`, including `Card` and `formatAgo`                   | [SDK](../../extensions/README.md#sdk-sdk)             |
-| `extensions/`             | The built-ins, each with a README                                                             | [Writing extensions](../../extensions/README.md)      |
-| `agents/`                 | Built-in agent definitions                                                                    | [Subagents](../subagents.md)                          |
-| `skills/`                 | Built-in skills: `integrate-ultimate`, `write-extension`, `ui-preview-round`, and `verify-ui` | [Discovery and settings](../settings.md)              |
-| `server/skills.ts`        | Skill discovery, scopes, diagnostics, and `/skill:name` expansion                             | [Discovery and settings](../settings.md)              |
-| `extensions/messages/`    | Message admission, delivery, triage, replies, and the branch tool                             | [Messages](../../extensions/messages/README.md#files) |
-| `extensions/goal/`        | Hands-off goals, goal decisions, and goal reports                                             | [Goals](../../extensions/goal/README.md)              |
-| `extensions/dream/`       | Dreams, the compaction trigger, and checked chapter changes                                   | [Dreams](../../extensions/dream/README.md)            |
-| `.ultimate/`              | The project setup of this repository: checks, push target, review team                        | [.ultimate/README.md](../../.ultimate/README.md)      |
-| `scripts/`                | Dependency graph check, reset, restore, and machine setup                                     | `package.json`                                        |
-| `lint/`                   | Custom lint rules for boundaries, durability, and fast tests                                  | `AGENTS.md`                                           |
-| `test/`                   | Fast in-process tests, and process tests in `test/e2e/`                                       | [Running the server](../running.md)                   |
-| `patches/`                | Pinned patches to Pi packages                                                                 | [Borrowed from Pi](../pi-upstream.md)                 |
-| `docs/`                   | Mechanics for agents that change the code                                                     | `AGENTS.md`                                           |
-| `docs/north-star/`        | This map                                                                                      | [North star](../../AGENTS.md#north-star)              |
+| Path                      | Role                                                                           | Read first                                            |
+| ------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| `bin/`                    | The supervisor and the terminal dashboard                                      | [Running the server](../running.md)                   |
+| `server/main.ts`          | Starts a generation: HTTP, Vite, extensions, and the harness                   | [Running the server](../running.md)                   |
+| `server/harness.ts`       | Opens Pi Durable on the active chapter                                         | [Durability](../durability.md)                        |
+| `server/api.ts`           | HTTP routes, extension actions, UI writes, and the event stream                | [Running the server](../running.md)                   |
+| `server/discovery.ts`     | Finds built-in, user, and project resources, in order                          | [Discovery and settings](../settings.md)              |
+| `server/extensions.ts`    | Loads server facets with their tools, hooks, and actions                       | [Extension mechanics](../extensions.md)               |
+| `server/trace.ts`         | The call trace                                                                 | [Tracing](../extensions.md#tracing)                   |
+| `shared/protocol.ts`      | Typed contracts between server and browser                                     | `AGENTS.md`                                           |
+| `shared/extension-api.ts` | Extension API tokens, the core-tier reader, and `defaultOff`                   | [Extension APIs](../extensions.md#extension-apis)     |
+| `lib/`                    | Shared helpers: exec, git, JSON files, settings, secrets, and chapters         | `AGENTS.md`                                           |
+| `lib/agents.ts`           | Agent definitions, overlay saves, and deferred tools                           | [Subagents](../subagents.md)                          |
+| `lib/ago.ts`              | The relative-time formatter that server code and the web SDK share             | `0104d7a`                                             |
+| `web/src/`                | The app shell, the surface host, and the extension registry                    | [Writing extensions](../../extensions/README.md)      |
+| `web/src/sdk/`            | The SDK that web facets import as `@/sdk`, including `Card` and `formatAgo`    | [SDK](../../extensions/README.md#sdk-sdk)             |
+| `extensions/`             | The built-ins, each with a README                                              | [Writing extensions](../../extensions/README.md)      |
+| `agents/`                 | Built-in agent definitions                                                     | [Subagents](../subagents.md)                          |
+| `skills/`                 | Built-in skills for setup, walkthroughs, extensions, and UI checks             | [Discovery and settings](../settings.md)              |
+| `server/skills.ts`        | Skill discovery, scopes, diagnostics, and `/skill:name` expansion              | [Discovery and settings](../settings.md)              |
+| `extensions/messages/`    | Message admission, delivery, state-based reports, replies, and the branch tool | [Messages](../../extensions/messages/README.md#files) |
+| `extensions/goal/`        | Hands-off goals, goal decisions, and goal reports                              | [Goals](../../extensions/goal/README.md)              |
+| `extensions/dream/`       | Dream instructions, context triggers, and user-only chapter changes            | [Dreams](../../extensions/dream/README.md)            |
+| `extensions/keep-warm/`   | Idle cache pings, outside the task scheduler                                   | [Keep warm](../../extensions/keep-warm/README.md)     |
+| `extensions/voice-live/`  | WebRTC sessions and durable Voice-to-@ultimate delivery                        | [Live voice](../../extensions/voice-live/README.md)   |
+| `extensions/status/`      | Read-only instance summary for dashboards                                      | [Status](../../extensions/status/README.md)           |
+| `.ultimate/`              | The project setup of this repository: checks, push target, review team         | [.ultimate/README.md](../../.ultimate/README.md)      |
+| `scripts/`                | Dependency graph check, reset, restore, and machine setup                      | `package.json`                                        |
+| `lint/`                   | Custom lint rules for boundaries, durability, and fast tests                   | `AGENTS.md`                                           |
+| `test/`                   | Fast in-process tests, and process tests in `test/e2e/`                        | [Running the server](../running.md)                   |
+| `patches/`                | Pinned patches to Pi packages                                                  | [Borrowed from Pi](../pi-upstream.md)                 |
+| `docs/`                   | Mechanics for agents that change the code                                      | `AGENTS.md`                                           |
+| `docs/north-star/`        | This map                                                                       | [North star](../../AGENTS.md#north-star)              |

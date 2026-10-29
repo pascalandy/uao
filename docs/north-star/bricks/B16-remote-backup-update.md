@@ -2,7 +2,11 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-The user reaches a running Ultimate from another machine over Tailscale. A project backs up to the user's own backup Worker. One command restores the project on another machine. A backup needs that Worker, which uao does not ship ([upstream.md](../upstream.md#what-still-points-at-hazat)). Each Ultimate instance shows the new commits on the origin of its clone. The instance updates by fast-forward only.
+The user reaches a running Ultimate over Tailscale (`extensions/tailscale/README.md`). Remotes in user settings locate other machines' instances without cloud backups (`2a6d9e51`). Remote reads and `tell` can select a machine (`197a3e3f`, `extensions/codemode/README.md`).
+
+A project can back up to the user's backup Worker and restore on another machine ([D028](../decisions/D028-cloud-only-backs-up.md)). uao does not ship that Worker ([upstream.md](../upstream.md#what-still-points-at-hazat)). A satellite refuses every backup, including forced backups, to protect the owner's history (`2bfc6b22`).
+
+Update ships on by default and follows the clone's origin (`7f011b47`). Its direct update remains fast-forward only (`extensions/update/README.md`). When clone and project are the same repository, the user can ask @ultimate to merge a diverged origin through a coordinator branch (`7f011b47`, `extensions/update/README.md`).
 
 Agents can start backups and clone updates through actions (`extensions/cloud/server.ts`, `extensions/update/server.ts`). The cloud join action remains user-only (`extensions/cloud/server.ts`).
 
@@ -13,6 +17,7 @@ Agents can start backups and clone updates through actions (`extensions/cloud/se
 - `scripts/restore.ts`: the restore command
 - `extensions/update/`: updates
 - `lib/fast-forward.ts`: fetch and fast-forward
+- `lib/remote.ts`: local instances, user remotes, then the optional cloud register
 
 ## Decisions
 
@@ -26,3 +31,6 @@ Agents can start backups and clone updates through actions (`extensions/cloud/se
 - `a8fba5e` adds updates
 - `8ede22b` guards updates
 - `d3178ff` opens the backup and update actions to agents
+- `68297d00` gives scratch servers separate Tailscale registrations and repairs a lost mapping
+- `5c83c82f` keeps Tailscale teardown alive during a systemd stop
+- `7849a479` prints the remote URL when Tailscale registers or removes it

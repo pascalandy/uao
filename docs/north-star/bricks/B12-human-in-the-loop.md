@@ -10,6 +10,14 @@ The user can start one hands-off goal and let @ultimate make goal decisions and 
 
 The user can enable **Play by itself** to release a rate-limit pause after a chosen delay (`extensions/pause/README.md`). This setting is off by default, and only the user can change it (`extensions/pause/server.ts`). A pause that the user starts always waits for Play (`extensions/pause/server.ts`).
 
+Voice input inserts a recording's transcript into the unsent draft (`a0608d3f`). A live voice session instead lets Voice answer status questions and send work to @ultimate (`f3b257b6`, `26c21a52`). Both use an OpenAI API key for audio (`extensions/voice/README.md`, `extensions/voice-live/README.md`). Live voice ships off by default (`extensions/voice/README.md`, `extensions/voice-live/README.md`).
+
+The user can install the web app on a device's home screen (`12fd115c`). Draft images survive a page reload (`4eb6a626`). Between @ultimate's messages, the transcript folds updates and steps into one expandable line (`ebb71f13`).
+
+An optional goal reminder wakes @ultimate every 30 minutes (`64f94443`). A goal can pause and resume its reminder (`64f94443`, `extensions/goal/README.md`).
+
+Optional sounds include music that follows agent actions and landing notifications (`06a706bb`, `76ea0ae7`, `09befdd5`). The [sound mechanics](../../../extensions/sounds/README.md) describe the controls.
+
 ## Where it lives
 
 - `extensions/questions/`: answer cards
@@ -20,6 +28,8 @@ The user can enable **Play by itself** to release a rate-limit pause after a cho
 - `extensions/pause/`: the host-wide pause
 - `extensions/side-chat/`: side chats
 - `extensions/sounds/`: sound cues
+- `extensions/voice/` and `extensions/voice-live/`: dictated drafts and live voice
+- `web/public/manifest.webmanifest`: the installable web app
 
 ## Decisions
 
@@ -43,3 +53,5 @@ The user can enable **Play by itself** to release a rate-limit pause after a cho
 - `d3178ff` adds Play by itself for rate-limit pauses
 - `4a6aab5` records automatic Play before the scheduler resumes
 - `93dbff1` fixes the answer card's Undo countdown on phones
+- `9e3164f5` stops the host from pausing again when the final rate-limit retry ends its run
+- `29480df2` tells a held parent which subagent hit the rate limit

@@ -1,14 +1,17 @@
 /** Agent definitions: parsing, discovery across the `agents/` folders, and the agent change a definition makes. */
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { basename, dirname, join } from 'node:path'
+import { readdir, readFile, rm } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { clampThinkingLevel } from '@earendil-works/pi-ai'
 import type { ModelThinkingLevel } from '@earendil-works/pi-ai'
 import type { Agent, AgentChange } from '@earendil-works/pi-durable'
 import { parseFrontmatter, resolveCliModel } from '@earendil-works/pi-coding-agent'
-import type { ModelRuntime } from '@earendil-works/pi-coding-agent'
+import type { ModelRuntime, SettingsManager } from '@earendil-works/pi-coding-agent'
 import type { Source } from '../server/project.ts'
+import { writeTextAtomically } from './json-file.ts'
 // oxlint-disable-next-line no-restricted-imports -- agent discovery follows the core project trust decision
 import { projectDecision, useProjectSetup } from '../server/project-setup.ts'
+// oxlint-disable-next-line no-restricted-imports -- extension-owned definitions follow the same enabled folders as their facets
+import { discoverExtensions } from '../server/discovery.ts'
 
 export interface AgentDefinition {
   name: string
@@ -24,8 +27,6 @@ export interface AgentDefinition {
   isolate?: 'none' | 'worktree'
   /** A standing agent: one conversation per project, started on first use. */
   resident?: boolean
-  /** What the lander does when a submission fails: explain it, or fix it and land. Only the lander reads it. */
-  onFailure?: 'diagnose' | 'fix'
   /** Requests on an `openai-codex/` or `openai/` model go on the priority (fast) tier; the fast extension reads it. */
   fast?: boolean
   /** `false`: its conversations get no automatic summaries (intent, title, reply activity, spawn refresh, abstract). */
@@ -44,7 +45,52 @@ export function previewModel(env: NodeJS.ProcessEnv = process.env) {
   return { provider: value.slice(0, slash), modelId: value.slice(slash + 1) }
 }
 
-/** The agent change a definition makes over `parent`; in a preview, its model replaces every other choice. */
+type ModelRef = { provider: string; modelId: string }
+type Listed = { provider: string; id: string }
+
+/** Whether `ref` is among `available`, the models with a login here (`ModelRuntime.getAvailableSnapshot()`). */
+export const hasLogin = (available: readonly Listed[], ref: ModelRef | undefined) =>
+  !!ref && available.some((model) => model.provider === ref.provider && model.id === ref.modelId)
+
+/**
+ * The model a conversation runs on when nothing pins one: a preview's, else Pi's default, else the first model with a
+ * login here; each only when it has a login. Undefined while no model has one.
+ */
+export function defaultModel(
+  available: readonly Listed[],
+  settings: Pick<SettingsManager, 'getDefaultProvider' | 'getDefaultModel'>,
+): ModelRef | undefined {
+  const first = available[0]
+  return (
+    configuredModel(available, settings) ??
+    (first && { provider: first.provider, modelId: first.id })
+  )
+}
+
+/** A preview's model, else Pi's default, each only when it has a login here: `defaultModel` without its last resort. */
+export function configuredModel(
+  available: readonly Listed[],
+  settings: Pick<SettingsManager, 'getDefaultProvider' | 'getDefaultModel'>,
+): ModelRef | undefined {
+  const configured = {
+    provider: settings.getDefaultProvider(),
+    modelId: settings.getDefaultModel(),
+  }
+  for (const ref of [previewModel(), configured])
+    if (ref?.provider && ref.modelId && hasLogin(available, ref as ModelRef)) return ref as ModelRef
+  return undefined
+}
+
+/** `defaultModel` for a host's model runtime and Pi settings. */
+export const hostDefaultModel = (host: {
+  modelRuntime: Pick<ModelRuntime, 'getAvailableSnapshot'>
+  settings: Pick<SettingsManager, 'getDefaultProvider' | 'getDefaultModel'>
+}) => defaultModel(host.modelRuntime.getAvailableSnapshot(), host.settings)
+
+/**
+ * The agent change a definition makes over `parent`: the explicit model, else the definition's pin when it has a login
+ * here, else the parent's. In a preview, its model replaces every other choice.
+ */
 export function definitionAgent(
   definition: AgentDefinition | undefined,
   parent: Agent,
@@ -62,7 +108,10 @@ export function definitionAgent(
   } = {},
 ): AgentChange {
   const excludeTools = [...excluded, ...(definition?.denyTools ?? [])]
-  const ref = previewModel() ?? overrideModel ?? definition?.model ?? parent.model
+  const pin = hasLogin(modelRuntime.getAvailableSnapshot(), definition?.model)
+    ? definition?.model
+    : undefined
+  const ref = previewModel() ?? overrideModel ?? pin ?? parent.model
   const model = ref && modelRuntime.getModel(ref.provider, ref.modelId)
   const thinking = overrideThinking ?? definition?.thinking ?? parent.thinkingLevel
   const tools = [
@@ -116,7 +165,6 @@ const fields = new Set([
   'denyTools',
   'isolate',
   'resident',
-  'onFailure',
   'fast',
   'summaries',
 ])
@@ -125,19 +173,12 @@ const fields = new Set([
 function parseSettings(frontmatter: Record<string, unknown>): Partial<
   Pick<
     AgentDefinition,
-    | 'description'
-    | 'thinking'
-    | 'isolate'
-    | 'resident'
-    | 'onFailure'
-    | 'fast'
-    | 'summaries'
-    | 'denyTools'
+    'description' | 'thinking' | 'isolate' | 'resident' | 'fast' | 'summaries' | 'denyTools'
   >
 > & {
   model?: string
 } {
-  const { description, model, thinking, isolate, resident, onFailure, fast, summaries, denyTools } =
+  const { description, model, thinking, isolate, resident, fast, summaries, denyTools } =
     frontmatter
   if (denyTools !== undefined && !isTools(denyTools))
     throw new Error('denyTools must be a list of tool names')
@@ -149,8 +190,6 @@ function parseSettings(frontmatter: Record<string, unknown>): Partial<
     throw new Error('model must be a nonempty string')
   if (isolate !== undefined && isolate !== 'none' && isolate !== 'worktree')
     throw new Error('isolate must be none or worktree')
-  if (onFailure !== undefined && onFailure !== 'diagnose' && onFailure !== 'fix')
-    throw new Error('onFailure must be diagnose or fix')
   if (resident !== undefined && typeof resident !== 'boolean')
     throw new Error('resident must be a boolean')
   if (fast !== undefined && typeof fast !== 'boolean') throw new Error('fast must be a boolean')
@@ -162,7 +201,6 @@ function parseSettings(frontmatter: Record<string, unknown>): Partial<
     ...(thinking ? { thinking: thinking as ModelThinkingLevel } : {}),
     ...(isolate ? { isolate: isolate } : {}),
     ...(resident !== undefined ? { resident: resident } : {}),
-    ...(onFailure ? { onFailure: onFailure } : {}),
     ...(fast !== undefined ? { fast } : {}),
     ...(summaries !== undefined ? { summaries } : {}),
     ...(denyTools !== undefined ? { denyTools } : {}),
@@ -257,10 +295,14 @@ function readDefinition(text: string, path: string, modelRuntime: ModelRuntime):
   return { ...definition, ...resolveModel(model, thinking, modelRuntime) }
 }
 
-/** The `agents/` folders discovery reads, in order; the project's only once its setup is chosen as local. */
-export function agentRoots(ultimateRoot: string, projectRoot: string, userHome: string) {
+/** Enabled extensions' definitions are built-ins, before user/project definitions and overlays. */
+export async function agentRoots(ultimateRoot: string, projectRoot: string, userHome: string) {
+  const extensions = await discoverExtensions(ultimateRoot, projectRoot, userHome)
   return [
     { source: 'builtin' as const, path: join(ultimateRoot, 'agents') },
+    ...extensions
+      .filter((extension) => extension.enabled && extension.files.includes('agents'))
+      .map((extension) => ({ source: 'builtin' as const, path: join(extension.path, 'agents') })),
     { source: 'user' as const, path: join(userHome, '.ultimate/agents') },
     ...(useProjectSetup(projectRoot, userHome)
       ? [{ source: 'project' as const, path: join(projectRoot, '.ultimate/agents') }]
@@ -284,7 +326,7 @@ export async function discoverAgents(
   const errors: AgentDiscovery['errors'] = []
   const builtins = new Set<string>()
   const replaced: AgentDiscovery['replaced'] = []
-  for (const { source, path: directory } of agentRoots(ultimateRoot, projectRoot, userHome)) {
+  for (const { source, path: directory } of await agentRoots(ultimateRoot, projectRoot, userHome)) {
     let files: string[]
     try {
       files = await readdir(directory)
@@ -354,7 +396,6 @@ export interface DefinitionFields {
   denyTools?: string[]
   isolate?: 'none' | 'worktree'
   resident?: boolean
-  onFailure?: 'diagnose' | 'fix'
   fast?: boolean
   summaries?: boolean
 }
@@ -388,7 +429,6 @@ export function serializeDefinition(
     ...(frontmatter.denyTools?.length ? [`denyTools: ${toolList(frontmatter.denyTools)}`] : []),
     ...(frontmatter.isolate === 'worktree' ? ['isolate: worktree'] : []),
     ...(frontmatter.resident !== undefined ? [`resident: ${frontmatter.resident}`] : []),
-    ...(frontmatter.onFailure ? [`onFailure: ${frontmatter.onFailure}`] : []),
     ...(frontmatter.fast ? ['fast: true'] : []),
     ...(frontmatter.summaries === false ? ['summaries: false'] : []),
   ]
@@ -419,21 +459,8 @@ export async function saveDefinition(
   const text = serializeDefinition(name, frontmatter, instructions)
   // Reading it back checks the name before it becomes a path.
   const definition = readDefinition(text, join(directory, `${name}.md`), modelRuntime)
-  await writeAtomically(definition.path, text)
+  await writeTextAtomically(definition.path, text)
   return { ...definition, source: scope }
-}
-
-async function writeAtomically(path: string, text: string) {
-  const directory = dirname(path)
-  await mkdir(directory, { recursive: true })
-  const temporary = join(directory, `.${basename(path)}.${process.pid}.${Date.now()}.tmp`)
-  try {
-    await writeFile(temporary, text)
-    await rename(temporary, path)
-  } catch (error) {
-    await rm(temporary, { force: true })
-    throw error
-  }
 }
 
 /**
@@ -462,8 +489,8 @@ export async function saveOverlay(
   const base = definitions.find((definition) => definition.name === name)
   if (!base) throw new Error(`No definition named ${name} for an overlay to extend`)
   // A project file applies over a user overlay, so the form shows it; saving it to the user file would copy it there.
-  const later = agentRoots(ultimateRoot, projectRoot, userHome)
-    .slice(scope === 'user' ? 2 : 3)
+  const later = (await agentRoots(ultimateRoot, projectRoot, userHome))
+    .filter((root) => scope === 'user' && root.source === 'project')
     .map((root) => root.path)
   const shadowing = [base.path, ...(base.overlays ?? [])].find((file) =>
     later.includes(dirname(file)),
@@ -488,10 +515,6 @@ export async function saveOverlay(
     settings.push(`isolate: ${form.isolate ?? 'none'}`)
   if ((form.resident ?? false) !== (base.resident ?? false))
     settings.push(`resident: ${form.resident ?? false}`)
-  if (form.onFailure !== base.onFailure) {
-    if (!form.onFailure) throw cannot('clear onFailure')
-    settings.push(`onFailure: ${form.onFailure}`)
-  }
   if ((form.fast ?? false) !== (base.fast ?? false)) settings.push(`fast: ${form.fast ?? false}`)
   if ((form.summaries ?? true) !== (base.summaries ?? true))
     settings.push(`summaries: ${form.summaries ?? true}`)
@@ -529,7 +552,7 @@ export async function saveOverlay(
   const overlay = `---\n${[`name: ${scalar(name)}`, `addTools: ${toolList(addTools)}`, ...settings].join('\n')}\n---\n${body ? `\n${body}\n` : ''}`
   // Reading it back resolves the model, so an unknown one writes nothing.
   parseOverlay(overlay, path, modelRuntime)
-  await writeAtomically(path, overlay)
+  await writeTextAtomically(path, overlay)
   return { path }
 }
 

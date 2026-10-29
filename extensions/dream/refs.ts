@@ -1,122 +1,42 @@
-/** Dream sessions in the browser: the passes, the journal and the proposals followed to landing. Browser-safe. */
+/** Dream in the browser: the prepared next chapter, the sleep into it and the chapters. Browser-safe. */
 import { actionRef, docRef } from '../../shared/extension-api.ts'
-import type { PassName } from './types.ts'
-
-export type { PassName } from './types.ts'
-export type PassState = { status: 'waiting' | 'running' | 'done' | 'failed'; note?: string }
 
 /**
- * One proposal from a pass. `open` until @ultimate records the user's decision: `approved` with the branch that does it,
- * `applied` for a memory change made at once, `rejected`; an approved branch becomes `landed` with its sha. `retire` is
- * the memory slug a codified proposal makes redundant once it lands.
+ * What @ultimate prepared for the next chapter once its dream's work was done: the chapter's name, three lines it
+ * learned, and its handover, which the new chapter wakes up from.
  */
-export type Proposal = {
-  id: string
-  pass: PassName
-  title: string
-  size?: string
-  risk?: string
-  retire?: string
-  status: 'open' | 'approved' | 'rejected' | 'applied' | 'landed'
-  branch?: number
-  sha?: string
-  /** Why @ultimate decided it, when it decided under a hands-off grant. */
-  reason?: string
-}
+export type Prepared = { chapter: string; learned: string[]; handoff: string; at: number }
 
-/** What the dream learned: three lines in @ultimate's voice, then the journal in Markdown. */
-export type Journal = { learned: string[]; text: string; chapter?: string; at: number }
-
-export type GateResult = { ok: boolean; checks: { name: string; ok: boolean; detail: string }[] }
-/** A granted automation that acted for the user: its id, name and when it acted. */
-export type GrantedBy = { automation: string; name: string; at: number }
 export type Sleep = {
   chapter: string
-  /**
-   * `waiting`: a granted Fall asleep holds the session until no conversation works. `asleep`: the switch happened;
-   * this session's chapter is the one it left.
-   */
-  phase: 'waiting' | 'seeding' | 'checking' | 'backing up' | 'switching' | 'asleep' | 'failed'
-  /** The granted automation that started this Fall asleep; absent when the user did. */
-  by?: GrantedBy
-  /** The granted attempt (its task) that holds this sleep; only it writes the sleep while `waiting`. */
-  attempt?: number
-  checks?: GateResult['checks']
+  /** `asleep`: the switch happened; this chapter is the one it left. */
+  phase: 'seeding' | 'backing up' | 'switching' | 'asleep' | 'failed'
   backup?: { id?: string; skipped?: string }
   error?: string
   at: number
 }
 
-export type Session = {
-  id: number
-  startedAt: number
-  /** The dream coordinator's branch, from its first pass report. */
-  dreamer?: number
-  passes: Record<PassName, PassState>
-  journal?: Journal
-  sleep?: Sleep
-  proposals: Proposal[]
-  /** Every proposal settled, or the user ended the session. */
-  endedAt?: number
-  /** The granted automation that started this session; absent when the user did. */
-  by?: GrantedBy
-  /** Set when @ultimate's compaction started this session. */
-  afterCompaction?: AfterCompaction
-}
+/** `{ prepared?, sleep? }` on conversation 1: the next chapter @ultimate prepared, and the sleep into it. */
+export const DreamDoc = docRef<{ prepared?: Prepared; sleep?: Sleep }>('dream.next')
 
 /**
- * A dream that @ultimate's context compaction started, through automation `automation` (`name`), at `at`; `handsOff`
- * when the user granted that automation `dream`, so @ultimate decides the proposals itself. `settling` is the task that
- * checks the settled session; `outcome` records whether it was worth a fresh chapter: `changes` (landed and applied
- * proposals) against `threshold`; `stay` in this chapter, `ask` the user to Fall asleep, or `asleep` under the
- * automation's grant (`error` when that grant's Fall asleep was refused, and the user is asked instead).
+ * A `dream.requested` entry in @ultimate's conversation: who asked for the dream, the user's Dream button or a
+ * built-in automation (`pause`: how long the user had been away, ms).
  */
-export type AfterCompaction = {
-  automation: string
-  name: string
-  at: number
-  handsOff?: boolean
-  settling?: number
-  outcome?: {
-    changes: number
-    threshold: number
-    result: 'stay' | 'ask' | 'asleep'
-    error?: string
-    at: number
-  }
-}
+export type RequestedEntry = { automation?: { id: string; name: string; pause?: number } }
 
-/** `{ next, sessions }` on conversation 1, oldest first. */
-export const DreamDoc = docRef<{ next: number; sessions: Session[] }>('dream.sessions')
-
-/** `dream.started`, `dream.journal` and `dream.settled` entries in @ultimate's conversation name their session. */
-export type SessionEntry = { session: number }
-
-/** No arguments → `{ session }`: record a session and ask @ultimate to start the dream branch. User-only. */
-export const StartAction = actionRef<null, { session: number }>('dream', 'start')
-/** `{ session }` → `{ session }`: end a session whatever its proposals' state. User-only. */
-export const EndAction = actionRef<{ session: number }, { session: number }>('dream', 'end')
-/** `{ session, pass, status, note? }`: the dream coordinator reports a pass; its first report names it the dreamer. */
-export const PassAction = actionRef<
-  { session: number; pass: PassName; status: PassState['status']; note?: string },
-  { session: number }
->('dream', 'pass')
-/** `{ session, learned, text, proposals }`: file the journal and show its card in @ultimate's conversation, once. */
-export const JournalAction = actionRef<
-  {
-    session: number
-    learned: string[]
-    text: string
-    chapter?: string
-    proposals: Pick<Proposal, 'id' | 'pass' | 'title' | 'size' | 'risk' | 'retire'>[]
-  },
-  { session: number; proposals: number }
->('dream', 'journal')
-/** `{ session, name? }` → progress: seed, check, back up and restart into a fresh chapter. User-only. */
-export const AsleepAction = actionRef<
-  { session: number; name?: string },
-  { session: number; sleep: Sleep }
->('dream', 'asleep')
+/** No arguments: ask @ultimate to dream now. User-only. */
+export const StartAction = actionRef<null, { requested: true }>('dream', 'start')
+/**
+ * `{ chapter, learned, handoff }`: @ultimate prepares the next chapter and puts the Fall asleep card up; a second call
+ * replaces it.
+ */
+export const PrepareAction = actionRef<
+  { chapter: string; learned: string[]; handoff: string },
+  Prepared
+>('dream', 'prepare')
+/** `{ name? }` → progress: seed, back up and restart into the prepared chapter. User-only. */
+export const AsleepAction = actionRef<{ name?: string }, { sleep: Sleep }>('dream', 'asleep')
 /** No arguments → the active chapter, its number, the newest name, and every chapter in creation order. */
 export const ChaptersAction = actionRef<
   null,
@@ -129,20 +49,6 @@ export const ChaptersAction = actionRef<
 >('dream', 'chapters')
 /** `{ chapter }`: restart into an existing, idle chapter. User-only; a returned error means restart failed. */
 export const SwitchAction = actionRef<{ chapter: string }, never>('dream', 'switch')
-/**
- * `{ session, proposal, status, branch?, reason? }`: @ultimate records the user's decision on one proposal, or its own
- * with `reason` under a hands-off grant.
- */
-export const DecideAction = actionRef<
-  {
-    session: number
-    proposal: string
-    status: 'approved' | 'rejected' | 'applied'
-    branch?: number
-    reason?: string
-  },
-  Proposal
->('dream', 'decide')
 
 /** Calls per tool over the trace's window: how often, how often failing, how slow; and enabled tools never called. */
 export type ToolStats = {

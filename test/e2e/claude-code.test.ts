@@ -153,6 +153,10 @@ if (process.argv.includes('status')) {
       subscription: false,
       plan: null,
     })
+    // An unreadable probe is unknown, not a logout: retain the last confirmed login.
+    expect((await runtime.getAvailable()).some((m) => m.provider === 'claude-code')).toBe(true)
+    await writeFile(payload, JSON.stringify({ loggedIn: false }))
+    expect(await status()).toMatchObject({ available: true, loggedIn: false })
     expect((await runtime.getAvailable()).some((m) => m.provider === 'claude-code')).toBe(false)
     vi.stubEnv('PI_CLAUDE_CODE_COMMAND', join(home, 'missing'))
     expect(await status()).toEqual({
@@ -171,6 +175,181 @@ if (process.argv.includes('status')) {
     await until(() => !runtime.getProvider('claude-code'))
     expect(runtime.getAllModels().some((m) => m.provider === 'claude-code')).toBe(false)
     expect(runtime.getProvider('anthropic')).toBe(anthropic)
+  } finally {
+    await server.close()
+  }
+}, 60000)
+
+// The model sometimes names a tool without its MCP prefix (#371663 failed four times on a bare `bash`); the turn
+// resolves it to Pi's name instead of ending.
+it('continues a Claude Code turn whose model names a tool without its MCP prefix', async () => {
+  const home = await temp()
+  const cli = join(home, 'claude')
+  await writeFile(
+    cli,
+    `#!${process.execPath}
+import { createInterface } from 'node:readline'
+if (process.argv.includes('status')) {
+  console.log(JSON.stringify({ loggedIn: true, subscriptionType: 'max' }))
+} else {
+  const emit = (event) => console.log(JSON.stringify(event))
+  for await (const line of createInterface({ input: process.stdin })) {
+    const frame = JSON.parse(line)
+    if (frame.type !== 'user') continue
+    if (frame.shouldQuery === false) {
+      emit({ type: 'result', subtype: 'success', num_turns: 0 })
+      continue
+    }
+    const block = { type: 'tool_use', id: 'toolu_1', name: 'bash', input: {} }
+    emit({ type: 'stream_event', event: { type: 'content_block_start', index: 0, content_block: block } })
+    emit({ type: 'stream_event', event: { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: '{"command":"ls"}' } } })
+    emit({ type: 'stream_event', event: { type: 'content_block_stop', index: 0 } })
+    const message = { id: 'msg_bare', role: 'assistant', content: [{ ...block, input: { command: 'ls' } }], stop_reason: 'tool_use', usage: { input_tokens: 1, output_tokens: 1 } }
+    emit({ type: 'assistant', message })
+    emit({ type: 'stream_event', event: { type: 'message_stop' } })
+    emit({ type: 'result', subtype: 'error_max_turns', is_error: true, usage: message.usage })
+  }
+}
+`,
+  )
+  await chmod(cli, 0o755)
+  const { createClaudeCodeProvider, streamClaudeCode } =
+    await import('@earendil-works/pi-claude-code/src/index.ts')
+  const model = createClaudeCodeProvider()
+    .getModels()
+    .find((candidate: { id: string }) => candidate.id === 'claude-sonnet-5')!
+  const bash = {
+    name: 'bash',
+    description: 'Run a command',
+    parameters: { type: 'object', properties: {} },
+  }
+  const stream = streamClaudeCode(
+    model,
+    normalizeContext({
+      messages: [
+        { role: 'system', content: 'You help.', toolsAdded: [bash], timestamp: 0 },
+        { role: 'user', content: 'List the files.', timestamp: 0 },
+      ],
+    }),
+    { env: { PI_CLAUDE_CODE_COMMAND: cli }, cacheRetention: 'none' },
+  )
+  const ended = []
+  for await (const event of stream)
+    if (event.type === 'toolcall_end') ended.push(event.toolCall.name)
+  const message = await stream.result()
+  expect(message.errorMessage).toBeUndefined()
+  expect(message.stopReason).toBe('toolUse')
+  expect(ended).toEqual(['bash'])
+  expect(message.content).toEqual([
+    { type: 'toolCall', id: 'toolu_1', name: 'bash', arguments: { command: 'ls' } },
+  ])
+  // The replay carrier offers the call back under the name the request offered.
+  const carrier = message.diagnostics?.find(
+    (diagnostic) => diagnostic.type === 'claude-code.native-assistant.v1',
+  )
+  expect(JSON.stringify(carrier)).toContain('"name":"mcp__pi__bash"')
+}, 60000)
+
+it("passes a ClaudeCodeEnv provider's per-conversation environment to the CLI", async () => {
+  const home = await temp()
+  const cli = join(home, 'claude')
+  const requests = join(home, 'requests')
+  await writeFile(
+    cli,
+    `#!${process.execPath}
+import { appendFileSync } from 'node:fs'
+import { createInterface } from 'node:readline'
+if (process.argv.includes('status')) {
+  console.log(JSON.stringify({ loggedIn: true, subscriptionType: 'max' }))
+} else {
+  const emit = (event) => console.log(JSON.stringify(event))
+  for await (const line of createInterface({ input: process.stdin })) {
+    const frame = JSON.parse(line)
+    if (frame.type !== 'user') continue
+    if (frame.shouldQuery === false) {
+      emit({ type: 'result', subtype: 'success', num_turns: 0 })
+      continue
+    }
+    appendFileSync(${JSON.stringify(requests)}, process.pid + ' ' + (process.env.CLAUDE_CONFIG_DIR || '-') + '\\n')
+    const message = { id: 'msg_env', role: 'assistant', content: [{ type: 'text', text: 'ok' }], stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 } }
+    emit({ type: 'stream_event', event: { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'ok' } } })
+    emit({ type: 'stream_event', event: { type: 'content_block_stop', index: 0 } })
+    emit({ type: 'assistant', message })
+    emit({ type: 'stream_event', event: { type: 'message_stop' } })
+    emit({ type: 'result', subtype: 'success', usage: message.usage })
+  }
+}
+`,
+  )
+  await chmod(cli, 0o755)
+  vi.stubEnv('PI_CLAUDE_CODE_COMMAND', cli)
+  vi.stubEnv('PI_CLAUDE_CODE_CONFIG_DIR', '')
+  vi.stubEnv('CLAUDE_CONFIG_DIR', '')
+  const projectRoot = join(home, 'project')
+  await mkdir(join(projectRoot, '.ultimate'), { recursive: true })
+  await writeFile(
+    join(projectRoot, '.ultimate/settings.json'),
+    JSON.stringify({ summaryModel: 'unavailable/test', extensions: { disable: ['tailscale'] } }),
+  )
+  new ProjectTrustStore(join(home, '.ultimate')).set(projectRoot, true)
+  const server = await createServer({
+    ultimateRoot: await sourceCopy(home),
+    projectRoot,
+    home: join(home, 'state'),
+    userHome: home,
+    port: 0,
+  })
+  const lines = async () =>
+    (await readFile(requests, 'utf8').catch(() => '')).trim().split('\n').filter(Boolean)
+  try {
+    const model = { provider: 'claude-code', modelId: 'claude-sonnet-5' }
+    await server.host.modelRuntime.refresh({ allowNetwork: false })
+    const conversation = async () => {
+      const created = await server.harness.createConversation(
+        { ownership: { kind: 'ownerless' }, agent: { model } },
+        context,
+      )
+      const ask = async () =>
+        (await created.submit({ type: 'input', content: 'Hi.' }, context)).wait(context)
+      return Object.assign(ask, { id: created.id })
+    }
+    const [a, b] = [await conversation(), await conversation()]
+
+    // Without a provider the request runs in the ambient environment.
+    await a()
+    expect((await lines()).map((line) => line.split(' ')[1])).toEqual(['-'])
+
+    const folder = join(projectRoot, '.ultimate/extensions/claude-env')
+    await mkdir(folder, { recursive: true })
+    await writeFile(
+      join(folder, 'server.ts'),
+      `import { defineExtension } from '@earendil-works/pi-durable'
+export default function (host) {
+  host.implement({ name: 'claude-code.env' }, {
+    env: (conversationId) => ({ PI_CLAUDE_CODE_CONFIG_DIR: '/config/' + conversationId }),
+  })
+  return defineExtension({ name: 'claude-env' })
+}
+`,
+    )
+    server.vite.watcher.emit('change', join(folder, 'server.ts'))
+    await until(() =>
+      server.extensions
+        .catalogue()
+        .apis.some((api) => api.name === 'claude-code.env' && !!api.provider),
+    )
+    await a()
+    await b()
+    await a()
+    const [, first, second, third] = (await lines()).map((line) => line.split(' '))
+    expect([first[1], second[1], third[1]]).toEqual([
+      `/config/${a.id}`,
+      `/config/${b.id}`,
+      `/config/${a.id}`,
+    ])
+    // A distinct environment gets its own warm process; the same one reuses it.
+    expect(second[0]).not.toBe(first[0])
+    expect(third[0]).toBe(first[0])
   } finally {
     await server.close()
   }
@@ -224,6 +403,17 @@ if (process.argv.includes('status')) {
     )
     new ProjectTrustStore(join(home, '.ultimate')).set(projectRoot, true)
     const root = await sourceCopy(home)
+    const facetFile = join(root, 'extensions/claude-code/server.ts')
+    const facetSource = await readFile(facetFile, 'utf8')
+    // Expose the retained resource, so the reload case can give it the shape an older load built.
+    if (lifecycle === 'reload')
+      await writeFile(
+        facetFile,
+        facetSource.replace(
+          '  const upstream = shared.provider\n',
+          '  Object.assign(globalThis, { claudeCodeShared: shared })\n  const upstream = shared.provider\n',
+        ),
+      )
     const options = {
       ultimateRoot: root,
       projectRoot,
@@ -267,19 +457,38 @@ if (process.argv.includes('status')) {
         (await post(server, '/api/extensions/claude-code/actions/status', { args: null })).status,
       ).toBe(200)
       expect((await messages()).filter((message) => message.role === 'assistant')).toHaveLength(0)
-      let streamsShared = true
+      let reloadedServes = true
       let cancelStatus: number | undefined
       let cancelOutcome: unknown
       if (lifecycle === 'reload') {
+        // Regressions: new code whose request path needs what the first load never had must load, serve the next
+        // request and let the in-flight one finish. #409484 called `shared.setEnv`, then #409868 read
+        // `shared.active` and `shared.facets` from a resource an older load had built without them.
+        const retained = Reflect.get(globalThis, 'claudeCodeShared') as object
+        Reflect.deleteProperty(retained, 'active')
+        Reflect.deleteProperty(retained, 'facets')
         const provider = server.host.modelRuntime.getProvider('claude-code')
-        const file = join(root, 'extensions/claude-code/server.ts')
-        await writeFile(file, (await readFile(file, 'utf8')) + '\n')
-        server.vite.watcher.emit('change', file)
+        const reloaded = facetSource
+          .replace(
+            'export default function claudeCode(',
+            'const markReloaded = () => Object.assign(globalThis, { claudeCodeReloaded: true })\nexport default function claudeCode(',
+          )
+          .replace(
+            'return track(upstream.streamSimple(',
+            'markReloaded()\n      return track(upstream.streamSimple(',
+          )
+        await writeFile(facetFile, reloaded)
+        server.vite.watcher.emit('change', facetFile)
         await until(() => server.host.modelRuntime.getProvider('claude-code') !== provider)
-        const replacement = server.host.modelRuntime.getProvider('claude-code')!
-        streamsShared =
-          replacement.stream === provider?.stream &&
-          replacement.streamSimple === provider?.streamSimple
+        await writeFile(release, 'ready')
+        await server.harness.waitForIdle(context)
+        // The in-flight request finished on the old code; only the new request runs the reloaded facet.
+        reloadedServes = !('claudeCodeReloaded' in globalThis)
+        await server.root.submit({ type: 'input', content: 'After reload.' }, context)
+        await server.harness.waitForIdle(context)
+        reloadedServes &&= 'claudeCodeReloaded' in globalThis
+        Reflect.deleteProperty(globalThis, 'claudeCodeReloaded')
+        Reflect.deleteProperty(globalThis, 'claudeCodeShared')
       } else if (lifecycle === 'reopen' || lifecycle === 'swap') {
         // Supervised swaps release the harness before extension cleanup; ordinary
         // close does the reverse. Exercise both orders against the same durable home.
@@ -298,7 +507,7 @@ if (process.argv.includes('status')) {
       await writeFile(release, 'ready')
       await server.harness.waitForIdle(context)
       const assistants = (await messages()).filter((message) => message.role === 'assistant')
-      expect(streamsShared).toBe(true)
+      expect(reloadedServes).toBe(true)
       expect(cancelStatus).toBe(lifecycle === 'cancel' ? 200 : undefined)
       expect(cancelOutcome).toEqual(
         lifecycle === 'cancel' ? { status: 'unanswered', reason: 'aborted' } : undefined,
@@ -311,13 +520,17 @@ if (process.argv.includes('status')) {
           ? { errorMessage: 'Claude Code request failed: invalid_request' }
           : {}),
       })
+      // The reload case's in-flight request and the one after the reload both answer.
+      expect(
+        lifecycle === 'reload' ? assistants.map((message) => message.stopReason) : undefined,
+      ).toEqual(lifecycle === 'reload' ? ['stop', 'stop'] : undefined)
       if (lifecycle === 'cancel' || lifecycle === 'permanent') {
         await server.close()
         server = await createServer(options)
         await server.harness.waitForIdle(context)
       }
       expect((await readFile(started, 'utf8')).trim().split('\n')).toHaveLength(
-        lifecycle === 'reopen' || lifecycle === 'swap' ? 2 : 1,
+        lifecycle === 'cancel' || lifecycle === 'permanent' ? 1 : 2,
       )
     } finally {
       const captured = server.host.modelRuntime.getProvider('claude-code')!

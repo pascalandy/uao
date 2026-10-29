@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
 import type { AuthEvent, AuthPrompt, AuthType } from '@earendil-works/pi-ai'
-import { defineDoc, defineExtension, ROOT_CONVERSATION_ID } from '@earendil-works/pi-durable'
+import {
+  defineDoc,
+  defineExtension,
+  GenerationTask,
+  hook,
+  ROOT_CONVERSATION_ID,
+} from '@earendil-works/pi-durable'
 import type { ConversationId, Cursor } from '@earendil-works/pi-durable'
 import type { ActionContext } from '../../server/actions.ts'
 import type { ExtensionHost } from '../../server/extensions.ts'
@@ -9,6 +15,7 @@ import { LoginChanged } from './api.ts'
 import { implementAction } from '../../lib/actions.ts'
 import type { ActionInput } from '../../lib/actions.ts'
 import { AnswerAction, CancelAction, LoginAction, LoginDoc, LogoutAction } from './refs.ts'
+import { fallback } from './fallback.ts'
 
 /** A Pi type as a document holds it: plain JSON, arrays mutable. */
 type Json<T> = T extends readonly (infer U)[]
@@ -52,30 +59,6 @@ const kept = 10
 function liveFlows(host: ExtensionHost) {
   return host.resource('models.login', () => {
     const live = new Map<string, Flow>()
-    host.onOpen(async () => {
-      const harness = host.harness()
-      const ids: ConversationId[] = []
-      let cursor: Cursor | undefined
-      do {
-        const page = await harness.commit((tx) => tx.scanConversations({}, 256, cursor), context)
-        ids.push(...page.items.map((record) => record.id))
-        cursor = page.next
-      } while (cursor !== undefined)
-      for (const id of ids) {
-        const dead = (records: Readonly<Record<string, LoginFlow>>) =>
-          Object.keys(records).filter(
-            (flowId) => records[flowId].status === 'running' && !live.has(flowId),
-          )
-        if (!dead((await harness.snapshot(Logins, id, context))?.flows ?? {}).length) continue
-        await harness.commit(async (tx) => {
-          const { flows } = await tx.doc(Logins, id)
-          for (const flowId of dead(flows)) {
-            flows[flowId].status = 'cancel'
-            delete flows[flowId].prompt
-          }
-        }, context)
-      }
-    })
     host.onClose(async () => {
       for (const flow of live.values()) flow.controller.abort()
     })
@@ -226,7 +209,41 @@ export const actions = {
 }
 
 export default function models(host: ExtensionHost) {
-  // At load, so the next start marks flows of the previous process cancelled.
-  liveFlows(host)
-  return defineExtension({ name: 'models' })
+  const live = liveFlows(host)
+  // Each facet registers its own, so it reads Logins with this load's token: flows no live login drives (those of a
+  // previous process) are marked cancelled.
+  host.onOpen(async () => {
+    const harness = host.harness()
+    const ids: ConversationId[] = []
+    let cursor: Cursor | undefined
+    do {
+      const page = await harness.commit((tx) => tx.scanConversations({}, 256, cursor), context)
+      ids.push(...page.items.map((record) => record.id))
+      cursor = page.next
+    } while (cursor !== undefined)
+    for (const id of ids) {
+      const dead = (records: Readonly<Record<string, LoginFlow>>) =>
+        Object.keys(records).filter(
+          (flowId) => records[flowId].status === 'running' && !live.has(flowId),
+        )
+      if (!dead((await harness.snapshot(Logins, id, context))?.flows ?? {}).length) continue
+      await harness.commit(async (tx) => {
+        const { flows } = await tx.doc(Logins, id)
+        for (const flowId of dead(flows)) {
+          flows[flowId].status = 'cancel'
+          delete flows[flowId].prompt
+        }
+      }, context)
+    }
+  })
+  return defineExtension({
+    name: 'models',
+    hooks: [
+      hook(GenerationTask, {
+        // Pi upstream: @earendil-works/pi-durable@1.4.0 — patched transactional beforeInput hook. Every run's first
+        // input is placed through it (a typed input, a delivery, a queued follow-up), before the run reads its agent.
+        beforeInput: (_input, { tx, conversationId }) => fallback(host, tx, conversationId),
+      }),
+    ],
+  })
 }

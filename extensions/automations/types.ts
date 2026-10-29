@@ -18,9 +18,13 @@ export type Run = {
   finishedAt?: number
   answer?: string
 }
+/** A conversation an automation wakes: `#id` as a number, or a standing agent's `@name`, resolved at each delivery. */
+export type Subscriber = number | string
 export type Automation = {
   id: string
   scope?: 'project'
+  /** The caller's idempotency key: a create with a key that exists returns that automation instead. */
+  key?: string
   name: string
   enabled: boolean
   createdAt: number
@@ -34,21 +38,24 @@ export type Automation = {
     cooldownMs: number
     armed: boolean
     value?: number
+    /** Fire only once the user gave `of` no input for this long (ms): a pause, checked every minute. */
+    idleFor?: number
+    /** The user's latest input to `of` (ms), kept while `idleFor` is set; the pause counts from creation before one. */
+    inputAt?: number
+    /** When the condition itself last fired: the cooldown counts from it, not from a manual run. */
+    firedAt?: number
   }
   recentFires?: number[]
-  /** What the user allowed this automation's woken agent to do for them on a fire; only the user sets it. */
-  grant?: Grant
-  /**
-   * The fire each granted action last acted on, and what it did: one act per action and fire. Kept apart from `grant`,
-   * so editing the grant never allows a second act on the same fire.
-   */
-  acted?: Partial<Record<GrantAction, Acted>>
   script?: {
     ask: string
     once: boolean
     secrets?: string[]
+    /** A project script's committed `to`: the subscriber its manifest names. */
+    to?: string
     conversationId: number
     state: 'writing' | 'running' | 'investigating' | 'failed' | 'stopped' | 'done'
+    /** Unplanned exits in a row; the third escalates. A FIRE or an hour of running resets it. */
+    failures?: number
     pid?: number
     startedAt?: number
     exitedAt?: number
@@ -60,7 +67,7 @@ export type Automation = {
   agent?: string
   model?: { provider: string; modelId: string }
   thinking?: ModelThinkingLevel
-  subscribers: number[]
+  subscribers: Subscriber[]
   nextAt?: number
   scheduler?: TaskId
   runs: Run[]
@@ -73,16 +80,26 @@ export type CreateArgs = {
   schedule?: string | Schedule
   ask?: string
   event?: { name: string; where?: Record<string, string | number | boolean> }
-  condition?: { metric: 'context'; of: string; above: number; cooldownMs?: number }
+  condition?: {
+    metric: 'context'
+    of: string
+    above: number
+    cooldownMs?: number
+    /** 0 removes it. */
+    idleFor?: number
+  }
   once?: boolean
   secrets?: string[]
   prompt?: string
   agent?: string
   model?: { provider: string; modelId: string }
   thinking?: ModelThinkingLevel
-  subscribers?: number[]
+  subscribers?: Subscriber[]
   scope?: 'user' | 'project'
   slug?: string
+  /** A project script's standing agent to wake on every machine, `@name`; default `@ultimate`. */
+  to?: string
+  key?: string
 }
 export type Args = Partial<CreateArgs> & {
   action: string
@@ -92,7 +109,11 @@ export type Args = Partial<CreateArgs> & {
   lines?: number
   reason?: string
 }
-export type Manifest = { name: string; ask: string; once: boolean; secrets?: string[] }
+export type Manifest = { name: string; ask: string; once: boolean; secrets?: string[]; to: string }
+/** A standing agent's name as a subscriber or target: `@ultimate`. */
+export const STANDING = /^@[a-zA-Z0-9_-]+$/
+/** How many unplanned script exits in a row escalate instead of waking the watcher again. */
+export const FAILURE_LIMIT = 3
 export type Effect = { id: string; action: string; previousPid?: number }
 export const isSlug = (id: string) => /^[a-z][a-z0-9-]{0,62}$/.test(id) && !(id in Object.prototype)
 export const isId = (id: string) => /^A[1-9]\d*$/.test(id) || isSlug(id)
@@ -110,28 +131,6 @@ export function trimLog(text: string): string {
   const lines = text.split('\n').slice(-2001).join('\n')
   const bytes = Buffer.from(lines)
   return bytes.length > 256 * 1024 ? bytes.subarray(-256 * 1024).toString('utf8') : lines
-}
-
-/** Who acted for the user: automation `automation`, named `name`, under the user's grant, at `at`. */
-export type GrantedBy = { automation: string; name: string; at: number }
-/**
- * What a granted fire may do without asking: `dream` starts a dream session, `compact` compacts a context, `asleep`
- * falls asleep into a new chapter. Each is named on its own; `asleep` never follows from `dream`.
- */
-export const GRANT_ACTIONS = ['dream', 'compact', 'asleep'] as const
-export type GrantAction = (typeof GRANT_ACTIONS)[number]
-/** The user's grant: the `actions` allowed, in `source` the user's words or where they set it, `at` when. */
-export type Grant = { actions: GrantAction[]; source: string; at: number }
-/**
- * One granted act: on fire `fire`, at `at`, by conversation `by`, in tool task `task` when a tool call asked, with the
- * `result` it committed together with its effect (a replay of that call returns it).
- */
-export type Acted = {
-  fire: number
-  at: number
-  by: number
-  task?: number
-  result: { [key: string]: string | number }
 }
 
 /** The task kind of an automation's prompt run, which owns the run's conversation. */

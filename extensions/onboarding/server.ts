@@ -11,11 +11,11 @@ import {
 } from '@earendil-works/pi-durable'
 import { Type } from '@earendil-works/pi-ai'
 import { BACKGROUND_CONTEXT as context } from '@earendil-works/chord/context'
-import type { ConversationId } from '@earendil-works/pi-durable'
+import type { Conversation, ConversationId } from '@earendil-works/pi-durable'
 import type { ExtensionHost } from '../../server/extensions.ts'
 import { isolatable } from '../../lib/git.ts'
 import { writeJson } from '../../lib/json-file.ts'
-import { updateSettings, userSettingsPath } from '../../lib/settings.ts'
+import { readSettings, updateSettings, userSettingsPath } from '../../lib/settings.ts'
 import type { JsonObject } from '@earendil-works/pi-durable'
 import type { ExtensionAction } from '../../server/actions.ts'
 import { SubagentsApi } from '../subagents/api.ts'
@@ -28,6 +28,7 @@ import {
   ChooseAction,
   DecideAction,
   DetailsAction,
+  DismissAction,
   ExtensionsAction,
   FirstRunDoneAction,
   HelpAction,
@@ -35,9 +36,10 @@ import {
   StartAction,
   StartsDoc,
   StatusAction,
+  WalkthroughAction,
 } from './refs.ts'
 
-export const Starts = defineDoc<{ roots: Record<string, number> }>({
+export const Starts = defineDoc<{ roots: Record<string, number>; dismissed?: boolean }>({
   kind: StartsDoc.kind,
   checkpointWhen: () => false,
   version: 1,
@@ -68,6 +70,7 @@ export const StartEntry = defineEntry<{
     rootEmpty: boolean
   }
 }>('onboarding.start')
+export const WalkthroughEntry = defineEntry<Record<string, never>>('walkthrough.start')
 
 function lists(value: JsonObject) {
   const extensions = value.extensions ?? {}
@@ -144,8 +147,21 @@ async function declared(path: string) {
 
 const marker = (userHome: string) => join(userHome, '.ultimate/onboarding.json')
 
+/** The walkthrough's model fact: @ultimate's model and context window, so beat 4 can recommend 1M+. */
+async function modelLine(host: ExtensionHost, conversation: Conversation) {
+  const ref = (await conversation.agent(context)).model
+  const model = (await host.models()).find(
+    (candidate) => candidate.provider === ref?.provider && candidate.id === ref?.modelId,
+  )
+  return model
+    ? `Model: ${model.provider}/${model.id}, context window ${model.contextWindow} tokens`
+    : 'Model: unknown'
+}
+
 export const userActions = [
   'start',
+  'dismiss',
+  'walkthrough',
   'help',
   'choose',
   'decide',
@@ -217,6 +233,7 @@ export const actions: Record<string, ExtensionAction> = {
         type: 'input',
         content: [
           'Onboarding started.',
+          await modelLine(host, conversation),
           `Project: ${facts.project.name}`,
           `Path: ${facts.project.path}`,
           `First run: ${facts.firstRun}`,
@@ -237,6 +254,26 @@ export const actions: Record<string, ExtensionAction> = {
     await harness.commit(async (tx) => {
       ;(await tx.doc(Starts, ROOT_CONVERSATION_ID)).roots[String(root)] = id
     }, context)
+    return { id }
+  }),
+  dismiss: implementAction(DismissAction, async (_args, { host }) => {
+    await host.harness().commit(async (tx) => {
+      ;(await tx.doc(Starts, ROOT_CONVERSATION_ID)).dismissed = true
+    }, context)
+    return { dismissed: true }
+  }),
+  walkthrough: implementAction(WalkthroughAction, async (_args, { host }) => {
+    const id = await host.need(SubagentsApi).standing('ultimate', context)
+    const conversation = (await host.harness().conversation(id, context))!
+    await conversation.submit(
+      {
+        type: 'input',
+        content: `Walkthrough started: run how-ultimate-works, without project setup.\n${await modelLine(host, conversation)}`,
+        entry: { kind: WalkthroughEntry.kind, data: {} },
+        whenBusy: 'followUp',
+      },
+      context,
+    )
     return { id }
   }),
   choose: implementAction(ChooseAction, async (args, actionContext) => {
@@ -328,8 +365,11 @@ export const actions: Record<string, ExtensionAction> = {
   }),
   status: implementAction(StatusAction, async (_args, { host }) => {
     const folders = await host.projectExtensions()
+    // `"onboarding": false` in the user's settings: an experienced machine skips the first run and Start here.
+    const off = (await readSettings(userSettingsPath(host.userHome))).onboarding === false
     return {
-      firstRun: !existsSync(marker(host.userHome)),
+      firstRun: !off && !existsSync(marker(host.userHome)),
+      off,
       project: await host.projectSetup(),
       // The user's own lists, for the first run's checkboxes.
       user: await declared(userSettingsPath(host.userHome)),

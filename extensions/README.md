@@ -26,7 +26,7 @@ An optional `composer` renderer receives `{ core, dock? }` for the shown convers
 narrow side region). Render `core` to preserve the existing composer, optionally wrapping it. Facets compose in
 discovery order: each receives the previous rendering as `core`, behind its own extension boundary with that rendering
 as fallback. These renderers can use `useTranscript()` for the shown conversation's current entries.
-Lineage uses this to show a root's read-only context footer, or an empty root's Start here card, instead of a composer.
+Lineage uses this to show a root's read-only History banner, with the way back to @ultimate, instead of a composer.
 To send what the composer submits elsewhere, wrap `core` in `<ComposerRedirect to={{ placeholder, send }}>` (from `@/sdk`):
 while `to` is set, Enter and the send button call `send(text)` instead of submitting, with the same draft, error and
 sending states (side-chat forks @ultimate this way). Only the shown conversation's composer takes typing shortcuts
@@ -53,9 +53,14 @@ replaces the whole extension, both facets:
 | `user`    | `~/.ultimate/extensions/`         | Your additions, in every project                                   |
 | `project` | `<project>/.ultimate/extensions/` | One project's tools and apps, committed with the project; wins all |
 
+A tool name follows the same layering: a project or user extension may override a built-in's tool (a project `bash`
+replaces coding-tools'). Two extensions of the same source may not share one: the one that loaded second fails with
+a load error such as `web_search is already provided by parallel`, and takes the name on its next reload once the
+other is disabled or removed.
+
 Every extension folder is on by default, built-in, user or project: adding the folder is the opt-in. The exception is
 the built-ins listed in `defaultOff` (`shared/extension-api.ts`; see [settings](../docs/settings.md)), which need
-something of their own and ship off until `extensions.enable` names them. Turn one off
+something of their own and ship off until `extensions.enable` names them (including `voice-live`, the live voice relay). Turn one off
 with `{ "extensions": { "disable": ["hello"] } }` in `~/.ultimate/settings.json` (this machine) or
 `<project>/.ultimate/settings.json` (this project), and back on with `extensions.enable`. Settings layer defaults →
 machine → project; later layers win. Settings changes apply live without a restart; unknown names produce a notice.
@@ -66,7 +71,7 @@ optional extension plugs into it through a point or an event, never the other wa
 
 The `parallel` web tools read their key from `secrets`. Secrets are user-global, not project state.
 
-A server facet may export `secrets: { name: string; description: string; url?: string }[]`. Names must match `^[A-Z][A-Z0-9_]*$`, descriptions must be non-empty, and optional URLs must use http(s). Installed declarations appear in `ExtensionInfo.server.secrets` and the Secrets panel; values never appear in extension info. Other server facets read values with `readSecret(userHome, name)` from `lib/secrets.ts`; only the secrets extension writes them.
+A server facet may export `secrets: { name: string; description: string; url?: string; provider?: string }[]`. Names must match `^[A-Z][A-Z0-9_]*$`, descriptions must be non-empty, and optional URLs must use http(s). `provider` names a model provider whose configured auth stands in for the secret: the setup check stops reporting it missing once that provider has auth. Installed declarations appear in `ExtensionInfo.server.secrets` and the Secrets panel; values never appear in extension info. Other server facets read values with `readSecret(userHome, name)` from `lib/secrets.ts`; only the secrets extension writes them.
 
 The `tailscale` built-in, once enabled, exposes Ultimate to your own Tailscale login; only user settings set its allowlist. See [tailscale](tailscale/README.md) for stable project URLs and owner-login admission.
 
@@ -78,7 +83,8 @@ Extensions outside the clone import exactly what built-ins import (`@/sdk`, `@/c
 `lucide-react`, any package installed in the clone): Ultimate resolves those from its clone, and Tailwind picks up their
 classes. In the clone, `pnpm check` type-checks and lints `extensions/` and `.ultimate/extensions/`; extensions of
 other projects are not checked by anything, so try them in the browser. Agents live in the same three places
-(`agents/`); skills load as [Discovery and settings](../docs/settings.md) describes, later scopes winning by name. A project's `.ultimate/settings.json` may set `defaultSurface` (see
+(`agents/`); an enabled extension may also ship an `agents/` folder. Those definitions load as built-ins before
+user/project definitions and overlays, and disappear when the extension is disabled. Skills load as [Discovery and settings](../docs/settings.md) describes, later scopes winning by name. A project's `.ultimate/settings.json` may set `defaultSurface` (see
 [Surfaces](#surfaces)).
 
 ## Extension host
@@ -103,6 +109,8 @@ Server factories receive exactly these `ExtensionHost` fields (import its type o
 - `notice(message)`: publish a warning notice and retain it in this facet's system diagnostics for later clients, until unload/reload.
 - `resource(key, create)`, `onOpen(callback)`, `onRelease(callback)`, `onClose(cleanup)`: shared reload-stable resources, async work each
   time the harness opens (at once if it is open; the server serves once it settles), async work each time before it closes while the process stays (a core swap; drop commit subscriptions there), and async cleanup. Facet-level callbacks are removed on unload/reload, with cleanup run before the replacement opens. Callbacks registered inside a shared resource's creation belong to that reload-stable resource and survive until server shutdown.
+  Keep only process state in a resource (running children, in-flight promises, flags); never capture document or task
+  tokens or facet functions in it, since they go stale on reload. Build those on each install around the shared state.
 
 ## Extension APIs
 
@@ -181,7 +189,9 @@ export default defineWebExtension({ provides: [provide(Phase, (id) => usePhaseWo
 ```
 
 The provider's function is a hook, run once per `<Provided>`; the last facet in discovery order providing a point wins,
-and while none does the render prop gets `undefined`. The web core declares its own points in the SDK: `ParkedRuns`
+and while none does the render prop gets `undefined`. A point that combines its providers (the sidebar's rows under
+@ultimate) renders `<AllProvided point input>{(values) => …}</AllProvided>` instead: every provider's value in discovery
+order, a throwing one left out behind its inline error card. The web core declares its own points in the SDK: `ParkedRuns`
 (pause), `RunStart` (tasks), `ConversationKind` (the title bar's kind before a title; messages names coordinator
 branches `branch · coordinator`) and `MessageReference` (the copyable reference to a stored message; codemode). The server's counterpart is an extension point
 ([docs/extensions.md](../docs/extensions.md#extension-apis)).
@@ -292,7 +302,7 @@ No restart, no reload.
 
 ## Contributions
 
-`defineWebExtension({ slots, panels, surfaces, tools, toolLines, entries, link, messageActions, messageDetails, answerLabels, compact, intro, documents, commands })`; every key is optional. Extensions load
+`defineWebExtension({ slots, panels, surfaces, tools, toolLines, entries, link, messageActions, messageDetails, answerLabels, userBubble, compact, intro, documents, commands })`; every key is optional. Extensions load
 in parallel, installing independently; contributions follow discovery order: built-in → user → project, then folder name within each source. Give a slot item `{ component, order }` to move it (default order 0, lower first).
 
 ### Slots
@@ -300,22 +310,25 @@ in parallel, installing independently; contributions follow discovery order: bui
 Components mounted in named places of the shell, on every surface that renders the primitive holding them, and in the
 title bar the host shows above every surface.
 
-| Slot                   | Where                                                                                          |
-| ---------------------- | ---------------------------------------------------------------------------------------------- |
-| `sidebar`              | Left column (`<Sidebar />`); it disappears while nothing is in it                              |
-| `sidebar.top`          | Agent sidebar, after the Agents group and before the roots: background work such as watches    |
-| `titlebar.brand`       | Title bar, the wordmark beyond a phone; render `Wordmark` from `@/sdk` with an `onClick`       |
-| `titlebar.project`     | Title bar, in place of the project chip; render `ProjectChip` from `@/sdk` with a menu         |
-| `titlebar.left`        | Title bar above every surface, after the project chip; monospace, one line                     |
-| `titlebar.right`       | Title bar, right, before the palette button                                                    |
-| `header.right`         | Right side of the header, before the panel toggle (`<Header>`)                                 |
-| `statusline.left`      | Bottom status line, left; monospace, one line (`<StatusLine />`)                               |
-| `statusline.right`     | Bottom status line, right (`<StatusLine />`)                                                   |
-| `composer.toolbar`     | Left of the composer's footer; a size container, condense with `@max-md:` (`<Conversation />`) |
-| `composer.status`      | Line under the composer; conversation-specific, monospace, one line (`<Conversation />`)       |
-| `conversation.overlay` | Over the transcript and the composer (`<Conversation />`); position it `absolute inset-0`      |
-| `transcript.start`     | Above a transcript's first row once its whole history is loaded; `useTranscript()` inside      |
-| `overlay`              | Always mounted at the root, above every surface: dialogs, toasts, global effects               |
+| Slot                   | Where                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `sidebar`              | Left column (`<Sidebar />`); it disappears while nothing is in it                                            |
+| `sidebar.top`          | Agent sidebar, after the Agents group and before the roots: background work such as watches                  |
+| `titlebar.brand`       | Title bar, the wordmark beyond a phone; render `Wordmark` from `@/sdk` with an `onClick`                     |
+| `titlebar.project`     | Title bar, in place of the project chip; render `ProjectChip` from `@/sdk` with a menu                       |
+| `titlebar.left`        | Title bar above every surface, after the project chip; monospace, one line                                   |
+| `titlebar.right`       | Title bar, right, before the palette button                                                                  |
+| `header.right`         | Right side of the header, before the panel toggle (`<Header>`)                                               |
+| `statusline.left`      | Bottom status line, left; monospace, one line (`<StatusLine />`)                                             |
+| `statusline.right`     | Bottom status line, right (`<StatusLine />`); on a phone only `phone: true` items stay, the rest go behind ⋯ |
+| `composer.toolbar`     | Left of the composer's footer; a size container, condense with `@max-md:` (`<Conversation />`)               |
+| `composer.status`      | Line under the composer; conversation-specific, monospace, one line (`<Conversation />`)                     |
+| `composer.actions`     | Composer footer, beside Send; input helpers that write into the draft with `insertIntoComposer`              |
+| `conversation.overlay` | Over the transcript and the composer (`<Conversation />`); position it `absolute inset-0`                    |
+| `transcript.start`     | Above a transcript's first row once its whole history is loaded; `useTranscript()` inside                    |
+| `transcript.end`       | After a transcript's last row, before the working line: a turn still forming, such as live speech            |
+| `overlay`              | Always mounted at the root, above every surface: dialogs, toasts, global effects                             |
+| `shell.rail`           | Full-height column at the window's left edge, beside the title bar and every surface; not in a frame         |
 
 ```tsx
 slots: { 'header.right': [Badge], sidebar: { component: Conversations, order: -1 } }
@@ -396,6 +409,19 @@ link: ({ href, children, core }) =>
   href.startsWith('https://docs.example.com/') ? <a href={href}>{children}</a> : core
 ```
 
+### Code block renderers
+
+`codeBlocks` renders the fenced code blocks of one language in Markdown that `MessageResponse` shows, keyed by the
+fence's language. Each receives `{ code, language, incomplete, core }`; `core` starts as the highlighted block with its
+copy button, and `incomplete` is true while the fence still streams. They compose in discovery order behind error
+boundaries that fall back to `core`. Return `core` while `incomplete`, so a half-written block never renders.
+
+```tsx
+codeBlocks: {
+  dot: ({ code, incomplete, core }) => (incomplete ? core : <Graph source={code} />),
+}
+```
+
 ### Message actions
 
 `messageActions` contributes components to the hover action row on stored user and assistant messages, between the
@@ -426,6 +452,10 @@ shows each message's context and cost there.
 rendered in discovery and contribution order, each behind an extension boundary. Return `null` when the entry has
 no relevant label. Keep labels brief and muted; the header wraps at narrow widths. Messages uses it to show where an
 answer was sent, or that a one-way message's answer was not sent.
+
+`userBubble` contributes overlays on the user's own bubble: components receiving `{ entry }`, rendered after the
+bubble inside a positioned box exactly its size, so an `absolute inset-0` element decorates it. Return `null` when
+there is nothing to show. Recall uses it for the light running around a message's border while it checks it.
 
 `toolLines` maps tool names to components receiving `{ call: ToolCallView }` that render the call as one short line
 of plain text. A folded "worked · N steps" row lists its newest calls this way under its header (a status icon and the
@@ -898,8 +928,9 @@ Keep in mind:
 
 `@/sdk/*` deep imports are core internals, not extension API. Import only from `@/sdk`, `@/components/ui/*`, `@/components/ai/*`, `@/components/json-tree`, `react`, and `lucide-react`. Never call `fetch` or
 open an `EventSource` yourself (`ultimate/no-raw-stream` fails lint on it in `extensions/**/*.tsx`): the SDK keeps one
-live stream for the shown conversation plus one for each conversation whose documents are watched with `useDocOf`
-(the shown one included), replays their changes, and your server code is reached through [actions](#actions). The surface primitives are in [Surfaces](#primitives).
+live stream per tab, carrying a subscription for the shown conversation plus one for each conversation whose documents
+are watched with `useDocOf` (the shown one included), replays their changes, and your server code is reached through
+[actions](#actions). Browsers allow about six connections per host, so every further stream would hold back requests. The surface primitives are in [Surfaces](#primitives).
 
 | Hook                                                                      | Returns                                                                                                                                                                                                                  |
 | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

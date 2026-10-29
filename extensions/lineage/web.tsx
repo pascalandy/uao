@@ -1,18 +1,24 @@
 import {
+  ArrowLeftIcon,
   BrainIcon,
   ChevronRightIcon,
   CircleCheckIcon,
+  CodeIcon,
+  ExternalLinkIcon,
   GitBranchIcon,
   GitForkIcon,
   ScrollTextIcon,
+  SearchIcon,
   StickyNoteIcon,
   SunriseIcon,
   Trash2Icon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { MentionText, MessageResponse } from '@/components/ai/message'
+import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   api,
@@ -25,23 +31,28 @@ import {
   provide,
   Provided,
   formatAgo,
+  formatKeys,
   formatTime,
   formatTokens,
+  Header,
+  Sidebar,
+  StatusLine,
   useConversation,
   useDocOf,
-  useExtensionUiState,
   useNow,
   useTranscript,
+  useUiState,
   useUltimate,
 } from '@/sdk'
 import type { EntryRecord, ToolCallView } from '@/sdk'
 import { store } from '@/sdk/client'
 import { ConversationRef, Unsummarized } from '../conversations/ui.tsx'
 import { talkToUltimate } from '../subagents/ui.tsx'
-import { Open } from '../workspaces/ui.tsx'
-import { CompactAction, ForgetAction, MemoryDoc, TallyDoc } from './refs.ts'
+import { Open, useGithubRepo } from '../workspaces/ui.tsx'
+import { ForgetAction, MemoryDoc, OpenEditorAction, TallyDoc } from './refs.ts'
 import type { MemoryItem } from './refs.ts'
-import { column, EmptyRoot, MEMORY_PANEL, MemoryHeader, useRoots } from './ui.tsx'
+import { column, MEMORY_FOCUS, MEMORY_SURFACE, MemoryHeader, useRoots } from './ui.tsx'
+import { MemoryCall, NotifyCall, RememberCall } from './calls.tsx'
 import { GoBackAction, Rewound, RewoundDependent } from './rewind.tsx'
 
 function userText(entry: EntryRecord) {
@@ -387,98 +398,76 @@ function Reset({ entry, core }: { entry: EntryRecord; core: ReactNode }) {
   return core
 }
 
-/** A root takes no input: an empty one starts by getting familiar with the project, any other shows its tally footer. */
+/** A root is the project's history: read-only, with the way back to @ultimate in place of its composer. */
 function RootComposer({ core, dock }: { core: ReactNode; dock?: boolean }) {
   const id = useConversation((conversation) => conversation.id)
   const roots = useRoots()
   if (id === undefined || !roots?.includes(id)) return core
-  return <TallyComposer dock={dock} id={id} key={id} />
+  return <HistoryBanner dock={dock} id={id} />
 }
 
-/** Only a root subscribes to its `lineage.tally` document; a root from before tallies has none and shows the footer. */
-function TallyComposer({ id, dock }: { id: number; dock?: boolean }) {
-  const tally = useDocOf(id, TallyDoc)
-  const history = useConversation((conversation) =>
-    conversation.loading ? undefined : conversation.entries.length > 0,
-  )
-  if (tally === undefined || history === undefined) return null
-  if (tally?.since === undefined && !history)
-    return (
-      <Provided input={{ id, dock }} point={EmptyRoot}>
-        {(start) => start}
-      </Provided>
-    )
-  return <TallyFooter brief={tally?.briefTokens} dock={dock} id={id} tokens={tally?.tokens} />
-}
-
-/**
- * In place of a tally's composer: what a new branch starts from and its size (the memory brief, or the whole context
- * while there are no memories), and the way to @ultimate, who keeps it.
- */
-function TallyFooter({
-  id,
-  tokens,
-  brief,
-  dock,
-}: {
-  id: number
-  tokens?: number
-  brief?: number
-  dock?: boolean
-}) {
+function HistoryBanner({ id, dock }: { id: number; dock?: boolean }) {
   const actions = useUltimate()
+  const github = useGithubRepo()
   return (
     <div className={cn(column(dock), 'pb-3')}>
       <div
-        className="rounded-lg border border-border bg-muted/20 px-3.5 py-2.5"
-        data-lineage-tally-footer={id}
+        className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-lg border border-border/70 border-l-2 border-l-brand/50 bg-muted/30 px-3.5 py-3"
+        data-lineage-history={id}
       >
-        <div className="flex min-w-0 items-center gap-2 font-mono text-[11px] text-muted-foreground">
-          <ScrollTextIcon className="size-3.5 shrink-0 text-brand" />
-          <span className="shrink-0 text-foreground">
-            {brief === undefined ? 'Context' : 'Memory'}
-          </span>
-          {(brief ?? tokens) !== undefined && (
-            <span className="shrink-0" data-lineage-tokens={brief ?? tokens}>
-              · {formatTokens((brief ?? tokens)!)} tokens
-            </span>
-          )}
-          {tokens !== undefined && (
-            <button
-              className="ml-auto shrink-0 cursor-pointer hover:text-foreground hover:underline"
-              onClick={() => void api.action(CompactAction, { id })}
-              title="Have @ultimate reshape this history into a shorter one; nothing is deleted"
-              type="button"
-            >
-              Compact
-            </button>
-          )}
-          <button
-            className={cn(
-              'shrink-0 cursor-pointer text-brand hover:underline',
-              tokens === undefined && 'ml-auto',
-            )}
-            onClick={() => void talkToUltimate(actions)}
-            type="button"
-          >
-            Talk to @ultimate
-          </button>
+        <ScrollTextIcon className="size-4 shrink-0 text-brand" />
+        <div className="min-w-56 flex-1">
+          <p className="text-[13.5px] font-medium text-foreground">
+            You're reading the project's history
+          </p>
+          <p className="text-[12.5px] leading-snug text-muted-foreground">
+            Every branch, abstract and landing so far, read-only. To change anything, talk to
+            @ultimate.
+          </p>
         </div>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
-          {brief === undefined
-            ? 'What every new branch starts from until there are memories. @ultimate maintains it.'
-            : 'What every new branch starts from. The context above is the browsable history; @ultimate maintains both.'}
-        </p>
-        <Memory id={id} />
+        <div className="ml-auto flex items-center gap-1">
+          {/* Zed opens on the machine Ultimate runs on, so a phone gets only the GitHub link. */}
+          <Button
+            className="pointer-coarse:hidden"
+            onClick={() =>
+              void api
+                .action(OpenEditorAction)
+                .catch((error: unknown) =>
+                  store.notify({ level: 'error', message: errorMessage(error) }),
+                )
+            }
+            title="Open the project folder in Zed, on the machine Ultimate runs on"
+            variant="ghost"
+          >
+            <CodeIcon />
+            Open in Zed
+          </Button>
+          {github && (
+            <Button asChild size="icon" variant="ghost">
+              <a
+                aria-label="Open on GitHub"
+                href={`https://${github}`}
+                rel="noreferrer"
+                target="_blank"
+                title={`The code as it landed, on ${github}`}
+              >
+                <ExternalLinkIcon />
+              </a>
+            </Button>
+          )}
+          <Button onClick={() => void talkToUltimate(actions)}>
+            <ArrowLeftIcon />
+            Back to @ultimate
+            <KbdGroup className="hidden sm:inline-flex pointer-coarse:hidden">
+              {formatKeys('mod+0')[0].map((key) => (
+                <Kbd key={key}>{key}</Kbd>
+              ))}
+            </KbdGroup>
+          </Button>
+        </div>
       </div>
     </div>
   )
-}
-
-const kindTones: Record<MemoryItem['kind'], string> = {
-  decision: 'bg-brand/10 text-brand',
-  fact: 'bg-muted text-muted-foreground',
-  lesson: 'bg-note/15 text-amber-700 dark:text-note',
 }
 
 /** Where a memory was learned, `#conversation/entry`, as that conversation's chip; a click opens it at the entry. */
@@ -506,77 +495,41 @@ function MemorySource({ source }: { source: string }) {
   )
 }
 
-/** A root's project memory, folded to `Memory · N`, newest first; nothing while it has none. */
-function Memory({ id }: { id: number }) {
-  const memories = useDocOf(id, MemoryDoc)?.memories
-  const [unfolded, setUnfolded] = useExtensionUiState<number[]>('memoryOpen', [])
-  const now = useNow(60_000)
-  const open = unfolded.includes(id)
-  const slugs = Object.keys(memories ?? {}).toSorted(
-    (a, b) => memories![b].updated - memories![a].updated || a.localeCompare(b),
-  )
-  if (!memories || !slugs.length) return null
-  return (
-    <section className="mt-2 border-t border-border/60 pt-1.5" data-lineage-memory={id}>
-      <button
-        aria-expanded={open}
-        className="flex cursor-pointer items-center gap-1 font-mono text-[9.5px] tracking-wider text-muted-foreground/70 uppercase outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
-        onClick={() =>
-          setUnfolded((previous) => [
-            ...previous.filter((root) => root !== id),
-            ...(open ? [] : [id]),
-          ])
-        }
-        type="button"
-      >
-        {slugs.length} {slugs.length === 1 ? 'memory' : 'memories'}
-        <ChevronRightIcon className={cn('size-2.5 transition-transform', open && 'rotate-90')} />
-      </button>
-      {open && (
-        <ul className="-mx-1.5 mt-1 flex max-h-[45vh] flex-col overflow-y-auto">
-          {slugs.map((slug) => (
-            <MemoryRow item={memories[slug]} key={slug} now={now} root={id} slug={slug} />
-          ))}
-        </ul>
-      )}
-    </section>
-  )
-}
-
-/** One memory: its kind, slug, line and age; a click shows its body and source. The trash icon forgets it. */
+/** One memory under its kind's heading: slug, line and age; a click shows its body and source. The trash icon forgets it. */
 function MemoryRow({
   root,
   slug,
   item,
   now,
-  plain,
 }: {
   root: number
   slug: string
   item: MemoryItem
   now: number
-  /** Under a heading that already names its kind: no kind chip. */
-  plain?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [forgetting, setForgetting] = useState(false)
+  // A recall chip asks for this memory: unfold it, bring it into view, and take the request.
+  const [focus, setFocus] = useUiState<string | null>(MEMORY_FOCUS, null)
+  const row = useRef<HTMLLIElement>(null)
+  useEffect(() => {
+    if (focus !== slug) return
+    setOpen(true)
+    row.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setFocus(null)
+  }, [focus, slug, setFocus])
   return (
-    <li className="group/memory min-w-0 rounded-sm hover:bg-muted/40" data-memory={slug}>
+    <li className="group/memory min-w-0 rounded-md hover:bg-muted/40" data-memory={slug} ref={row}>
       <div className="flex min-w-0 items-start">
         <button
           aria-expanded={open}
-          className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 px-1.5 py-1 text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 rounded-md px-2 py-1.5 text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
           onClick={() => setOpen((current) => !current)}
           title={open ? 'Show less' : 'Show the memory'}
           type="button"
         >
-          <span className="flex w-full min-w-0 items-center gap-1.5 font-mono text-[10px] leading-4 text-muted-foreground">
-            {!plain && (
-              <span className={cn('shrink-0 rounded-sm px-1', kindTones[item.kind])}>
-                {item.kind}
-              </span>
-            )}
-            <span className="min-w-0 truncate text-foreground/80">{slug}</span>
+          <span className="flex w-full min-w-0 items-center gap-1.5 font-mono text-[10.5px] leading-4 text-muted-foreground">
+            <span className="min-w-0 truncate">{slug}</span>
             <span
               className="ml-auto shrink-0 pl-1 text-muted-foreground/60"
               title={new Date(item.updated).toLocaleString()}
@@ -586,8 +539,8 @@ function MemoryRow({
           </span>
           <span
             className={cn(
-              'block text-[12px] leading-snug break-words text-foreground/85',
-              !open && 'truncate',
+              'block text-[13px] leading-snug break-words text-foreground/90',
+              !open && 'line-clamp-2',
             )}
           >
             {item.line}
@@ -597,7 +550,7 @@ function MemoryRow({
           <TooltipTrigger asChild>
             <button
               aria-label={`Forget ${slug}`}
-              className="invisible mt-0.5 mr-0.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm text-muted-foreground/70 outline-none group-focus-within/memory:visible group-hover/memory:visible pointer-coarse:visible hover:bg-muted hover:text-error focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+              className="invisible mt-1.5 mr-1 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-sm text-muted-foreground/70 outline-none group-focus-within/memory:visible group-hover/memory:visible pointer-coarse:visible hover:bg-muted hover:text-error focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
               disabled={forgetting}
               onClick={() => {
                 setForgetting(true)
@@ -610,7 +563,7 @@ function MemoryRow({
               }}
               type="button"
             >
-              <Trash2Icon className="size-3" />
+              <Trash2Icon className="size-3.5" />
             </button>
           </TooltipTrigger>
           <TooltipContent className="font-mono text-[11px]" side="left">
@@ -619,8 +572,8 @@ function MemoryRow({
         </Tooltip>
       </div>
       {open && (
-        <div className="min-w-0 px-1.5 pb-2">
-          <div className="min-w-0 text-[12.5px] leading-relaxed text-muted-foreground">
+        <div className="min-w-0 px-2 pb-3">
+          <div className="min-w-0 text-[13px] leading-relaxed text-muted-foreground">
             <MessageResponse>{item.body}</MessageResponse>
           </div>
           {item.source && <MemorySource source={item.source} />}
@@ -637,62 +590,133 @@ const kindSections = [
 ] as const
 
 /**
- * The Memory panel: each root's project memory, what every new branch starts from, grouped into decisions, facts and
- * lessons, newest first. A row unfolds its body and source; @ultimate maintains it.
+ * The Memory surface: each root's project memory, what every new branch starts from, in a reading column beside the
+ * sidebar, grouped into decisions, facts and lessons, newest first. A row unfolds its body and source; @ultimate
+ * maintains it. The filter narrows every group to the memories whose slug, line or body contain its text.
  */
-function MemoryPanel() {
+function MemorySurface() {
   const roots = useRoots() ?? []
+  const [filter, setFilter] = useState('')
   return (
-    <div className="flex flex-col pb-4" data-lineage-memory-panel>
-      <Provided input={null} point={MemoryHeader}>
-        {(header) => header}
-      </Provided>
-      {roots.map((root) => (
-        <RootMemory key={root} label={roots.length > 1} root={root} />
-      ))}
-    </div>
+    <>
+      <div className="flex min-h-0 flex-1">
+        <Sidebar />
+        <main className="flex min-w-0 flex-1 flex-col">
+          <Header>
+            <span className="flex shrink-0 items-center gap-2 text-[13px] font-medium">
+              <BrainIcon className="size-4 text-muted-foreground" />
+              Memory
+            </span>
+          </Header>
+          <div className="min-h-0 flex-1 overflow-y-auto" data-lineage-memory-surface>
+            <div className={cn(column(), 'pt-4 pb-10')}>
+              {/* The header pads itself for a panel; in the column it aligns with the rows' edges. */}
+              <div className="[&>*]:px-0">
+                <Provided input={null} point={MemoryHeader}>
+                  {(header) => header}
+                </Provided>
+              </div>
+              {roots.map((root) => (
+                <RootMemory
+                  filter={filter}
+                  key={root}
+                  label={roots.length > 1}
+                  root={root}
+                  setFilter={root === roots[0] ? setFilter : undefined}
+                />
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+      <StatusLine />
+    </>
   )
 }
 
-function RootMemory({ root, label }: { root: number; label: boolean }) {
+function RootMemory({
+  root,
+  label,
+  filter,
+  setFilter,
+}: {
+  root: number
+  label: boolean
+  filter: string
+  /** The filter box shows above the first root's memories only, and filters every root. */
+  setFilter?: (text: string) => void
+}) {
+  const needle = filter.trim().toLowerCase()
   const memories = useDocOf(root, MemoryDoc)?.memories ?? {}
+  const tally = useDocOf(root, TallyDoc)
   const now = useNow(60_000)
   const slugs = Object.keys(memories).toSorted(
     (a, b) => memories[b].updated - memories[a].updated || a.localeCompare(b),
   )
+  const matches = slugs.filter(
+    (slug) =>
+      !needle ||
+      [slug, memories[slug].line, memories[slug].body].some((text) =>
+        text.toLowerCase().includes(needle),
+      ),
+  )
   return (
-    <section className="px-3" data-lineage-memory={root}>
-      {label && <p className="pt-3 font-mono text-[11px] text-foreground">#{root}</p>}
+    <section data-lineage-memory={root}>
+      {label && <p className="pt-4 font-mono text-[11px] text-foreground">#{root}</p>}
       {slugs.length === 0 ? (
-        <p className="py-6 text-xs text-muted-foreground">
+        <p className="py-8 text-[12.5px] text-muted-foreground">
           No memories yet. @ultimate keeps decisions, facts and lessons here as branches land.
         </p>
       ) : (
-        kindSections.map(([kind, title]) => {
-          const shown = slugs.filter((slug) => memories[slug].kind === kind)
-          if (!shown.length) return null
-          return (
-            <div className="mt-3" data-memory-kind={kind} key={kind}>
-              <h3 className="flex items-center gap-1.5 pb-1 font-mono text-[10.5px] tracking-wider text-muted-foreground uppercase">
-                <span className={cn('size-1.5 rounded-full', kindDots[kind])} />
-                {title}
-                <span className="text-muted-foreground/60">{shown.length}</span>
-              </h3>
-              <ul className="-mx-1.5 flex flex-col">
-                {shown.map((slug) => (
-                  <MemoryRow
-                    item={memories[slug]}
-                    key={slug}
-                    now={now}
-                    plain
-                    root={root}
-                    slug={slug}
-                  />
-                ))}
-              </ul>
-            </div>
-          )
-        })
+        <>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-3">
+            <p className="min-w-0 font-mono text-[10.5px] text-muted-foreground">
+              {needle ? `${matches.length} of ${slugs.length}` : slugs.length} memories
+              {tally?.briefTokens !== undefined && (
+                <span title="Tokens every new branch starts from">
+                  {' · '}
+                  {formatTokens(tally.briefTokens)} tokens
+                </span>
+              )}
+            </p>
+            {setFilter && (
+              <label className="ml-auto flex h-7 min-w-0 items-center gap-1.5 rounded-md border border-border/70 px-2 focus-within:border-ring max-sm:w-full sm:w-56">
+                <SearchIcon className="size-3 shrink-0 text-muted-foreground" />
+                <input
+                  aria-label="Filter memories"
+                  className="min-w-0 flex-1 bg-transparent font-mono text-[11px] outline-none placeholder:text-muted-foreground/60"
+                  onChange={(event) => setFilter(event.target.value)}
+                  onKeyDown={(event) => event.key === 'Escape' && setFilter('')}
+                  placeholder="filter"
+                  value={filter}
+                />
+              </label>
+            )}
+          </div>
+          {matches.length === 0 && (
+            <p className="py-8 font-mono text-[11.5px] text-muted-foreground/70">
+              No memory mentions “{filter.trim()}”.
+            </p>
+          )}
+          {kindSections.map(([kind, title]) => {
+            const shown = matches.filter((slug) => memories[slug].kind === kind)
+            if (!shown.length) return null
+            return (
+              <div className="mt-6" data-memory-kind={kind} key={kind}>
+                <h3 className="flex items-center gap-1.5 border-b border-border/60 pb-1.5 font-mono text-[10.5px] tracking-wider text-muted-foreground uppercase">
+                  <span className={cn('size-1.5 rounded-full', kindDots[kind])} />
+                  {title}
+                  <span className="text-muted-foreground/60">{shown.length}</span>
+                </h3>
+                <ul className="-mx-2 flex flex-col pt-1">
+                  {shown.map((slug) => (
+                    <MemoryRow item={memories[slug]} key={slug} now={now} root={root} slug={slug} />
+                  ))}
+                </ul>
+              </div>
+            )
+          })}
+        </>
       )}
     </section>
   )
@@ -711,7 +735,7 @@ function Roots() {
 }
 
 export default defineWebExtension({
-  tools: { note: NoteCall },
+  tools: { note: NoteCall, notify: NotifyCall, memory: MemoryCall, remember: RememberCall },
   entries: {
     'lineage.branched': Branched,
     'lineage.note': Note,
@@ -724,8 +748,16 @@ export default defineWebExtension({
   },
   messageActions: [GoBackAction],
   composer: RootComposer,
-  panels: [
-    { id: MEMORY_PANEL, title: 'Memory', icon: BrainIcon, component: MemoryPanel, order: 6 },
+  // After Review, so the switcher's existing mod+1…9 keys stay put.
+  surfaces: [
+    {
+      id: MEMORY_SURFACE,
+      title: 'Memory',
+      icon: BrainIcon,
+      description: 'What every new branch starts from: decisions, facts and lessons',
+      order: 70,
+      component: MemorySurface,
+    },
   ],
   slots: { overlay: [Roots] },
   // A root runs no turns and gets no summaries: its tally speaks for it.

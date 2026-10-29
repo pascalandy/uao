@@ -4,13 +4,13 @@ Status: shipped, at the snapshot. Source: upstream.
 
 Work continues when no agent turn runs (`extensions/automations/README.md`). Automations use schedules, script triggers, domain events, or context thresholds (`extensions/automations/README.md`). Each automation starts a prompt run, wakes existing conversations, or does both (`extensions/automations/README.md`). A script waits without model calls and signals `FIRE` when its condition is met (`extensions/automations/README.md`).
 
-User grants authorize named actions for dreams, compaction, or chapter switches (`extensions/automations/README.md`). The [automation mechanics](../../../extensions/automations/README.md#grants) hold the limits and the checks for those actions.
+Automation grants and the `act` operation are removed ([D039](../decisions/D039-remove-automation-grants.md)). The [automation mechanics](../../../extensions/automations/README.md#actions) describe prompt runs and subscriber delivery.
 
-An event filter can name a standing agent, so the automation follows that agent across chapters (`extensions/automations/triggers.ts`). Dream ships one built-in automation of this kind ([B15](B15-dreams-and-chapters.md)).
+Event filters and subscribers can name a standing agent across chapters (`extensions/automations/triggers.ts`, `extensions/automations/server.ts`). Context conditions can require a period without user input (`6c37a236`). Dream ships two context automations ([B15](B15-dreams-and-chapters.md)).
 
 ## Where it lives
 
-- `extensions/automations/`: triggers, actions, grants, the ledger, and the UI
+- `extensions/automations/`: triggers, actions, the ledger, and the UI
 - `agents/watcher.md`: the agent that writes and repairs a script trigger
 - `lib/process-group.ts`: process groups
 
@@ -26,3 +26,6 @@ An event filter can name a standing agent, so the automation follows that agent 
 - `d6c9628` adds user grants for named actions
 - `ab10dee` exposes triggers and grants in the UI
 - `6c1c6bc` resolves standing-agent names in event filters
+- `096ac794` requires every fire to reach someone and escalates scripts that remain stuck
+- `6d96d892` keys nested tool receipts by call so each codemode call acts
+- `903ce43e` keeps every subscriber delivery failure

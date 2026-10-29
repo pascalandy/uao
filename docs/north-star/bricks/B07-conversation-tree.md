@@ -4,12 +4,18 @@ Status: shipped, at the snapshot. Source: upstream.
 
 A project keeps one tree of conversations. The root keeps the project memory and the tally, the record of the tree. When its first branch starts, the root becomes a tally and runs no more turns ([D015](../decisions/D015-root-is-a-tally.md)). Each branch does one feature, fix, or experiment. The branch starts from a brief of the project memory. A branch that resumes receives a catch-up about the activity in its tree.
 
+The sidebar's project path opens read-only History (`6ee7d47c`). Its Memory row opens the separate Memory surface (`21669aa1`). The user can forget one memory there (`extensions/lineage/web.tsx`).
+
+Recall adds relevant memories after @ultimate's input when optional classification is available (`48f2f2e6`). The [recall mechanics](../../../extensions/recall/README.md) describe its thresholds and cache limits.
+
 ## Where it lives
 
 - `extensions/lineage/`: roots, branches, tally, memory, and catch-up
 - `extensions/conversations/`: titles, summaries, abstracts, conclude, and resume
 - `extensions/plan/`: the plan ledger of each conversation
 - `extensions/sidebar/`: the tree in the sidebar
+- `extensions/lineage/web.tsx`: the Memory surface and History page
+- `extensions/recall/`: relevant memories for @ultimate's input
 
 ## Decisions
 
@@ -28,3 +34,6 @@ A project keeps one tree of conversations. The root keeps the project memory and
 - `86ed900` keeps one root for each project
 - `07e4945` normalizes the memory changes that a landing produces
 - `f9ac8f2` concludes a landed branch only after its report gets an answer
+- `cfd0e93b` replaces that report run with conclusion by the lander unless work remains under way
+- `ea2437fe` makes Conclude stop the conversation and its subagents
+- `1dbeb9d3` opens the project folder in Zed from History on the host
