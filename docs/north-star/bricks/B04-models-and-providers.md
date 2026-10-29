@@ -4,7 +4,7 @@ Status: shipped, at the snapshot. Source: upstream.
 
 The user picks a model and a thinking level for each conversation. The user can change the model in the middle of a run (post, section "It Rebuilds Itself while it Runs"). Ultimate uses Pi's providers and logins, so any Pi provider works. A small summary model writes titles, summaries, and abstracts, so that the main model keeps its tokens for the work (post, section "Just Getting Started").
 
-A confirmed missing login can switch a conversation's model at its next input ([D038](../decisions/D038-models-follow-logins.md)). A subscription never falls back to a paid key (`fa6830aa`).
+A confirmed missing login can switch a conversation's model at its next input ([D038](../decisions/D038-models-follow-logins.md)). A subscription login never falls back to a paid key (`fa6830aa`).
 
 Keep warm renews idle @ultimate's existing Claude Code cache, without transcript entries (`f9d91e85`). The user controls these billable pings (`extensions/keep-warm/README.md`).
 

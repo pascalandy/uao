@@ -4,7 +4,7 @@ Status: shipped, at the snapshot. Source: upstream.
 
 Each branch works in its own isolate, so several features can change the same code (`extensions/workspaces/README.md`). An isolate separates files, not processes (`extensions/subagents/README.md`). A coordinator previews its work in a separate Ultimate instance (`extensions/instance/README.md`).
 
-Only `workspace submit` reaches the project's target branch ([D042](../decisions/D042-model-free-landing.md)). The model-free lander checks and lands the submission, then wakes the starter (`cfd0e93b`). Failures wake the submitter to fix and submit again (`cfd0e93b`).
+Only `workspace submit` reaches the project's target branch ([D042](../decisions/D042-model-free-landing.md)). The model-free lander checks and lands the submission (`cfd0e93b`). It wakes the starter only when the landing concludes the branch (`extensions/workspaces/lander.ts`). Failures wake the submitter to fix and submit again (`cfd0e93b`).
 
 A project can configure checkout paths and creation and removal commands (`2affc7ad`, `3b71cca5`). Clean checkouts can be released while their unlanded commits stay on their Git branches (`cfd0e93b`). The [workspace mechanics](../../../extensions/workspaces/README.md) describe safe recreation and cleanup.
 

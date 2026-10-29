@@ -215,11 +215,11 @@ New input and remote access join the existing workflow. Dreams, messages, and la
   - extension-owned agent definitions (`ab959a36`) and setup adaptation (`710be091`, [B06](bricks/B06-project-specialization.md))
   - declared secrets and provider-auth coverage (`457c5a53`, `07172eed`)
 - Reworked:
-  - model selection follows confirmed logins and protects subscriptions (`21ff1b3f`, `fa6830aa`, [D038](decisions/D038-models-follow-logins.md))
+  - model selection follows confirmed logins and protects subscription logins (`21ff1b3f`, `fa6830aa`, [D038](decisions/D038-models-follow-logins.md))
   - the contribution policy permits selected core improvements and keeps feature PRs as references (`465cf344`, [D016](decisions/D016-personal-project.md))
   - dreams become ordinary branch work, with only preparation and chapter changes in code (`be1608a7`, [D040](decisions/D040-dream-as-ordinary-work.md))
   - upward updates become notes; finished branches send waking reports (`136d9c01`, [D041](decisions/D041-state-based-waking.md))
-  - a model-free lander concludes landed branches, wakes their starters, and frees eligible checkouts (`cfd0e93b`, [D042](decisions/D042-model-free-landing.md))
+  - a model-free lander concludes landed branches unless work remains under way; a concluded branch wakes its starter and frees its eligible checkout (`cfd0e93b`, [D042](decisions/D042-model-free-landing.md))
   - History and Memory become separate reading views (`76eaa574`, `21669aa1`)
   - task groups name work and deliveries (`b3462787`, `03d967f4`)
   - draft images survive reloads (`4eb6a626`), and transcript stretches fold intermediate steps (`ebb71f13`)
@@ -245,7 +245,7 @@ At the snapshot, a change unit reaches `main` in these steps:
 4. Workers commit in their isolates. The coordinator merges their Git branches and `main` into its own
 5. The coordinator calls `workspace submit`. Code of the landing queue merges the tip, then runs checks from `.ultimate/settings.json`
 6. The code fast-forwards the target and pushes it (`extensions/workspaces/lander.ts`)
-7. The lander notes the submitter, concludes it unless work remains under way, and wakes its starter ([D042](decisions/D042-model-free-landing.md))
+7. The lander notes the submitter and concludes it unless work remains under way. Only a concluded branch wakes its starter ([D042](decisions/D042-model-free-landing.md))
 8. Lineage records the landing in the tally. A concluded branch releases its eligible checkout (`extensions/lineage/server.ts`, `extensions/workspaces/workspaces.ts`)
 
 The landing queue uses `git merge` defaults (`extensions/workspaces/lander.ts`). Git makes a landing merge only if it cannot fast-forward. Its message is `Merge <sha> from #<n> into main` (`extensions/workspaces/lander.ts`).

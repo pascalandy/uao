@@ -2,7 +2,7 @@
 
 Decided 2026-10-28. Source: upstream. Status: active.
 
-Only `workspace submit` reaches the project's target branch (`cfd0e93b`). The lander runs no model and refuses input (`cfd0e93b`). A landing concludes the branch unless work remains under way, wakes its starter, and releases an eligible checkout (`cfd0e93b`).
+Only `workspace submit` reaches the project's target branch (`cfd0e93b`). The lander runs no model and refuses input (`cfd0e93b`). A landing concludes the branch unless work remains under way (`cfd0e93b`). Only a concluded branch wakes its starter and releases an eligible checkout. A branch with work under way gives its starter the report as a note, and it reports when it stops (`extensions/workspaces/lander.ts`).
 
 **Why.** The commit makes landing the end of a branch's work (`cfd0e93b`). Failures return to the submitter to fix and submit again (`cfd0e93b`).
 

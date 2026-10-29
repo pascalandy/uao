@@ -15,6 +15,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **uao**: the repository `pascalandy/uao`, which is Pascal's fork of Ultimate. The name means "Ultimate Agent Orchestrator" (`7698625`)
 - **Upstream**: Daniel's repository, `HazAT/ultimate`. See [upstream.md](upstream.md)
 - **Pi**: Earendil's minimal coding agent. Ultimate shares its logins, models, and settings in `~/.pi/agent` (`docs/running.md`)
+- **Subscription login**: a provider login that Pi marks as a subscription. A conversation on a subscription login never falls back to a pay-per-token login (`extensions/models/fallback.ts`). Not: a subscription, the retired name for a script trigger
 - **Pi Durable**: the library `@earendil-works/pi-durable`. It stores each conversation and its tasks, and it resumes them after a crash (`docs/durability.md`)
 
 ## Work model
@@ -151,7 +152,7 @@ Do not use these names for current things:
 - **Machine home**: the home of @sync on each machine. `1708844` removed it
 - **Faux mode**: a demo mode without tokens that `f23e291` removed. Tests still use Pi's faux provider
 - **Exclusive commands**: an extension that `89676a2` removed
-- **Subscription**: the old name for a script trigger. `e099781` replaced subscriptions with script triggers in automations
+- **Subscription**: the old name for a script trigger. `e099781` replaced subscriptions with script triggers in automations. Not: a subscription login
 - **Automation grant**: approval for an automation's dream, compaction, or chapter action. `ef738270` removed grants and the `act` operation
 - **Triage**: the model's former decision about whether a message should wake @ultimate. `136d9c01` replaced it with state-based waking
 - **Graveyard**: the short-lived folder for rejected ideas. `63f87af5` replaced it with tombstones in project memory

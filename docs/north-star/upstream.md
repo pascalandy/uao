@@ -65,7 +65,7 @@ These upstream texts disagree with the code at the snapshot. uao records these d
 - `docs/subagents.md` says that only `scout`, `worker`, and `designer` pin models. `agents/watcher.md` and `agents/dream-pass.md` still pin models at `17d186b`
 - `docs/extensions.md` says that `workspaces.check`, `health.changed`, `cloud.backup`, and `conversations.compacted` are recorded for the history and the system stream. The event triggers of automations also react to them (`extensions/automations/triggers.ts`, `a7f32b5`)
 - `extensions/models/README.md` still describes model selection for the lander. The lander runs no model (`cfd0e93b`, `extensions/workspaces/lander.ts`)
-- `extensions/pause/README.md` still describes model triage and its running status. Message delivery removed triage (`136d9c01`, `extensions/messages/delivery.ts`)
+- `extensions/workspaces/README.md` says that the starter wakes after each landing, also when the branch still has work under way. The code wakes the starter only for a concluded branch, and otherwise writes the report as a note (`extensions/workspaces/lander.ts`)
 - `docs/settings.md` says Update checks hourly. The timer compares every five minutes; only fetches have an hourly gate (`extensions/update/server.ts`, `extensions/update/README.md`)
 - `extensions/onboarding/README.md` lists seven default-off built-ins. `defaultOff` has eight, including `voice-live` (`ab959a36`, `shared/extension-api.ts`)
 
