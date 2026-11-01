@@ -10,6 +10,8 @@ The **Agents tab** saves an extended definition as an overlay, so the base still
 
 An enabled extension can ship agent definitions in its own `agents/` folder (`ab959a36`). Disabling the extension removes those definitions (`ab959a36`).
 
+An agent definition can name a model family ([D043](../decisions/D043-model-families.md)). A standing agent's frontmatter can set its icon and tint (`17157665`). A definition with `subagent: false`, such as Sketch, cannot start as a subagent or automation (`b2f7043f`, `lib/agents.ts`).
+
 Extensions declare their required secrets for setup and the Secrets panel (`457c5a53`, `40b17d20`). A named provider's login can satisfy a declared secret (`07172eed`).
 
 ## Where it lives

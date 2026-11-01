@@ -43,7 +43,7 @@ The date of a decision is the date of its commit: `git log -1 --format=%ad --dat
 | [D019](D019-standing-agents.md)               | 2026-10-17 | upstream | active           | Keep standing agents                                       |
 | [D020](D020-size-the-work.md)                 | 2026-10-17 | upstream | active           | Size the work to the change                                |
 | [D021](D021-updates-are-notes.md)             | 2026-10-17 | upstream | replaced by D041 | Send subagent updates as notes                             |
-| [D022](D022-route-through-ultimate.md)        | 2026-10-18 | upstream | active           | Route agent messages for the user through @ultimate        |
+| [D022](D022-route-through-ultimate.md)        | 2026-10-18 | upstream | replaced by D044 | Route agent messages for the user through @ultimate        |
 | [D023](D023-context-and-tally.md)             | 2026-10-18 | upstream | active           | Call the tally "context" in the UI                         |
 | [D024](D024-typed-contracts-core-tier.md)     | 2026-10-18 | upstream | active           | Connect extensions through typed contracts                 |
 | [D025](D025-assess-first.md)                  | 2026-10-19 | upstream | active           | Assess a feature before building it                        |
@@ -56,11 +56,13 @@ The date of a decision is the date of its commit: `git log -1 --format=%ad --dat
 | [D032](D032-fork-as-uao.md)                   | 2026-10-23 | uao      | active           | Fork Ultimate as uao                                       |
 | [D033](D033-one-north-star.md)                | 2026-10-23 | uao      | active           | Keep one north-star                                        |
 | [D034](D034-follow-upstream.md)               | 2026-10-23 | uao      | active           | Follow upstream through merges                             |
-| [D035](D035-adopt-blog-direction.md)          | 2026-10-23 | uao      | active           | Adopt the direction of the post                            |
+| [D035](D035-adopt-blog-direction.md)          | 2026-10-23 | uao      | active           | Adopt the direction of the post and the explainer          |
 | [D036](D036-previews-on-instance-model.md)    | 2026-10-24 | upstream | active           | Preview every agent on one model                           |
 | [D037](D037-goals-delegate-approvals.md)      | 2026-10-24 | upstream | active           | Let a user-granted goal delegate approvals                 |
-| [D038](D038-models-follow-logins.md)          | 2026-10-25 | upstream | active           | Use models with a confirmed login                          |
+| [D038](D038-models-follow-logins.md)          | 2026-10-25 | upstream | active           | Keep model changes within confirmed logins                 |
 | [D039](D039-remove-automation-grants.md)      | 2026-10-25 | upstream | active           | Remove automation grants                                   |
 | [D040](D040-dream-as-ordinary-work.md)        | 2026-10-27 | upstream | active           | Make dreaming ordinary work                                |
 | [D041](D041-state-based-waking.md)            | 2026-10-27 | upstream | active           | Use notes for updates and waking reports for finished work |
 | [D042](D042-model-free-landing.md)            | 2026-10-28 | upstream | active           | Use one model-free path to the target branch               |
+| [D043](D043-model-families.md)                | 2026-10-28 | upstream | active           | Run agents and features on model families                  |
+| [D044](D044-branches-ask-the-user.md)         | 2026-10-30 | upstream | active           | Let branches ask after @ultimate weighs in                 |

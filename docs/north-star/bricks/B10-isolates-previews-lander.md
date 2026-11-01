@@ -8,11 +8,13 @@ Only `workspace submit` reaches the project's target branch ([D042](../decisions
 
 A project can configure checkout paths and creation and removal commands (`2affc7ad`, `3b71cca5`). Clean checkouts can be released while their unlanded commits stay on their Git branches (`cfd0e93b`). The [workspace mechanics](../../../extensions/workspaces/README.md) describe safe recreation and cleanup.
 
+Previews copy user configuration into a private user home (`1efbcb19`). User extensions and the Tailscale registry remain linked (`1efbcb19`, `37a91b88`). A released checkout is recreated before the next tool call (`27f9d781`).
+
 ## Where it lives
 
 - `extensions/workspaces/`: isolates and the landing queue
 - `extensions/workspaces/lander.ts`: the queue and its model-free log conversation
-- `.ultimate/settings.json`: the checks, the push target, and the preview model
+- `.ultimate/settings.json`: the checks, the push target, and the preview family assignment
 - `extensions/instance/`: previews
 
 ## Decisions
@@ -35,3 +37,4 @@ A project can configure checkout paths and creation and removal commands (`2affc
 - `1a974c40` names failed tests on every failed check
 - `b7060d00` records the landing decision once and preserves safe checkout release
 - `903ce43e` keeps one wake-up per landed branch
+- `27f9d781` keeps source checkouts with live descendant worktrees. `1a0541ee` removes that PR's additional lander conclusion guard

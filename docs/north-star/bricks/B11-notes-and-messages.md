@@ -10,6 +10,10 @@ One project's @ultimate can tell another project's @ultimate what changed (`exte
 
 @ultimate's messages to the user can include images (`5962e1f8`). Its next question can answer the user's preceding reply and keep a new answer card (`96cad25f`, `a4110c8a`).
 
+@ultimate's final answer can return to every eligible branch whose reply or report shared its run ([D041](../decisions/D041-state-based-waking.md)). A routed answer folds into the transcript's update stretch (`f2d39af7`). Only a branch's reply to its own starter shows that it awaits @ultimate (`bb2a4398`).
+
+Branches can ask the user directly after @ultimate weighs in ([D044](../decisions/D044-branches-ask-the-user.md)). Question pointers keep their summaries and outcomes outside the bounded message log (`ae0d4fc2`, `extensions/messages/notice.ts`).
+
 ## Where it lives
 
 - `extensions/messages/`: messages, replies, and steering
@@ -19,7 +23,7 @@ One project's @ultimate can tell another project's @ultimate what changed (`exte
 ## Decisions
 
 - [D041](../decisions/D041-state-based-waking.md) Use notes for updates and waking reports for finished work
-- [D022](../decisions/D022-route-through-ultimate.md) Route agent messages for the user through @ultimate
+- [D044](../decisions/D044-branches-ask-the-user.md) Let branches ask after @ultimate weighs in
 
 ## Evidence
 
