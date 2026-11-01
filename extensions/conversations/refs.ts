@@ -37,10 +37,17 @@ export const ContextDoc = docRef<ContextUsage>('conversations.context')
 export type SummaryModelSetting = {
   value: unknown
   source: 'default' | 'user' | 'project'
+  /** Without a pin: the model family summaries run on (`modelFamilies`). */
+  family?: string
   default: string
   /** The project's settings file, when it decides the model. */
   path?: string
 }
+
+/** `{ [name]: { icon?, tint? } }`: how each standing agent's definition asks its mark to look, on conversation 1. */
+export const MarksDoc = docRef<Record<string, AgentMarkStyle>>('conversations.agent-marks')
+/** A definition's `icon` (a lucide name) and `tint` (one of lib/marks.ts `markTints`). */
+export type AgentMarkStyle = { icon?: string; tint?: string }
 
 /** Each conversation's summary, feature, activity and assessment, on conversation 1. */
 export const OverviewDoc = docRef<OverviewState>('ultimate.conversation-overview')

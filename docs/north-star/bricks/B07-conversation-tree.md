@@ -8,6 +8,10 @@ The sidebar's project path opens read-only History (`6ee7d47c`). Its Memory row 
 
 Recall adds relevant memories after @ultimate's input when optional classification is available (`48f2f2e6`). The [recall mechanics](../../../extensions/recall/README.md) describe its thresholds and cache limits.
 
+Landing memory extraction allows 16,384 output tokens, including reasoning (`5b4de93a`, `extensions/lineage/memory.ts`). This budget replaces the smaller summary budget for that task (`5b4de93a`).
+
+The Plan panel shows an epic without plan tasks by its status and acceptance criteria (`34624b5d`). Plan text preserves literal tags and line breaks (`34624b5d`).
+
 ## Where it lives
 
 - `extensions/lineage/`: roots, branches, tally, memory, and catch-up

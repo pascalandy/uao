@@ -3,10 +3,10 @@
 > [!NOTE]
 > **A personal project, shared as inspiration.** Ultimate is not a library or a product with users to support. Copy
 > what you like, fork it, do whatever you want with it. To make it work your way, ask Ultimate to change itself; it
-> keeps your changes in `.ultimate/` folders that survive updates. I merge only clear-cut fixes to the core; feature
-> pull requests stay open, unmerged, as reference implementations. I change things as I go, fundamental ones
-> included, without migration paths or regard for anyone building on top. Whether that works for you is your call.
-> See [CONTRIBUTING.md](CONTRIBUTING.md).
+> keeps your changes in `.ultimate/` folders that survive updates. Pull requests are welcome as shared ideas: most stay
+> open, unmerged, as references anyone can adopt, and I merge only clear-cut fixes or improvements to the core. I
+> change things as I go, fundamental ones included, without migration paths or regard for anyone building on top.
+> Whether that works for you is your call. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 `uao` stands for the Ultimate Agent Orchestrator.
 
@@ -18,6 +18,8 @@ and it still feels familiar in every project, because the core is always the sam
 Built on [Pi Durable](https://earendil.com/posts/pi-durable/): the conversation, every tool call, and every subagent are
 committed to SQLite before anything is shown, so Ultimate can rewrite its own UI, extensions, and core without losing its
 place.
+
+What Ultimate is and why it exists, in plain words: [danielgriesser.com/ultimate](https://danielgriesser.com/ultimate/).
 
 ## How to use it
 
@@ -54,7 +56,7 @@ Read these first; they are the source of truth, so follow them and don't invent 
 and extensions/claude-code/README.md.
 
 Then:
-1. Check the prerequisites from README "Start": Node 26, pnpm, and a Chromium for the screenshot tools. Tell me
+1. Check the prerequisites from README "Start": Node 26, pnpm, Git 2.54 or newer, and a Chromium for the screenshot tools. Tell me
    what is missing and how to install it on my system; ask before installing anything system-wide.
 2. Clone the repository unless I'm already in it, run `pnpm install`, then `pnpm link --global` so I get the
    `ultimate` command; if pnpm's global bin is not on my PATH yet, `pnpm setup` adds it.
@@ -74,7 +76,9 @@ Stop and ask me whenever a step needs my password, a login or a decision.
 By default you get Pi's coding agent in a web UI: read, write, edit, bash, codemode, and browser debugging tools,
 with the conversation, model and thinking controls, login, and footer, plus every other built-in building block.
 
-Needs Node 26 and pnpm; you log in to a model provider on first start, not before. Ultimate shares `~/.pi/agent` with
+Needs Node 26, pnpm and Git 2.54 or newer.
+
+You log in to a model provider on first start, not before. Ultimate shares `~/.pi/agent` with
 `pi` (credentials, models, settings); personal skills and instructions go in `~/.ultimate/skills/` and
 `~/.ultimate/AGENTS.md`. The
 screenshot and browser tools need a Chromium: `/usr/bin/chromium`, Google Chrome, Playwright's cached Chromium, or

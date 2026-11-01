@@ -17,6 +17,8 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Pi**: Earendil's minimal coding agent. Ultimate shares its logins, models, and settings in `~/.pi/agent` (`docs/running.md`)
 - **Subscription login**: a provider login that Pi marks as a subscription, except `anthropic`. Ultimate treats `anthropic` as the pay-per-token Anthropic API, because Claude uses its subscription only through Claude Code. A conversation on a subscription login never falls back to a pay-per-token login (`extensions/models/fallback.ts`). Not: a subscription, the retired name for a script trigger
 - **Pi Durable**: the library `@earendil-works/pi-durable`. It stores each conversation and its tasks, and it resumes them after a crash (`docs/durability.md`)
+- **Model family**: a named model role with a model, a thinking level, and a color. Agent definitions and features use families (`741ec0da`, `lib/families.ts`). Not: a group of related models from a provider
+- **Model pin**: a model set directly in an agent definition or a feature setting. A model pin takes precedence over a family (`lib/agents.ts`, `extensions/conversations/summary-model.ts`)
 
 ## Work model
 
@@ -43,12 +45,13 @@ This file defines the names in uao. Each thing has one name, and each name has o
 ## Agents
 
 - **Agent definition**: a Markdown file with frontmatter for an agent's model, tools, and instructions. Built-ins live in `agents/` or an enabled extension's `agents/` folder (`ab959a36`). Early commits call it a "profile" (`703b104`)
+- **Agent mark**: the icon and tint of a standing agent, set by `icon` and `tint` in its frontmatter (`17157665`, `lib/marks.ts`)
 - **Agents tab**: the UI tab where the user edits agent definitions (`extensions/subagents/README.md`). UI: **Agents tab**. Not: the Agent surface
 - **Overlay**: an agent definition with the name of an earlier definition and an `addTools` key. It can change settings, add tools, and append text, but it keeps the earlier instructions (`docs/subagents.md`, `9d40a9b`)
 - **Deferred tool**: a tool that loads when an agent definition names it, including through an overlay's `addTools` (`lib/agents.ts`, `d3178ff`)
 - **Skill**: instructions that an agent reads for a task, stored in `SKILL.md`. A `/skill:name` command adds the named skill to user input (`server/skills.ts`)
 - **Top-level agent**: the agent of a conversation that is not a subagent, such as @ultimate or a coordinator (inferred). Only a top-level agent pushes (`docs/worktrees.md`). Not: a subagent
-- **@ultimate**: the standing agent that the user talks to. It starts and steers branches, and it relays their questions (`agents/ultimate.md`). Code: definition `ultimate`
+- **@ultimate**: the standing agent that the user talks to. It starts and steers branches. It weighs in on their decisions, and the branches then ask the user directly (`agents/ultimate.md`, [D044](decisions/D044-branches-ask-the-user.md)). Code: definition `ultimate`
 - **Standing agent**: an agent with one permanent conversation in a project. Nobody concludes it, so it keeps what it learned (`8a1c100`). Code: `resident: true`. Examples: @ultimate and Voice (`f3b257b6`). Not: the model-free lander (`cfd0e93b`)
 - **Voice**: the standing agent that answers spoken status questions and forwards work to @ultimate. GPT-Live carries its audio (`f3b257b6`, `26c21a52`)
 - **GPT-Live**: the audio model that hears and speaks in a live voice session. Voice decides which requests reach @ultimate (`extensions/voice-live/README.md`)
@@ -94,6 +97,8 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Panel**: a tab in the right panel (`extensions/README.md`)
 - **Surface**: a full-screen app that the user switches to. The Agent surface is the conversation. The agent is accessible with one keystroke on every surface (`790c34e`)
 - **Codemode**: a tool that runs one JavaScript script in a QuickJS sandbox. The script can call tools and read Ultimate's state (`extensions/codemode/README.md`)
+- **MCP**: Model Context Protocol. Ultimate connects external tool servers and exposes them through one `mcp` tool (`5eae312d`, `extensions/mcp/server.ts`)
+- **Sketch**: a tool that asks a model to draw a small UI from a description and data. Its blocks include charts, tables, and forms (`a7ab9797`, `extensions/sketch/server.ts`)
 
 ## Messages and the user
 
@@ -104,18 +109,22 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Notify**: a request to know when another conversation finishes. Code: the tool `notify` (`AGENTS.md`)
 - **Steer**: a message that enters a run in progress, after the current tool calls (`extensions/messages/README.md`)
 - **Question**: one structured request for a user answer, carried by a message (`extensions/messages/questions.ts`). Its answer card stays open until the user answers or dismisses the message (`extensions/questions/README.md`)
+- **Question pointer**: a card in @ultimate's conversation that opens a branch's question and retains its answer summary (`5014cc55`, `ae0d4fc2`)
+- **Settle**: to answer or dismiss an open question through @ultimate from the user's words in its chat. Code: `messages.settle` (`7b09649d`)
 - **Hands-off goal**: a user-granted goal during which @ultimate decides what it would otherwise ask the user (`extensions/goal/README.md`). Code: the extension `goal`. Chapter changes still require the user (`ef738270`)
 - **Goal decision**: a choice that @ultimate records for the user during a hands-off goal, including the reason (`extensions/goal/README.md`). Code: `goal {action: 'decide'}`. Not: a north-star decision
 - **Goal report**: the card that records a hands-off goal's outcome, criteria, summary, and goal decisions (`extensions/goal/README.md`). UI: **Hands-off report**. Code: `goal.report`
 - **To-do**: an open item for the user or for @ultimate, in one short list for each project (`extensions/todos/README.md`)
 - **Side chat**: a temporary fork of @ultimate for a tangent. The user discards it, or injects a summary into the main conversation (`extensions/side-chat/README.md`)
 - **Voice input**: microphone recording that becomes unsent text at the composer's cursor. Not: a live voice session (`a0608d3f`)
+- **Narrator**: optional speech for questions, failures, landings, and new branches. It uses OpenAI audio when a key is present, or browser speech otherwise (`451ac392`)
 - **Installable web app**: the browser app installed on a device's home screen, with standalone display (`web/public/manifest.webmanifest`, `12fd115c`)
 - **Project trust**: the user's choice to load a project's `.ultimate/` folder. Until the user chooses, Ultimate uses only the global setup. Code: decision `local` or `global` (`docs/settings.md`)
 
 ## Background work and records
 
 - **Task**: a unit of work that Pi Durable runs and checkpoints, such as a model request or a tool call ([Pi Durable](https://earendil.com/posts/pi-durable/)). Not: a task in a plan of `extensions/plan/`
+- **Epic**: a plan record for a piece of work, its approach, and its acceptance criteria. An epic can have no plan tasks (`extensions/plan/README.md`, `34624b5d`)
 - **Replay-safe**: a tool that can run again after a crash with no harm. Pi Durable runs an interrupted tool again only when it has this mark (`docs/durability.md`)
 - **Automation**: a rule for background work that acts when its trigger fires. Code: the tool `automation` (`extensions/automations/README.md`)
 - **Trigger**: the condition that fires an automation. A trigger uses a schedule, a script, a domain event, or a context threshold (`extensions/automations/README.md`)
@@ -157,3 +166,4 @@ Do not use these names for current things:
 - **Triage**: the model's former decision about whether a message should wake @ultimate. `136d9c01` replaced it with state-based waking
 - **Graveyard**: the short-lived folder for rejected ideas. `63f87af5` replaced it with tombstones in project memory
 - **Emergency terminal agent**: the former server-independent recovery agent. `17d186bf` removed `pnpm cli` and `ultimate --cli`
+- **Feature thread**: the former side thread for a branch's traffic in @ultimate's transcript. `050141d2` added it, and `fe08571f` removed it

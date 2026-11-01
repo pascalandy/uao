@@ -6,6 +6,8 @@ The user picks a model and a thinking level for each conversation. The user can 
 
 A confirmed missing login can switch a conversation's model at its next input ([D038](../decisions/D038-models-follow-logins.md)). A subscription login never falls back to a paid key (`fa6830aa`).
 
+Agent definitions, summaries, and previews use model families ([D043](../decisions/D043-model-families.md)). The Agents panel groups agents and features by family (`490f88b2`). Per-model concurrency caps were removed before the snapshot (`a0b75c9e`).
+
 Keep warm renews idle @ultimate's existing Claude Code cache, without transcript entries (`f9d91e85`). The user controls these billable pings (`extensions/keep-warm/README.md`).
 
 ## Where it lives
@@ -18,11 +20,14 @@ Keep warm renews idle @ultimate's existing Claude Code cache, without transcript
 - `extensions/status-line/`: the model, the context use, and the token rates
 - `extensions/models/fallback.ts`: model changes after a confirmed missing login
 - `extensions/keep-warm/`: cache pings and their usage
+- `lib/families.ts` and `lib/families-settings.ts`: family definitions, precedence, and storage
+- `extensions/subagents/overview.tsx`: the Agents panel's family groups
 
 ## Decisions
 
 - [D026](../decisions/D026-stable-system-prompt.md) Keep the system prompt stable
-- [D038](../decisions/D038-models-follow-logins.md) Use models with a confirmed login
+- [D038](../decisions/D038-models-follow-logins.md) Keep model changes within confirmed logins
+- [D043](../decisions/D043-model-families.md) Run agents and features on model families
 
 ## Evidence
 
@@ -35,3 +40,6 @@ Keep warm renews idle @ultimate's existing Claude Code cache, without transcript
 - `dec99d5e` defines later Claude Code tools inline to preserve the cached prompt prefix
 - `cae9a0d6` adds a per-conversation Claude Code environment hook
 - `98389c49` uses Pi's TypeSafe provider configuration for classification
+- `11809560` names the built-in families `default`, `review`, `fast`, `tiny`, and `design`
+- `4497cb74` preserves a configured default when no configured model has a login
+- `6ee4ddc5` lists Claude Code before paid Anthropic and checks its login with the project's environment

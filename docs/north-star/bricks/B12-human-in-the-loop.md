@@ -4,7 +4,7 @@ Status: shipped, at the snapshot. Source: upstream.
 
 The user stays in control with no need to watch each conversation. Questions wait as answer cards until the user answers or dismisses them. The user can review a diff before it lands, pause the whole host, stop one bash call, and explore a tangent in a side chat.
 
-The cards render the structured questions of a message without a model (`extensions/questions/README.md`). A card offers choices, multiple choices, confirmation, text, or a scale, plus a separate comment field (`extensions/questions/README.md`).
+The cards render the structured questions of a message without a model (`extensions/questions/README.md`). A card offers choices, multiple choices, confirmation, text, or a scale, plus a separate comment field (`extensions/questions/README.md`). Branches ask in their own conversation after @ultimate weighs in ([D044](../decisions/D044-branches-ask-the-user.md)). @ultimate can settle those questions from the user's words in its chat (`7b09649d`).
 
 The user can start one hands-off goal and let @ultimate make goal decisions and give preview approvals ([D037](../decisions/D037-goals-delegate-approvals.md)). @ultimate records criteria and goal decisions, then leaves a goal report (`extensions/goal/README.md`). The user can end the goal early (`extensions/goal/README.md`).
 
@@ -17,6 +17,8 @@ The user can install the web app on a device's home screen (`12fd115c`). Draft i
 An optional goal reminder wakes @ultimate every 30 minutes (`64f94443`). A goal can pause and resume its reminder (`64f94443`, `extensions/goal/README.md`).
 
 Optional sounds include music that follows agent actions and landing notifications (`06a706bb`, `76ea0ae7`, `09befdd5`). The [sound mechanics](../../../extensions/sounds/README.md) describe the controls.
+
+The optional narrator speaks questions, failures, landings, and optionally new branches (`451ac392`). It uses OpenAI audio with a key, or browser speech without one (`extensions/sounds/server.ts`, `extensions/sounds/web.tsx`). Finished answers keep their sound alone (`451ac392`).
 
 ## Where it lives
 
@@ -35,7 +37,7 @@ Optional sounds include music that follows agent actions and landing notificatio
 
 - [D017](../decisions/D017-questions-get-proposals.md) Explore questions, act on instructions
 - [D037](../decisions/D037-goals-delegate-approvals.md) Let a user-granted goal delegate approvals
-- [D022](../decisions/D022-route-through-ultimate.md) Route agent messages for the user through @ultimate
+- [D044](../decisions/D044-branches-ask-the-user.md) Let branches ask after @ultimate weighs in
 
 ## Evidence
 
@@ -55,3 +57,5 @@ Optional sounds include music that follows agent actions and landing notificatio
 - `93dbff1` fixes the answer card's Undo countdown on phones
 - `9e3164f5` stops the host from pausing again when the final rate-limit retry ends its run
 - `29480df2` tells a held parent which subagent hit the rate limit
+- `46d0054d` sends a held answer when the user leaves the page during Undo
+- `3fa3753c` accepts image drops in the composer and prevents file drops from navigating away

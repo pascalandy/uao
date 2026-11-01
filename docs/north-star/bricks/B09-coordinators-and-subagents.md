@@ -8,6 +8,8 @@ A coordinator continues unfinished work unless it is blocked or a child, the lan
 
 An overlay can give a coordinator deferred tools, even when its base inherits every tool (`lib/agents.ts`, `extensions/messages/branch.ts`).
 
+Shipped agent definitions name model families instead of pinned models (`741ec0da`, `06399140`). A branch sends decisions to @ultimate before it asks the user ([D044](../decisions/D044-branches-ask-the-user.md)).
+
 ## Where it lives
 
 - `agents/coordinator.md`: the coordinator
@@ -23,6 +25,8 @@ An overlay can give a coordinator deferred tools, even when its base inherits ev
 - [D012](../decisions/D012-design-visible-results.md) Design each visible result
 - [D020](../decisions/D020-size-the-work.md) Size the work to the change
 - [D025](../decisions/D025-assess-first.md) Assess a feature before building it
+- [D043](../decisions/D043-model-families.md) Run agents and features on model families
+- [D044](../decisions/D044-branches-ask-the-user.md) Let branches ask after @ultimate weighs in
 
 ## Evidence
 

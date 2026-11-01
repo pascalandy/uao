@@ -4,6 +4,8 @@ Status: shipped, at the snapshot. Source: upstream.
 
 Ultimate edits its own code while the conversation that edits the code continues. A change to the UI or to an extension goes live at once. A change to the core goes live through a checked swap. This capability is the premise of the [first prompt](../sources/first-prompt.md): "we built ultimate with ultimate".
 
+Update reports an owed restart when `server/` or `shared/` differs from the build at process start (`fe5907cd`). A restart still needs the `restart` tool (`agents/ultimate.md`).
+
 ## Where it lives
 
 - `bin/ultimate.ts`: the supervisor
@@ -26,3 +28,5 @@ Ultimate edits its own code while the conversation that edits the code continues
 - `8233269` adds the build identity
 - `56b0e1c` adds the emergency terminal agent. `17d186bf` removes it because it was unused
 - `b535e02` names landed features in the Reloaded divider and the hot-reload toast
+- `6dd1aa58` verifies core process identity before a stale storage lock is taken
+- `91f1fde4` passes the core start time explicitly to the lock check

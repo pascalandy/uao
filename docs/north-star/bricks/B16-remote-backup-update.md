@@ -10,6 +10,8 @@ Update ships on by default and follows the clone's origin (`7f011b47`). Its dire
 
 Agents can start backups and clone updates through actions (`extensions/cloud/server.ts`, `extensions/update/server.ts`). The cloud join action remains user-only (`extensions/cloud/server.ts`).
 
+An owed restart stays visible when core files changed since process start ([B02](B02-self-change-while-running.md), `fe5907cd`). The supervisor dashboard keeps the Tailscale URL above the local URL (`fc77dee5`).
+
 ## Where it lives
 
 - `extensions/tailscale/`: remote access

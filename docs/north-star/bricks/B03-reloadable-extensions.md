@@ -6,6 +6,8 @@ Each feature that is not core infrastructure is an extension folder, with a serv
 
 Web facets can register code-block renderers by language (`61b25245`). Linked user and project extensions keep their current code and Tailwind styles after a link changes (`4ddbece8`, `027057d3`).
 
+Changes to imported files also reload a linked server facet (`c0c1197c`). Stable `data-ui` attributes let extensions style the app shell (`eb77a9aa`, `28eb9e9c`). Error cards can send an error report to @ultimate (`cf2315bf`).
+
 ## Where it lives
 
 - `extensions/`: the built-ins, each with a README
@@ -33,3 +35,6 @@ Web facets can register code-block renderers by language (`61b25245`). Linked us
 - `0104d7a` replaces repeated cards and time helpers with shared SDK exports
 - `faed7909` refuses duplicate tool names from extensions in the same layer
 - `27e615d0` and `70f56ce5` carry a tab's event subscriptions on one connection
+- `6e9cd78d` removes the untyped service API and the supervisor's service report
+- `506cfe15` keeps attention cards visible outside folded activity
+- `7b6f7177` moves tablet panel controls into the Agent extension

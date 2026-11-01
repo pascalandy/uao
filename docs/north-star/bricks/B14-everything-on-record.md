@@ -33,4 +33,5 @@ Tasks group runs and deliveries by meaning and show open messages (`b3462787`, `
 - `ed0bb8a` publishes context use for the status line and automation triggers
 - `001a193d` adds goal decisions and their evidence to the record
 - `8402cb41` counts a tool's returned error result as a failed trace call
+- `5edd9810` records a failed shell command's exit code and retained output in its trace row
 - `d0afb3e1` uses SQLite NORMAL for trace commits, so recent diagnostics can be lost on power failure
