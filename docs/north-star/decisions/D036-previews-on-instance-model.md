@@ -2,7 +2,7 @@
 
 Decided 2026-10-24, revised 2026-10-29. Source: upstream. Status: active.
 
-A preview runs every agent on one model (`a4843af`). An `instance.model` pin overrides the preview's model family (`741ec0da`, `extensions/instance/server.ts`). Without a pin, previews use the assigned family, `fast` by default (`lib/families.ts`). This repository commits that assignment in `.ultimate/settings.json` (`d6f3657a`). The product still has no faux demos or faux mode (`f23e291`, [D030](D030-previews-on-real-models.md)).
+By default, a preview runs every agent on one model (`a4843af`). An `instance.model` pin overrides the preview's model family, and `instance.model: null` turns the override off, so the preview runs the configured models (`741ec0da`, `extensions/instance/README.md`). Without the key, previews use the assigned family, `fast` by default (`lib/families.ts`). This repository commits that assignment in `.ultimate/settings.json` (`d6f3657a`). The product still has no faux demos or faux mode (`f23e291`, [D030](D030-previews-on-real-models.md)).
 
 **Why.** The commit gives no reason (`a4843af`).
 

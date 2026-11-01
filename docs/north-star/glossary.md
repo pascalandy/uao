@@ -51,7 +51,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Deferred tool**: a tool that loads when an agent definition names it, including through an overlay's `addTools` (`lib/agents.ts`, `d3178ff`)
 - **Skill**: instructions that an agent reads for a task, stored in `SKILL.md`. A `/skill:name` command adds the named skill to user input (`server/skills.ts`)
 - **Top-level agent**: the agent of a conversation that is not a subagent, such as @ultimate or a coordinator (inferred). Only a top-level agent pushes (`docs/worktrees.md`). Not: a subagent
-- **@ultimate**: the standing agent that the user talks to. It starts and steers branches, and it relays their questions (`agents/ultimate.md`). Code: definition `ultimate`
+- **@ultimate**: the standing agent that the user talks to. It starts and steers branches. It weighs in on their decisions, and the branches then ask the user directly (`agents/ultimate.md`, [D044](decisions/D044-branches-ask-the-user.md)). Code: definition `ultimate`
 - **Standing agent**: an agent with one permanent conversation in a project. Nobody concludes it, so it keeps what it learned (`8a1c100`). Code: `resident: true`. Examples: @ultimate and Voice (`f3b257b6`). Not: the model-free lander (`cfd0e93b`)
 - **Voice**: the standing agent that answers spoken status questions and forwards work to @ultimate. GPT-Live carries its audio (`f3b257b6`, `26c21a52`)
 - **GPT-Live**: the audio model that hears and speaks in a live voice session. Voice decides which requests reach @ultimate (`extensions/voice-live/README.md`)
