@@ -11,6 +11,8 @@ Each status in the north-star is true at the snapshot:
 
 `git log --oneline d0a2e17b..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
 
+The [changelog review](changelog.md) compares the public entries with this snapshot and records later upstream changes. Read that review when you assess a sync. Later upstream entries do not change a brick's status until their code reaches uao.
+
 ### Sync log
 
 - 2026-10-23: upstream `11d1d4c` (2026-10-24), merged into uao by `01a53cc`
