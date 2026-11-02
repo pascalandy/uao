@@ -18,7 +18,7 @@ An optional goal reminder wakes @ultimate every 30 minutes (`64f94443`). A goal 
 
 Optional sounds include music that follows agent actions and landing notifications (`06a706bb`, `76ea0ae7`, `09befdd5`). The [sound mechanics](../../../extensions/sounds/README.md) describe the controls.
 
-The optional narrator speaks questions, failures, landings, and optionally new branches (`451ac392`). It uses OpenAI audio with a key, or browser speech without one (`extensions/sounds/server.ts`, `extensions/sounds/web.tsx`). Finished answers keep their sound alone (`451ac392`).
+The narrator is off by default (`extensions/sounds/web.tsx`). When enabled, the narrator speaks questions, failures, landings, and optionally new branches (`451ac392`). It uses OpenAI audio with a key, or browser speech without one (`extensions/sounds/server.ts`, `extensions/sounds/web.tsx`). Finished answers keep their sound alone (`451ac392`).
 
 ## Where it lives
 
