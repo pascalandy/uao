@@ -30,7 +30,7 @@ Sketch still exists in the snapshot. Its later removal does not change the curre
 
 ## Other commits after the snapshot
 
-This review checks [the fetched upstream head](https://github.com/HazAT/ultimate/commit/984b887d6aa99e1121fc6fd7060ddd8d320bcc23). That head contains 39 commits after the snapshot: 28 work commits and 11 merges. The fetched head has a UTC date of 2026-11-02.
+This review checks [the fetched upstream head](https://github.com/HazAT/ultimate/commit/984b887d6aa99e1121fc6fd7060ddd8d320bcc23). That head contains 39 commits after the snapshot: 28 work commits and 11 merges. The fetched head has a UTC date of 2026-11-01.
 
 Other changes include:
 
