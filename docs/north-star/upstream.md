@@ -49,7 +49,7 @@ The old machine-specific paths and user names in `docs/worktrees.md`, `docs/runn
 
 ## Sync rule
 
-The job `uao-sync` merges `upstream/main` into uao each Wednesday through a pull request ([D034](decisions/D034-follow-upstream.md)). The job runs the checks and its two review loops, then merges the pull request without Pascal ([D034](decisions/D034-follow-upstream.md)). To undo one sync, run `git revert -m 1 <merge>` on a branch, and merge that revert through a pull request. The sync pull request lands with a merge commit, never with a squash or a rebase (Pascal, 2026-10-24). A squash or a rebase replaces the upstream commits with new commits, so `check_links.py` rejects the upstream SHAs that the north-star cites. uao keeps its own additions in places that upstream does not edit: `docs/north-star/`, new files in `.ultimate/`, and `~/.ultimate/`.
+The job `uao-sync` merges `upstream/main` into uao each Wednesday through a pull request. The job runs the checks and its two review loops, then merges the pull request without Pascal ([D034](decisions/D034-follow-upstream.md)). To undo one sync, run `git revert -m 1 <merge>` on a branch, and merge that revert through a pull request. The sync pull request lands with a merge commit, never with a squash or a rebase (Pascal, 2026-10-24). A squash or a rebase replaces the upstream commits with new commits, so `check_links.py` rejects the upstream SHAs that the north-star cites. uao keeps its own additions in places that upstream does not edit: `docs/north-star/`, new files in `.ultimate/`, and `~/.ultimate/`.
 
 After each merge:
 
