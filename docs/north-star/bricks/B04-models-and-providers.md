@@ -8,6 +8,8 @@ A confirmed missing login can switch a conversation's model at its next input ([
 
 Agent definitions, summaries, and previews use model families ([D043](../decisions/D043-model-families.md)). The Agents panel groups agents and features by family (`490f88b2`). Per-model concurrency caps were removed before the snapshot (`a0b75c9e`).
 
+Claude Code discovers the account's model catalog at startup and on status (`983ad978`). A newer Claude Code model gets the limits of its family (`d328809b`). Claude Code's auto-memory is off by default (`0ac012e7`). A person's own family choices for a project apply over the project's team settings (`885ee383`). The branch tool can name a family for the coordinator's model (`0c176481`).
+
 Keep warm renews idle @ultimate's existing Claude Code cache, without transcript entries (`f9d91e85`). The user controls these billable pings (`extensions/keep-warm/README.md`).
 
 ## Where it lives
@@ -43,3 +45,8 @@ Keep warm renews idle @ultimate's existing Claude Code cache, without transcript
 - `11809560` names the built-in families `default`, `review`, `fast`, `tiny`, and `design`
 - `4497cb74` preserves a configured default when no configured model has a login
 - `6ee4ddc5` lists Claude Code before paid Anthropic and checks its login with the project's environment
+- `0bb05358` uses Pi's `pi-schema` for tool schemas instead of TypeBox, and `91a29827` declares the type of every string enum
+- `983ad978` discovers the Claude Code model catalog
+- `526412e5` honors long cache retention on the Anthropic API for keep warm
+- `dd691fc1` retries a Claude Code turn relay request that fails in transport before any response byte
+- `630b6940` raises Node's dual-stack connection timeout, because relay requests failed on macOS (`server/http.ts`)

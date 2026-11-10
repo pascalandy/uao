@@ -86,19 +86,20 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Extension**: a folder that adds agent behavior, UI, or both. A later folder with the same name replaces an earlier one (`extensions/README.md`)
 - **Built-in**: an extension in the `extensions/` folder of the clone (`docs/settings.md`)
 - **Facet**: one side of an extension. `server.ts` holds agent behavior, and `web.tsx` holds UI. Each facet loads and fails independently (`fff6d4b`)
-- **Core tier**: the extensions that settings cannot turn off. A core-tier extension depends only on other core-tier extensions (`docs/extensions.md`). Code: `tier = 'core'` in `api.ts`
-- **Extension API**: a typed contract that one extension provides and another uses. The second extension uses `need` for a required contract or `want` for an optional contract (`docs/extensions.md`)
-- **Point**: a contract that a lower extension declares and a higher extension fills, so that dependencies go one way (`docs/extensions.md`)
-- **Durable event**: a typed fact that an extension appends in the same commit as its cause (`docs/extensions.md`)
-- **Reactor**: a named handler that reads durable events in order, across crashes (`docs/extensions.md`)
+- **Core tier**: the extensions that settings cannot turn off. A core-tier extension depends only on other core-tier extensions (`docs/extensions/core-tier.md`). Code: `tier = 'core'` in `api.ts`
+- **Extension API**: a typed contract that one extension provides and another uses. The second extension uses `need` for a required contract or `want` for an optional contract (`docs/extensions/contracts.md`)
+- **Point**: a contract that a lower extension declares and a higher extension fills, so that dependencies go one way (`docs/extensions/contracts.md`)
+- **Durable event**: a typed fact that an extension appends in the same commit as its cause (`docs/extensions/events.md`)
+- **Reactor**: a named handler that reads durable events in order, across crashes (`docs/extensions/events.md`)
 - **Document**: typed JSON state that an extension stores with a conversation, in the same commit as the transcript (`docs/durability.md`)
-- **Action**: a typed JSON call from the browser or from codemode to a server facet (`extensions/README.md`)
-- **Slot**: a named place in the shell where a web facet adds UI, such as the sidebar or the status line (`extensions/README.md`)
-- **Panel**: a tab in the right panel (`extensions/README.md`)
+- **Action**: a typed JSON call from the browser or from codemode to a server facet (`docs/extensions/actions.md`)
+- **Slot**: a named place in the shell where a web facet adds UI, such as the sidebar or the status line (`docs/extensions/slots.md`)
+- **Panel**: a tab in the right panel (`docs/extensions/slots.md`)
 - **Surface**: a full-screen app that the user switches to. The Agent surface is the conversation. The agent is accessible with one keystroke on every surface (`790c34e`)
 - **Codemode**: a tool that runs one JavaScript script in a QuickJS sandbox. The script can call tools and read Ultimate's state (`extensions/codemode/README.md`)
 - **MCP**: Model Context Protocol. Ultimate connects external tool servers and exposes them through one `mcp` tool (`5eae312d`, `extensions/mcp/server.ts`)
-- **Sketch**: a tool that asks a model to draw a small UI from a description and data. Its blocks include charts, tables, and forms (`a7ab9797`, `extensions/sketch/server.ts`)
+- **Web bundle**: the production build of `web/` and the enabled web facets that the browser runs. A child process builds it, and open pages switch to a new bundle after a change (`47c08a50`, `server/web.ts`). Not: the Vite dev server, which the browser no longer uses
+- **Wire**: an optional System tab that keeps the raw request and response of a conversation's recent model calls. It ships off by default (`9b8f1866`, `c16450c9`, `extensions/wire/README.md`)
 
 ## Messages and the user
 
@@ -118,6 +119,8 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Side chat**: a temporary fork of @ultimate for a tangent. The user discards it, or injects a summary into the main conversation (`extensions/side-chat/README.md`)
 - **Voice input**: microphone recording that becomes unsent text at the composer's cursor. Not: a live voice session (`a0608d3f`)
 - **Narrator**: optional speech for questions, failures, landings, and new branches. It uses OpenAI audio when a key is present, or browser speech otherwise (`451ac392`)
+- **Push notification**: a Web Push message from the optional `push` extension for a question, a landing, or a failed run of @ultimate. A question's notification can carry Reply and Approve (`ff44988c`, `extensions/push/README.md`)
+- **Attachment**: a file that the user adds to a draft. An image goes inline. Another file uploads to the host, and the prompt names its path (`80016496`, `extensions/attachments/README.md`)
 - **Installable web app**: the browser app installed on a device's home screen, with standalone display (`web/public/manifest.webmanifest`, `12fd115c`)
 - **Project trust**: the user's choice to load a project's `.ultimate/` folder. Until the user chooses, Ultimate uses only the global setup. Code: decision `local` or `global` (`docs/settings.md`)
 
@@ -130,7 +133,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Trigger**: the condition that fires an automation. A trigger uses a schedule, a script, a domain event, or a context threshold (`extensions/automations/README.md`)
 - **Script trigger**: a trigger that runs a supervised script with no model calls. The script fires its automation when it prints `FIRE` (`extensions/automations/README.md`)
 - **Pause**: a hold on new tasks for the whole host. Current work finishes, and Play releases the queue (`extensions/pause/README.md`). The user's **Play by itself** setting can release rate-limit pauses ([B12](bricks/B12-human-in-the-loop.md))
-- **Trace**: the record of nested calls of services, actions, reactors, and tools, together with the parents of those calls (`docs/extensions.md`)
+- **Trace**: the record of nested calls of services, actions, reactors, and tools, together with the parents of those calls (`docs/extensions/introspection.md`)
 - **Summary model**: the small model for titles, summaries, and abstracts. Code: `summaryModel` (`docs/settings.md`)
 - **Keep warm**: optional cache pings for idle @ultimate on Claude Code. They renew an existing cache without transcript entries (`f9d91e85`, `extensions/keep-warm/README.md`)
 - **Chapter**: one named conversation database in a home. Chapters stay side by side, and a journaled switch changes the active chapter (`4c94093`)
@@ -166,4 +169,5 @@ Do not use these names for current things:
 - **Triage**: the model's former decision about whether a message should wake @ultimate. `136d9c01` replaced it with state-based waking
 - **Graveyard**: the short-lived folder for rejected ideas. `63f87af5` replaced it with tombstones in project memory
 - **Emergency terminal agent**: the former server-independent recovery agent. `17d186bf` removed `pnpm cli` and `ultimate --cli`
+- **Sketch**: a tool that asked a model to draw a small UI and forms. `e6909945` removed it and the `subagent: false` definition field
 - **Feature thread**: the former side thread for a branch's traffic in @ultimate's transcript. `050141d2` added it, and `fe08571f` removed it

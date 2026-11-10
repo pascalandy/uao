@@ -32,7 +32,7 @@ import {
   Provided,
   useAction,
   useConversation,
-  useConversations,
+  useConversationSummary,
   useDocOf,
   useEvent,
   useNow,
@@ -698,7 +698,7 @@ function useStep(mode: VoiceMode): Step {
 /** The step in large words and one quiet line under it, readable from across the room. */
 function StepText({ step, mode }: { step: Step; mode: VoiceMode }) {
   const { main } = useIds()
-  const busy = useConversations().find((conversation) => conversation.id === main)?.busy
+  const busy = useConversationSummary(main)?.busy
   const now = useNow(1000, step.step === 'working' || mode.phase === 'live')
   const session =
     mode.phase === 'live' && mode.since !== undefined ? clock(now - mode.since) : undefined
@@ -817,7 +817,10 @@ function VoiceDock({ core }: { core: ReactNode }) {
   const off = mode.phase === 'off'
   const asleep = mode.phase === 'paused'
   return (
-    <div className="mx-auto w-full max-w-[46rem] px-3 pt-1 pb-3 sm:px-6" data-voice-live-dock>
+    <div
+      className="mx-auto w-full max-w-(--reading-width,46rem) px-3 pt-1 pb-3 sm:px-6"
+      data-voice-live-dock
+    >
       {mode.problem && (
         <p
           className="mb-2 flex items-start gap-1.5 rounded-md border border-error/30 bg-error/5 px-2.5 py-1.5 font-mono text-[11px] break-words text-error"
@@ -1098,7 +1101,7 @@ function Asked({ text }: { text: string }) {
 
 /** @ultimate on it: the phase the sidebar shows for it (else working, or waiting its turn) and the time so far. */
 function Working({ main, since }: { main: number; since?: number }) {
-  const busy = useConversations().find((conversation) => conversation.id === main)?.busy
+  const busy = useConversationSummary(main)?.busy
   const now = useNow(1000, since !== undefined)
   return (
     <div

@@ -23,3 +23,5 @@ A top-level conversation can request self-compaction when its definition names t
 - `e3f76bb` keeps the ownership of storage through a swap and a crash
 - `d3178ff` extends self-compaction beyond @ultimate
 - `4a6aab5` commits self-compaction with its wake-up for top-level conversations other than @ultimate and refuses subagents
+- `669df90a` and `0baa03e4` move Ultimate to Pi 1.5.0 and port the local Pi Durable patches
+- `3d922572` chooses the compaction profile from the model's context window, not from the model name

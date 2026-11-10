@@ -8,4 +8,4 @@ Extensions use one another only through typed APIs, durable events, and points. 
 
 **Rejected.** Raw service strings with `host.provide` and `host.use` (`f466038`). An event bus in the memory of one process, which `afa5377` removed.
 
-**Evidence.** `f466038`, `7463db5`, `0edd691`, and `1147824`. [Core tier](../../../docs/extensions.md#core-tier) holds the mechanics.
+**Evidence.** `f466038`, `7463db5`, `0edd691`, and `1147824`. [Core tier](../../extensions/core-tier.md) holds the mechanics. `0b4c4a0e` lets `disable` turn off an outside extension that claims the core tier.

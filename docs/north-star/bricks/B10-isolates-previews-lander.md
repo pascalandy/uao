@@ -10,6 +10,8 @@ A project can configure checkout paths and creation and removal commands (`2affc
 
 Previews copy user configuration into a private user home (`1efbcb19`). User extensions and the Tailscale registry remain linked (`1efbcb19`, `37a91b88`). A released checkout is recreated before the next tool call (`27f9d781`).
 
+A preview's `HOME` is its own folder, with the other entries of the real home linked back, so writes to `~/.ultimate` stay private (`8f67613f`). A preview lands on its own branch and never pushes (`d1fe28fb`). The lander log shows the running step and the duration of each step (`a1825fcd`). Each step names the check that it runs (`e0b337a3`). A landing card shows the changed lines and the estimated tokens (`f7ba0607`). A temporary folder that is still being written no longer fails a landing (`c99fc625`).
+
 ## Where it lives
 
 - `extensions/workspaces/`: isolates and the landing queue
@@ -38,3 +40,5 @@ Previews copy user configuration into a private user home (`1efbcb19`). User ext
 - `b7060d00` records the landing decision once and preserves safe checkout release
 - `903ce43e` keeps one wake-up per landed branch
 - `27f9d781` keeps source checkouts with live descendant worktrees. `1a0541ee` removes that PR's additional lander conclusion guard
+- `d1fe28fb` keeps previews from landing on the previewed branch and from pushing
+- `9a79b7f9` adds the `Ultimate-Conversation` trailer to each landing merge

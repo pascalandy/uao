@@ -12,6 +12,8 @@ Agents can start backups and clone updates through actions (`extensions/cloud/se
 
 An owed restart stays visible when core files changed since process start ([B02](B02-self-change-while-running.md), `fe5907cd`). The supervisor dashboard keeps the Tailscale URL above the local URL (`fc77dee5`).
 
+Only the UI itself and loopback pages can frame it: the server sends a `Content-Security-Policy` header with a `frame-ancestors` directive (`751b5e44`, `dcd6d4b8`, `server/main.ts`). Tailscale reads the owner's login again while its status lacks it (`b8deef07`). `SECURITY.md` gives a security policy, with Tailscale, project trust, and prompt injection in its scope (`c21f2d6d`, `29f3db4e`).
+
 ## Where it lives
 
 - `extensions/tailscale/`: remote access
@@ -36,3 +38,4 @@ An owed restart stays visible when core files changed since process start ([B02]
 - `68297d00` gives scratch servers separate Tailscale registrations and repairs a lost mapping
 - `5c83c82f` keeps Tailscale teardown alive during a systemd stop
 - `7849a479` prints the remote URL when Tailscale registers or removes it
+- `ec0f235d` restarts after a landing's install when facets still fail

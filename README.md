@@ -26,15 +26,14 @@ What Ultimate is and why it exists, in plain words: [danielgriesser.com/ultimate
 - **Specialize it for your project.** Working on a web shop? Ask Ultimate for what makes work on that shop easier: a
   tool that queries the staging catalog, a panel that shows the order pipeline, a reviewer that knows your checkout
   rules, a skill for releases. It writes them as extensions, agents, and skills into `<project>/.ultimate/`, and they
-  hot-reload while you talk.
+  go live while you talk.
 - **Commit them with the project.** `.ultimate/` is part of the repository, so everyone who opens the project gets the
   same specialized agent. Ultimate asks once before it uses a project's setup, because project extensions run code.
 - **One familiar core everywhere.** The conversation, Pi's tools, the model and login, and the way it works are the same
   in every project; only the project's own pieces differ. Your personal additions live in `~/.ultimate/` and follow you
   to every project.
-- **Everything on, switch off what you don't need.** A fresh Ultimate is Pi's coding agent with every built-in:
-  subagents, plans, documents, automations, remote access and the rest ship in the clone and are on by default; turn any
-  of them off per machine or per project (see "Building blocks" below).
+- **Built-ins you switch on and off.** A fresh Ultimate is Pi's coding agent with its built-ins: subagents, plans,
+  documents, automations, remote access and the rest ship in the clone (see "Building blocks" below).
 - **A forest of conversation trees.** Each root keeps a read-only context: branch intents, latest conversation abstracts,
   and landings with divergence and links back to their source. Talk to @ultimate in its conversation: it starts coordinator
   branches that inherit a root's context before their prompt. Resuming a branch catches it up on what its tree learned.
@@ -58,7 +57,7 @@ and extensions/claude-code/README.md.
 Then:
 1. Check the prerequisites from README "Start": Node 26, pnpm, Git 2.54 or newer, and a Chromium for the screenshot tools. Tell me
    what is missing and how to install it on my system; ask before installing anything system-wide.
-2. Clone the repository unless I'm already in it, run `pnpm install`, then `pnpm link --global` so I get the
+2. Clone the repository unless I'm already in it, run `pnpm install`, then `pnpm add -g .` so I get the
    `ultimate` command; if pnpm's global bin is not on my PATH yet, `pnpm setup` adds it.
 3. Model login, per "Recommended models": for Claude Code, install the CLI and let me run `claude auth login`
    myself; otherwise I log in from Ultimate's command palette (Ctrl+K, ⌘K on macOS) → "Log in to a provider".
@@ -86,7 +85,7 @@ screenshot and browser tools need a Chromium: `/usr/bin/chromium`, Google Chrome
 
 ```bash
 pnpm install
-pnpm link --global  # once, in this clone, to get the `ultimate` command (`pnpm setup` first if pnpm's global bin is not on PATH)
+pnpm add -g .       # once, in this clone, to get the `ultimate` command (`pnpm setup` first if pnpm's global bin is not on PATH)
 pnpm start          # Ultimate on its own repository; opens http://127.0.0.1:4747
 cd ~/Projects/app && ultimate  # or Ultimate on one of your projects
 ```
@@ -104,12 +103,21 @@ cd ~/Projects/app && ultimate  # or Ultimate on one of your projects
 - On another machine: `ssh -L 4747:127.0.0.1:4747 <host>`, then open `http://127.0.0.1:4747`. Ultimate only listens on
   loopback.
 
+### Keep up to date
+
+The [Ultimate changelog](https://danielgriesser.com/ultimate/changelog/)
+([RSS](https://danielgriesser.com/ultimate/changelog/rss.xml)) says what landed, week by week, with links to the
+code. A clone that tracks this repository unchanged already gets everything through the update item in the status
+line. For a fork or a customised copy, paste the page's [follow prompt](https://danielgriesser.com/ultimate/changelog/#follow)
+into @ultimate: once a day it checks for new entries, costing nothing on quiet days, and tells you what is worth
+bringing into your copy, changing nothing without your yes. See what's new, pull in what you want; nothing requires it.
+
 ### Recommended models
 
 We recommend running @ultimate on Claude Code Opus 5.5 (`claude-code/claude-opus-5-5`), and ideally the
-coordinators too; the other agents are your choice. Coordinators inherit @ultimate's model unless a definition pins
-one, so choosing Opus 5.5 for @ultimate covers both (this repository's `.ultimate/agents/coordinator.md` overlay pins
-it with high thinking). To set it up, install the CLI (`npm install -g @anthropic-ai/claude-code`), run
+coordinators too; the other agents are your choice. Coordinators inherit @ultimate's model unless their definition
+names a family or a model, so choosing Opus 5.5 for @ultimate covers both (this repository puts its coordinator on the
+`lead` family, set to Opus 5.5 with high thinking in `.ultimate/settings.json`). To set it up, install the CLI (`npm install -g @anthropic-ai/claude-code`), run
 `claude auth login`, then pick the model in the model picker; ⌘K → **Claude Code setup…** shows the login status. The
 [Claude Code provider](extensions/claude-code/README.md) is experimental: it depends on Claude Code's protocol and
 account limits, and subscription coverage is not guaranteed. This is a recommendation only; no default changes.
@@ -117,8 +125,8 @@ account limits, and subscription coverage is not guaranteed. This is a recommend
 ### Terminal status
 
 `pnpm start` / `ultimate` shows a compact live terminal dashboard: the public URL, supervisor/core lifecycle,
-core generation and PID, embedded Vite readiness, registered extension services, and the last event. Routine
-Vite/HMR output updates the dashboard instead of scrolling; warnings and errors remain in scrollback. Redirected
+core generation and PID, web readiness, registered extension services, and the last event. Routine
+Vite output updates the dashboard instead of scrolling; warnings and errors remain in scrollback. Redirected
 output is plain text with no dashboard escape sequences. Detailed, timestamped JSON lines (including routine
 output and diagnostics) are appended to `<state home>/supervisor.log`; this file is not automatically rotated.
 A log-write failure warns once and does not stop supervision.
@@ -142,7 +150,7 @@ the tools and the conversation work in your project.
   All project homes are in one central place, `~/.ultimate/projects/`; Ultimate can list other projects and their
   conversations with `ultimate.projects()` in codemode, including their URL when running.
 - **Actions** let an extension's UI call its server code: `export const actions = { … }` in `server.ts`, then
-  `useAction(ref, args)` in `web.tsx`, with a typed `actionRef` from `@/sdk`. See [extensions/README.md](extensions/README.md).
+  `useAction(ref, args)` in `web.tsx`, with a typed `actionRef` from `@/sdk`. See [actions](docs/extensions/actions.md).
 
 ### One Ultimate or many
 
@@ -168,16 +176,10 @@ The building blocks that make it possible:
 
 ## Building blocks
 
-Built-ins live in the clone's `extensions/`, and every one is on by default; `tailscale` exposes Ultimate only to your
-own Tailscale login. Each folder's README describes the building block.
-
-Turn them off in `~/.ultimate/settings.json` for this machine or `<project>/.ultimate/settings.json` for this project:
-
-```json
-{ "extensions": { "disable": ["tailscale", "claude-code"] } }
-```
-
-See [discovery and settings](docs/settings.md) for precedence, enabling extensions, project trust and live updates.
+Built-ins live in the clone's `extensions/`; each folder's README describes the building block. Most are on by
+default, a few (such as `cloud`, `parallel` and `tailscale`) start off, and the core tier is always on. Switch them in
+`~/.ultimate/settings.json` for this machine or `<project>/.ultimate/settings.json` for this project; see
+[discovery and settings](docs/settings.md) for the list, precedence, project trust and live updates.
 
 ## Surfaces
 
@@ -194,7 +196,7 @@ stays docked on every surface, and the choice is durable: reloads, other tabs, a
 - "Build a surface for …" — a whole app with its UI, server actions, and the agent docked beside it; switch to it while
   it is being built.
 - "Build a small extension that …" — it reads [extensions/README.md](extensions/README.md), writes
-  `<project>/.ultimate/extensions/<name>/web.tsx`, and the UI hot-reloads in front of you.
+  `<project>/.ultimate/extensions/<name>/web.tsx`, and the UI switches to it in front of you.
 - "Take a screenshot of yourself and tell me what looks off" — it can see and drive its own UI.
 - "Delegate to a worker: …" — subagents run as their own conversations (Agents tab, `open #id`).
 - "Use codemode to check which of your extensions failed to load" — one sandboxed script over its own runtime.
@@ -218,6 +220,7 @@ pnpm dev                          # the server alone, without the supervisor
 pnpm check                        # format, lint, types
 pnpm test                         # fast in-process tests on scripted model responses
 pnpm test:e2e                     # tests that spawn real supervisors and instances
+pnpm test extensions/<name>/      # one extension's tests (they live in its test/ folder)
 ```
 
 ## License
