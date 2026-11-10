@@ -17,7 +17,8 @@ Each extension keeps its tests in `extensions/<name>/test/`. That folder is not 
 - `extensions/`: the built-ins, each with a README
 - `shared/extension-api.ts`: API tokens, the core-tier reader, and `defaultOff`
 - `server/discovery.ts` and `server/extensions.ts`: find and load server facets
-- `server/web.ts`, `server/web-build.ts`, and `web/src/extensions.ts`: build and load web facets
+- `server/web.ts` and `server/web-build.ts`: build and serve the web bundle
+- `server/vite-extensions.ts` and `web/src/extensions.ts`: map and load each web facet
 - `web/src/sdk/`: the SDK that web facets import as `@/sdk`
 - `lint/ultimate.ts` and `scripts/deps.ts`: enforce the boundaries
 

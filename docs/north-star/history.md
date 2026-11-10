@@ -260,7 +260,7 @@ The November 1 snapshot extends this era:
   - untyped service registration and the supervisor's service report (`6e9cd78d`)
   - unused transcript grouping and intro contributions (`49456b0c`, `7194ccfa`)
 
-The November 9 sync adds 38 commits dated 2026-11-01 to this era:
+The November 9 sync adds 41 commits to this era, 38 of them dated 2026-11-01 (`git log --format=%ad --date=short d0a2e17b..32e45c95 | rg -c 2026-11-01`). These are the main changes:
 
 - Added:
   - a pinned header with the current prompt and its changes since the last dismissal (`507b378f`, [B12](bricks/B12-human-in-the-loop.md))
@@ -292,7 +292,7 @@ These merged PRs are core fixes or extension improvements, consistent with the e
 | [#43](https://github.com/HazAT/ultimate/pull/43) | A stale test-folder sweep failure no longer fails the test run                                                                          | `2789f8b8`, `af3d3996`                                     |
 | [#48](https://github.com/HazAT/ultimate/pull/48) | Stable `data-ui` attributes for theme extensions                                                                                        | `eb77a9aa`, `28eb9e9c`, `f05016b6`                         |
 
-No merged PR numbered 39 or 44 to 47 is present in this snapshot's history. `git log --merges --format='%h %s' 17d186b..d0a2e17b` lists the merges, including `pr-*` subjects.
+No merged PR numbered 39 or 44 to 47 is present in that sync's history. `git log --merges --format='%h %s' 17d186b..d0a2e17b` lists the merges, including `pr-*` subjects.
 
 ### Era 10: Outside contributions
 
@@ -408,7 +408,7 @@ Landings and their commit trailers can name different conversations. `0eb16c0` n
 | Merge by hand                 | `chore(integration): ...`                     |     24 |
 | Other                         | Free text                                     |     98 |
 
-The row for merges of `main` also counts subjects that start with `Merge main`, and remote-tracking merges of `origin/main` or `coord/main`. Of the 252 landing merges of both shapes, 226 have no trailer (`git log --merges --format='%s %(trailers:key=Ultimate-Conversation,valueonly)' 32e45c95`). The other 26 carry trailers. Five name conversation 30726, including conflict repair in `23f26ba` (inferred from its body). Two name conversation 377718. The 19 landing merges after `9a79b7f9` name their own conversation. The Other row includes pull request merges and merges of `pr-*` or satellite branches. It grew most in this sync, because outside pull requests land through such merges ([Era 10](#era-10-outside-contributions)). The six shapes partition all merges, as the command below checks.
+The row for merges of `main` also counts subjects that start with `Merge main`, and remote-tracking merges of `origin/main` or `coord/main`. Of the 252 landing merges of both shapes, 226 have no trailer (`git log --merges --format='%s %(trailers:key=Ultimate-Conversation,valueonly)' 32e45c95`). The other 26 carry trailers. Five name conversation 30726, including conflict repair in `23f26ba` (inferred from its body). Two name conversation 377718. The 19 landing merges after `9a79b7f9` name their own conversation. The Other row includes pull request merges and merges of `pr-*` or satellite branches. It grew most by share in this sync, from 53 to 98, because outside pull requests land through such merges ([Era 10](#era-10-outside-contributions)). The six shapes partition all merges, as the command below checks.
 
 ### Reproduce the merge shapes
 

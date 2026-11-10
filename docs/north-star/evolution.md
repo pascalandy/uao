@@ -19,14 +19,14 @@ The runtime risk follows the layer, not the count. A broken web facet shows an e
 
 | Change              | Place                             | Layer  | Goes live              | Checks                 | Merge risk         |
 | ------------------- | --------------------------------- | ------ | ---------------------- | ---------------------- | ------------------ |
-| Web facet           | `extensions/<name>/web.tsx`       | 4 or 5 | Hot reload             | Base                   | High, 466          |
+| Web facet           | `extensions/<name>/web.tsx`       | 4 or 5 | Rebuild, page switches | Base                   | High, 466          |
 | Server facet        | `extensions/<name>/server.ts`     | 4 or 5 | Reinstall on save      | Base                   | High, 726          |
 | Extension contract  | `extensions/<name>/api.ts`        | 4 or 5 | With its importers     | Base, `pnpm deps`      | Medium, 82         |
 | New built-in        | A new folder in `extensions/`     | 5      | Like its facets        | Base                   | Low, note 1        |
 | Project extension   | `.ultimate/extensions/<name>/`    | 6      | Note 2                 | Base                   | Low, 16            |
 | Personal extension  | `~/.ultimate/extensions/<name>/`  | 6      | Like its facets        | None                   | None               |
 | Helper              | `lib/`                            | Beside | With its importers     | Base                   | Medium, 98         |
-| Web core            | `web/`                            | 3      | Hot reload             | Base                   | High, 274          |
+| Web core            | `web/`                            | 3      | Rebuild, page switches | Base                   | High, 274          |
 | Core                | `server/`, `shared/`              | 2      | The `restart` tool     | Base                   | High, 183          |
 | Supervisor          | `bin/`                            | None   | `pnpm start` only      | Base                   | Medium, 26         |
 | Built-in definition | `agents/<name>.md`                | Beside | Note 3                 | Base                   | High, 124          |
