@@ -12,7 +12,7 @@ Agents can start backups and clone updates through actions (`extensions/cloud/se
 
 An owed restart stays visible when core files changed since process start ([B02](B02-self-change-while-running.md), `fe5907cd`). The supervisor dashboard keeps the Tailscale URL above the local URL (`fc77dee5`).
 
-Other sites cannot frame the UI: the server sends a `frame-ancestors` header (`751b5e44`, `dcd6d4b8`). Tailscale reads the owner's login again while its status lacks it (`b8deef07`). `SECURITY.md` gives a security policy, with Tailscale, project trust, and prompt injection in its scope (`c21f2d6d`, `29f3db4e`).
+Only the UI itself and loopback pages can frame it: the server sends a `Content-Security-Policy` header with a `frame-ancestors` directive (`751b5e44`, `dcd6d4b8`, `server/main.ts`). Tailscale reads the owner's login again while its status lacks it (`b8deef07`). `SECURITY.md` gives a security policy, with Tailscale, project trust, and prompt injection in its scope (`c21f2d6d`, `29f3db4e`).
 
 ## Where it lives
 

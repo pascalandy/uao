@@ -4,7 +4,7 @@ Status: shipped, at the snapshot. Source: upstream.
 
 Ultimate edits its own code while the conversation that edits the code continues. A change to the UI or to an extension goes live at once. A change to the core goes live through a checked swap. This capability is the premise of the [first prompt](../sources/first-prompt.md): "we built ultimate with ultimate".
 
-Update reports an owed restart when `server/` or `shared/` differs from the build at process start (`fe5907cd`). A restart still needs the `restart` tool (`agents/ultimate.md`).
+Update reports an owed restart when `server/` or `shared/` differs from the build at process start (`fe5907cd`). An agent still restarts the core with the `restart` tool (`agents/ultimate.md`). Update restarts it without an agent only for the stale-core recovery below.
 
 The browser runs a production bundle, not the Vite dev server (`47c08a50`). A change to `web/` or a web facet rebuilds the bundle in a short-lived child process, and open pages switch to it with their view and drafts (`AGENTS.md`, `server/web.ts`). Reloads and restarts wait for the checkout and its packages after a landing (`1441b930`). When a facet fails to load against an old core, Update restarts the host through the checked swap (`f20cc792`, `ec0f235d`).
 

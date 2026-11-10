@@ -302,7 +302,7 @@ Outside pull requests land almost every day. The web UI becomes a production bun
   - Pi 1.5.0, with Pi's `pi-schema` for tool schemas (`669df90a`, `0bb05358`, [B01](bricks/B01-durable-conversations.md))
   - a production web bundle that a child process builds, in place of the Vite dev server (`47c08a50`, [B02](bricks/B02-self-change-while-running.md), [D001](decisions/D001-reload-by-layer.md))
   - attachments of any file, and image resize in the browser (`80016496`, `6bae2586`, [B12](bricks/B12-human-in-the-loop.md))
-  - Web Push notifications and a share target, off by default (`ff44988c`, [B12](bricks/B12-human-in-the-loop.md))
+  - Web Push notifications, off by default, and a share target, always on (`ff44988c`, `extensions/push/README.md`, [B12](bricks/B12-human-in-the-loop.md))
   - Wire, the raw record of model calls, off by default (`9b8f1866`, `c16450c9`, [B14](bricks/B14-everything-on-record.md))
   - prompt-cache rebuilds in the transcript (`c30582af`, [B14](bricks/B14-everything-on-record.md))
   - a security policy (`c21f2d6d`, [B16](bricks/B16-remote-backup-update.md))
