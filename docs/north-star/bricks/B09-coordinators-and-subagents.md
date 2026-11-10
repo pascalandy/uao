@@ -8,7 +8,7 @@ A coordinator continues unfinished work unless it is blocked or a child, the lan
 
 An overlay can give a coordinator deferred tools, even when its base inherits every tool (`lib/agents.ts`, `extensions/messages/branch.ts`).
 
-Shipped agent definitions name model families instead of pinned models (`741ec0da`, `06399140`). A branch sends decisions to @ultimate before it asks the user ([D044](../decisions/D044-branches-ask-the-user.md)).
+Shipped agent definitions name model families instead of pinned models (`741ec0da`, `06399140`). The branch tool can set the coordinator's family (`0c176481`). A parent can start a subagent from a label, a family or a model, and instructions, with no definition file (`6b0fb859`). A branch sends decisions to @ultimate before it asks the user ([D044](../decisions/D044-branches-ask-the-user.md)).
 
 ## Where it lives
 
@@ -44,3 +44,5 @@ Shipped agent definitions name model families instead of pinned models (`741ec0d
 - `9291eab5` requires tests for core behavior and actual bugs, with other edge cases proved once
 - `3b711c55` requires the source of each decision and conclusion of terminal branches
 - `fa6830aa` keeps model fallback within confirmed logins ([D038](../decisions/D038-models-follow-logins.md))
+- `6b0fb859` makes subagents on the fly
+- `0c176481` adds an optional family to the branch tool

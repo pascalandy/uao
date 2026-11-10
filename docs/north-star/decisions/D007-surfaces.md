@@ -8,4 +8,4 @@ A surface is a full-screen app made of extensions. The conversation is the built
 
 **Rejected.** Views and one fixed shell (`790c34e`).
 
-**Evidence.** `790c34e` adds surfaces. [Surfaces](../../../extensions/README.md#surfaces) in the extension guide holds the mechanics.
+**Evidence.** `790c34e` adds surfaces. [Surfaces](../../extensions/surfaces.md) holds the mechanics.

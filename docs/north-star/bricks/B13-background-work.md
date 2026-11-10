@@ -29,3 +29,4 @@ Event filters and subscribers can name a standing agent across chapters (`extens
 - `096ac794` requires every fire to reach someone and escalates scripts that remain stuck
 - `6d96d892` keys nested tool receipts by call so each codemode call acts
 - `903ce43e` keeps every subscriber delivery failure
+- `db1d8d12` gives a later chapter its own script folders in `<project>@<chapter>/<id>`

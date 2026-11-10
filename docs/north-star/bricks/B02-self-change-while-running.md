@@ -6,11 +6,14 @@ Ultimate edits its own code while the conversation that edits the code continues
 
 Update reports an owed restart when `server/` or `shared/` differs from the build at process start (`fe5907cd`). A restart still needs the `restart` tool (`agents/ultimate.md`).
 
+The browser runs a production bundle, not the Vite dev server (`47c08a50`). A change to `web/` or a web facet rebuilds the bundle in a short-lived child process, and open pages switch to it with their view and drafts (`AGENTS.md`, `server/web.ts`). Reloads and restarts wait for the checkout and its packages after a landing (`1441b930`). When a facet fails to load against an old core, Update restarts the host through the checked swap (`f20cc792`, `ec0f235d`).
+
 ## Where it lives
 
 - `bin/ultimate.ts`: the supervisor
 - `server/supervisor-protocol.ts`: messages between the supervisor and a generation
 - `server/build.ts`: the build identity of each section
+- `server/web.ts` and `server/web-build.ts`: the production bundle of the web UI
 - `extensions/self/`: the restart tool, its status, and the hot-reload toast
 - `extensions/prompt/`: the Reloaded divider
 - `docs/running.md`: supervisor diagnostics and recovery after failed boots
@@ -30,3 +33,7 @@ Update reports an owed restart when `server/` or `shared/` differs from the buil
 - `b535e02` names landed features in the Reloaded divider and the hot-reload toast
 - `6dd1aa58` verifies core process identity before a stale storage lock is taken
 - `91f1fde4` passes the core start time explicitly to the lock check
+- `eade452f` lets the supervisor coordinate a systemd shutdown
+- `47c08a50` serves the web UI as a production bundle that a child process builds
+- `f20cc792` restarts the host when a facet fails to load against an old core
+- `1441b930` makes loads wait for the checkout and its packages after a landing

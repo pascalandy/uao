@@ -1,58 +1,49 @@
 # Changelog review
 
-Source: upstream. This review uses the public [changelog](https://danielgriesser.com/ultimate/changelog/) and its [JSON feed](https://danielgriesser.com/ultimate/changelog/feed.json). The review date is 2026-11-02 UTC.
+Source: upstream. This review uses the public [changelog](https://danielgriesser.com/ultimate/changelog/) and its [JSON feed](https://danielgriesser.com/ultimate/changelog/feed.json). The review date is 2026-11-10 UTC.
 
-Four of the eight entries are in the [snapshot](upstream.md#snapshot). Four entries describe later upstream code. This review leaves the snapshot unchanged.
+The feed has 19 entries. Each commit that an entry lists is an ancestor of the [snapshot](upstream.md#snapshot). No entry describes code after the snapshot.
 
 ## Entries in the snapshot
 
-Each commit below is an ancestor of the snapshot. The linked brick describes the capability.
+The linked brick describes the capability. The rows marked "this sync" reached uao with the merge of `32e45c95`.
 
-| Published  | Change                                                         | Commit     | Brick                                    |
-| ---------- | -------------------------------------------------------------- | ---------- | ---------------------------------------- |
-| 2026-11-01 | Optional spoken notifications                                  | `451ac392` | [B12](bricks/B12-human-in-the-loop.md)   |
-| 2026-10-31 | Image drops attach to the draft. File drops keep the page open | `3fa3753c` | [B12](bricks/B12-human-in-the-loop.md)   |
-| 2026-10-28 | Project memory has a separate view                             | `21669aa1` | [B07](bricks/B07-conversation-tree.md)   |
-| 2026-10-25 | Dreams can start after a long pause                            | `6c37a236` | [B15](bricks/B15-dreams-and-chapters.md) |
+| Published  | Change                                             | Commits                                        | Brick                                          | Sync      |
+| ---------- | -------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- | --------- |
+| 2026-11-08 | Push notifications and the share target            | `ff44988c`, `b17e228e`                         | [B12](bricks/B12-human-in-the-loop.md)         | this sync |
+| 2026-11-08 | More room on a phone                               | `1be263cf`                                     | [B12](bricks/B12-human-in-the-loop.md)         | this sync |
+| 2026-11-07 | Fixes of the week of 2 November, 29 commits        | `3d922572` to `630b6940`, note 1               | Several                                        | this sync |
+| 2026-11-04 | A sandboxed browser, and no framing by other sites | `751b5e44`, `eee453d9`, `dbe9bb50`             | [B16](bricks/B16-remote-backup-update.md)      | this sync |
+| 2026-11-04 | A title for a standing agent                       | `b9fb3b92`                                     | [B06](bricks/B06-project-specialization.md)    | this sync |
+| 2026-11-04 | The production web bundle                          | `47c08a50`, `e6c3be3c`, `5075c112`, `c5e469ab` | [B02](bricks/B02-self-change-while-running.md) | this sync |
+| 2026-11-03 | Attach any file                                    | `80016496`                                     | [B12](bricks/B12-human-in-the-loop.md)         | this sync |
+| 2026-11-03 | Prompt-cache rebuilds and their cause              | `c30582af`, `64105303`                         | [B14](bricks/B14-everything-on-record.md)      | this sync |
+| 2026-11-02 | Large images, attached from anywhere on the page   | `6bae2586`, `80aea86f`, `525678f3`, `88487f17` | [B12](bricks/B12-human-in-the-loop.md)         | this sync |
+| 2026-11-02 | Pi 1.5                                             | `6864f1a9`, `0bb05358`                         | [B01](bricks/B01-durable-conversations.md)     | this sync |
+| 2026-11-01 | Fewer host pauses when child processes start       | `4b314408`, `f9d5a689`, `afffdf68`, `5c610524` | [B05](bricks/B05-agent-tools.md)               | this sync |
+| 2026-11-01 | Fewer redraws of the conversation list             | `830a36c1`                                     | [B14](bricks/B14-everything-on-record.md)      | this sync |
+| 2026-11-01 | The summary history of a branch                    | `870a0217`, `118814f9`                         | [B07](bricks/B07-conversation-tree.md)         | this sync |
+| 2026-11-01 | Sketch is removed                                  | `e6909945`                                     | [B05](bricks/B05-agent-tools.md)               | this sync |
+| 2026-11-01 | A narrator for notifications                       | `451ac392`                                     | [B12](bricks/B12-human-in-the-loop.md)         | earlier   |
+| 2026-11-01 | MCP servers                                        | `5eae312d`, `16a71d81`, `90fa141d`             | [B05](bricks/B05-agent-tools.md)               | earlier   |
+| 2026-10-31 | Image drops on the composer                        | `3fa3753c`                                     | [B12](bricks/B12-human-in-the-loop.md)         | earlier   |
+| 2026-10-28 | A separate view for project memory                 | `21669aa1`                                     | [B07](bricks/B07-conversation-tree.md)         | earlier   |
+| 2026-10-26 | Dreams after a long pause                          | `6c37a236`                                     | [B15](bricks/B15-dreams-and-chapters.md)       | earlier   |
 
-## Entries after the snapshot
+Notes:
 
-These changes are upstream-only at this review. Each row links to the published entry and every commit that its feed record lists.
+1. The [fixes entry](https://danielgriesser.com/ultimate/changelog/fixes-2026-11-02/) lists 29 commits. Most of them come from the outside pull requests in [history.md](history.md#outside-contributions-in-the-november-9-sync)
 
-| Published  | Change                                                                                                                       | Upstream commits                                                                                                                                                                                                                                                                                                                                                                                                          | Related brick                                   |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| 2026-11-01 | [Branch summaries appear on desktop hover](https://danielgriesser.com/ultimate/changelog/summary-history/)                   | [Summary history](https://github.com/HazAT/ultimate/commit/870a0217313811ad53213bd2e4c0b113ffea3ef4), [tooltip cleanup](https://github.com/HazAT/ultimate/commit/118814f98562fbd615de42a8a1bdb4befc57255a)                                                                                                                                                                                                                | [B07](bricks/B07-conversation-tree.md)          |
-| 2026-11-01 | [Sketch is removed](https://danielgriesser.com/ultimate/changelog/sketch-removed/)                                           | [Removal](https://github.com/HazAT/ultimate/commit/e69099450e14f8b3bcdcdb758f1a3a951b752b2b)                                                                                                                                                                                                                                                                                                                              | [B05](bricks/B05-agent-tools.md)                |
-| 2026-11-01 | [Conversation updates redraw fewer components](https://danielgriesser.com/ultimate/changelog/fewer-rerenders/)               | [Store and hooks](https://github.com/HazAT/ultimate/commit/830a36c14696e3e710e7cd976e7a69a9f2a48614)                                                                                                                                                                                                                                                                                                                      | [B14](bricks/B14-everything-on-record.md)       |
-| 2026-11-01 | [A helper starts child processes with fewer host pauses](https://danielgriesser.com/ultimate/changelog/fewer-launch-stalls/) | [Helper](https://github.com/HazAT/ultimate/commit/4b3144083ef54879c8dadd9e7d6b130fc47b6f71), [stream handling](https://github.com/HazAT/ultimate/commit/f9d5a689f59ab8006224082bfce283c896bb2e06), [output cleanup](https://github.com/HazAT/ultimate/commit/afffdf68cdc0907f876f26fffe1ac262f3778d5b), [less Git and transcript work](https://github.com/HazAT/ultimate/commit/5c610524627d1956c42fccf676466dd7c2a3603a) | [B09](bricks/B09-coordinators-and-subagents.md) |
-
-Sketch still exists in the snapshot. Its later removal does not change the current status of B05. The performance figures in the changelog are upstream measurements. This review does not repeat those measurements.
-
-## Other commits after the snapshot
-
-This review checks [the fetched upstream head](https://github.com/HazAT/ultimate/commit/984b887d6aa99e1121fc6fd7060ddd8d320bcc23). That head contains 39 commits after the snapshot: 28 work commits and 11 merges. The fetched head has a UTC date of 2026-11-01.
-
-Other changes include:
-
-- [Previews use private copies of user settings, agents, and skills through `HOME`](https://github.com/HazAT/ultimate/commit/8f67613f)
-- [A host restart after a failed extension reload](https://github.com/HazAT/ultimate/commit/f20cc792), when the running core is older than the code
-- [Agent definitions supplied when a subagent starts](https://github.com/HazAT/ultimate/commit/6b0fb859)
-- [A pinned current prompt](https://github.com/HazAT/ultimate/commit/507b378f), with [later pin behavior](https://github.com/HazAT/ultimate/commit/1cab961b)
-- [Images limited to the current turn](https://github.com/HazAT/ultimate/commit/6cc90767) when a message uses `latest`
-- [Separate navigation for automated browser pages](https://github.com/HazAT/ultimate/commit/0040f365)
-
-The published feed selects changes. The feed is not a complete record of upstream commits.
+The feed now gives some dates that differ from the review of 2026-11-02. This review uses the dates of the feed at the review date. The published feed selects changes. The feed is not a complete record of upstream commits. The performance figures in the changelog are upstream measurements. This review does not repeat those measurements.
 
 ## Reproduce the comparison
 
-These commands use the fetched remote. The first result counts all commits. The second counts work commits. The last command checks the narrator commit against the snapshot.
+These commands use the fetched feed and the `upstream` remote. The script prints each listed commit that is not an ancestor of the snapshot. No output means that every listed commit is in the snapshot:
 
 ```bash
-git rev-list --count d0a2e17b..984b887d
-git rev-list --count --no-merges d0a2e17b..984b887d
-git merge-base --is-ancestor 451ac392 d0a2e17b
+curl -s https://danielgriesser.com/ultimate/changelog/feed.json |
+	jq -r '.entries[].commits[].sha' |
+	while read -r sha; do git merge-base --is-ancestor "$sha" 32e45c95 || echo "$sha"; done
 ```
 
-An exit code of zero means that the commit is present. An exit code of one means that the commit is absent. All 12 commits listed by the eight feed entries were checked.
-
-`git merge-tree --write-tree HEAD upstream/main` found no conflicts against the reviewed fork head, `d7d484bd`. This check creates no worktree changes. It does not run the checks required for a sync. A future sync follows the [sync rule](upstream.md#sync-rule).
+At the review date, the script printed nothing for the 64 listed commits, and `upstream/main` was the snapshot.

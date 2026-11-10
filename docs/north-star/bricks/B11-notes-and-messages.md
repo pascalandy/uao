@@ -12,6 +12,8 @@ One project's @ultimate can tell another project's @ultimate what changed (`exte
 
 @ultimate's final answer can return to every eligible branch whose reply or report shared its run ([D041](../decisions/D041-state-based-waking.md)). A routed answer folds into the transcript's update stretch (`f2d39af7`). Only a branch's reply to its own starter shows that it awaits @ultimate (`bb2a4398`).
 
+A branch that @ultimate starts while it owes another agent an answer records that request. When the branch concludes, @ultimate's final answer goes to that agent (`71582661`). `notify` skips an answer that the caller already received as a reply (`d20dad42`). One set of status rules decides whether a message is open, owed, or awaited (`c058fba7`). A user's answer names the card that it answers (`8e944092`).
+
 Branches can ask the user directly after @ultimate weighs in ([D044](../decisions/D044-branches-ask-the-user.md)). Question pointers keep their summaries and outcomes outside the bounded message log (`ae0d4fc2`, `extensions/messages/notice.ts`).
 
 ## Where it lives
@@ -37,3 +39,5 @@ Branches can ask the user directly after @ultimate weighs in ([D044](../decision
 - `104a5d4f` counts pending reports, landings, and notifies as work under way
 - `b9bb9113` finds waking tasks by status without a recent-task limit
 - `91618d16` routes an answer only to the conversation that asked its question
+- `71582661` sends a branch's result to the agent whose request it worked on
+- `01d0a9ed` lets a conversation send a message after its workspace is gone

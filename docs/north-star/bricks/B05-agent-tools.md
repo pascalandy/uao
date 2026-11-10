@@ -8,7 +8,9 @@ The browser can send input and wait for Ultimate's state through `window.ultimat
 
 MCP servers expose their tools through one `mcp` tool (`5eae312d`). Configuration merges user servers with trusted project servers (`extensions/mcp/server.ts`). Transport failures reconnect without resending the failed call (`16a71d81`). Interrupted calls do not replay (`extensions/mcp/README.md`). Configured secret placeholders appear in the Secrets panel (`90fa141d`). [MCP mechanics](../../../extensions/mcp/README.md) lists the transports and limits, including no OAuth or legacy SSE support.
 
-Sketch asks a model to draw a small UI from a description and optional data (`a7ab9797`). Its own agent definition uses the `tiny` family by default (`b2f7043f`). Sketch can read inside the conversation's working directory when no data is supplied (`78373e7b`). Forms use a durable claim to prevent duplicate submission (`78373e7b`). After an interrupted delivery, the user can send the form again (`e82e9553`). [Sketch mechanics](../../../extensions/sketch/README.md) owns the block types and model-call limits.
+Upstream removed Sketch, because no conversation used it outside its previews (`e6909945`). That commit also removes the `subagent: false` definition field.
+
+The browser tool runs Chromium with its sandbox on by default (`dbe9bb50`). It kills a browser that drops its connection and prefers Playwright's Chromium (`3fb5c2fc`). An automated browser never moves the user's tabs (`0040f365`). Codemode search filters by kind and returns compact hits by default (`1cc67661`). Codemode reads closed chapters through a read-only harness (`0d1e509f`).
 
 ## Where it lives
 
@@ -19,7 +21,6 @@ Sketch asks a model to draw a small UI from a description and optional data (`a7
 - `extensions/secrets/`: user-global secrets
 - `web/src/sdk/test-hook.ts`: state-based waits for driven pages
 - `extensions/mcp/`: MCP connections, secret declarations, and the single tool
-- `extensions/sketch/`: model-generated UI and user-only form submission
 
 ## Decisions
 
@@ -37,3 +38,6 @@ Sketch asks a model to draw a small UI from a description and optional data (`a7
 - `b2b46f1c` finds Playwright's Chromium in the macOS cache
 - `cf4b7b1b` keeps browser waits active through a page reload
 - `df00cf20` preserves existing commit attribution when a commit is rewritten
+- `e6909945` removes Sketch
+- `4b314408` starts child processes from a small helper process, so a launch does not stall the host
+- `6cc90767` limits `images: "latest"` to the current turn

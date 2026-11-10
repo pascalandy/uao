@@ -12,6 +12,8 @@ Landing memory extraction allows 16,384 output tokens, including reasoning (`5b4
 
 The Plan panel shows an epic without plan tasks by its status and acceptance criteria (`34624b5d`). Plan text preserves literal tags and line breaks (`34624b5d`).
 
+A hover on a branch row in the sidebar shows the branch's summary history (`870a0217`). A steer refreshes the title, summary, and tag of a conversation (`37580ddf`). The catch-up reads only the target's first-parent history, and a failed catch-up no longer fails an input (`29b5223d`). Since `9a79b7f9`, each landing merge carries the trailer that labels its row in that catch-up.
+
 ## Where it lives
 
 - `extensions/lineage/`: roots, branches, tally, memory, and catch-up
@@ -41,3 +43,5 @@ The Plan panel shows an epic without plan tasks by its status and acceptance cri
 - `cfd0e93b` replaces that report run with conclusion by the lander unless work remains under way
 - `ea2437fe` makes Conclude stop the conversation and its subagents
 - `1dbeb9d3` opens the project folder in Zed from History on the host
+- `870a0217` adds the summary history of a branch
+- `29b5223d` limits the catch-up to the target's first-parent history

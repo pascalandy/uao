@@ -32,3 +32,4 @@ Old chapters remain readable, and the user can switch back (`extensions/dream/RE
 - `be1608a7` removes tracked dream sessions, proposal states, `dream.asleepAfter`, and the scratch-instance chapter gate
 - `d3da2f74` preserves pending delivery request IDs and refuses older pending seeds with a recovery path
 - `e6b68215` includes failed calls when it samples tool use for dream statistics
+- `fa3de32a` shows Fall asleep on its own after a dream finishes, and `1dc90eb8` uses one dream stage for that cue, the status line, and the dialogs

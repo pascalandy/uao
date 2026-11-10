@@ -6,4 +6,4 @@ Each layer of the code goes live in its own way. The table in [AGENTS.md](../../
 
 **Why.** Ultimate runs the repository that it edits, so a change must not end the conversation that made it (`9b341af`). The [first prompt](../sources/first-prompt.md) asks that the conversation and the tools continue during a live reload.
 
-**Evidence.** `9b341af` seeds `AGENTS.md` with the layer table.
+**Evidence.** `9b341af` seeds `AGENTS.md` with the layer table. `47c08a50` changes how the web layers go live: a production bundle replaces the Vite dev server, and open pages switch to the new bundle.

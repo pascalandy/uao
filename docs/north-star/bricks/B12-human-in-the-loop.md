@@ -18,6 +18,10 @@ An optional goal reminder wakes @ultimate every 30 minutes (`64f94443`). A goal 
 
 Optional sounds include music that follows agent actions and landing notifications (`06a706bb`, `76ea0ae7`, `09befdd5`). The [sound mechanics](../../../extensions/sounds/README.md) describe the controls.
 
+The composer attaches any file: images go inline, and other files upload to the host with a path in the prompt (`80016496`). The browser resizes images that are too large (`6bae2586`). A pinned header shows the current prompt of a conversation and its changes since the user last dismissed it (`507b378f`). A question link opens the conversation at the question (`323c3987`).
+
+The optional `push` extension sends Web Push notifications for questions, landings, and @ultimate's failed runs, with Reply and Approve actions (`ff44988c`, `extensions/push/README.md`). Installed on Android, the web app is a share target for @ultimate's composer (`ff44988c`, `extensions/share/README.md`). On a phone, rows go edge to edge, and the composer is a sheet on the status line (`1be263cf`).
+
 The narrator is off by default (`extensions/sounds/web.tsx`). When enabled, the narrator speaks questions, failures, landings, and optionally new branches (`451ac392`). It uses OpenAI audio with a key, or browser speech without one (`extensions/sounds/server.ts`, `extensions/sounds/web.tsx`). Finished answers keep their sound alone (`451ac392`).
 
 ## Where it lives
@@ -31,6 +35,8 @@ The narrator is off by default (`extensions/sounds/web.tsx`). When enabled, the 
 - `extensions/side-chat/`: side chats
 - `extensions/sounds/`: sound cues
 - `extensions/voice/` and `extensions/voice-live/`: dictated drafts and live voice
+- `extensions/attachments/`: uploaded files for the prompt
+- `extensions/push/` and `extensions/share/`: Web Push notifications and the share target
 - `web/public/manifest.webmanifest`: the installable web app
 
 ## Decisions
@@ -59,3 +65,5 @@ The narrator is off by default (`extensions/sounds/web.tsx`). When enabled, the 
 - `29480df2` tells a held parent which subagent hit the rate limit
 - `46d0054d` sends a held answer when the user leaves the page during Undo
 - `3fa3753c` accepts image drops in the composer and prevents file drops from navigating away
+- `c3d5a2ea` shows a notice when a background compaction fails
+- `f46c0050` lets the user inject or discard again a side chat whose ending task faulted

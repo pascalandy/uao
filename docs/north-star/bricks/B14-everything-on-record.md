@@ -8,6 +8,8 @@ Hands-off goals keep goal decisions and any attached screenshots in goal reports
 
 The status action gives dashboards a compact read-only summary of one instance (`ca5dec4c`). It includes discovered extensions and their source, state, and load error (`6b44de7b`).
 
+The optional Wire tab of the System surface keeps the raw request and response of a conversation's recent model calls (`9b8f1866`, `5c5dea51`). It ships off by default (`c16450c9`). Its diff shows where a request breaks the prompt cache (`5f3b8ef2`). The transcript shows prompt-cache rebuilds and their cause (`c30582af`, `64105303`).
+
 Tasks group runs and deliveries by meaning and show open messages (`b3462787`, `03d967f4`). Upstream removed the conversation minimap (`6dfcf451`). Rejected ideas use tombstones in project memory, replacing the graveyard folder (`63f87af5`).
 
 ## Where it lives
@@ -21,6 +23,7 @@ Tasks group runs and deliveries by meaning and show open messages (`b3462787`, `
 - `extensions/info/`: runtime facts
 - `extensions/conversations/context.ts`: server records of each conversation's context use
 - `extensions/status/`: the dashboard summary
+- `extensions/wire/`: raw model calls on disk
 
 ## Evidence
 
@@ -35,3 +38,5 @@ Tasks group runs and deliveries by meaning and show open messages (`b3462787`, `
 - `8402cb41` counts a tool's returned error result as a failed trace call
 - `5edd9810` records a failed shell command's exit code and retained output in its trace row
 - `d0afb3e1` uses SQLite NORMAL for trace commits, so recent diagnostics can be lost on power failure
+- `9b8f1866` captures each model call for Wire
+- `830a36c1` re-renders only the conversations that changed
