@@ -13,6 +13,7 @@ import {
 import type { ConversationId, Cursor, TaskId, Tx } from '@earendil-works/pi-durable'
 import { exec } from '../../lib/exec.ts'
 import { git, isolatable } from '../../lib/git.ts'
+import { needsRestart as restartNeeded } from '../../lib/layers.ts'
 import type { ExtensionHost } from '../../server/extensions.ts'
 import { ConversationsApi } from '../conversations/api.ts'
 import { Branches } from './api.ts'
@@ -507,7 +508,10 @@ export function workspaces(host: Host) {
     const result = await Promise.all(
       ids.map(async (id) => {
         const workspace = await get(id as ConversationId, context)
-        if (workspace?.state !== 'ready' || !(await registeredCheckout(workspace))) return undefined
+        // Its `.git` file, not `git worktree list`: the sidebar asks often, and every git process blocks the host while
+        // it forks. `git worktree remove` deletes that file and leaves only ignored files behind.
+        if (workspace?.state !== 'ready' || !(await onDisk(join(workspace.path, '.git'))))
+          return undefined
         return changes(id as ConversationId, workspace).catch(
           // A checkout gone from disk or mid-removal has nothing to show.
           () => undefined,
@@ -770,7 +774,7 @@ export function workspaces(host: Host) {
           })
         const needsRestart =
           (await realpath(source)) === (await realpath(host.ultimateRoot)) &&
-          files.some(({ path }) => /^(server|shared)\//.test(path))
+          restartNeeded(files.map((file) => file.path))
         await git(source, 'merge', '--ff-only', tip)
         result = {
           text: `Landed commits:\n${commits.join('\n')}\nChanged files:\n${files.map((file) => `${file.path} +${file.added} -${file.removed}`).join('\n')}${needsRestart ? '\nNeeds restart.' : ''}`,
@@ -1018,7 +1022,7 @@ export function workspaces(host: Host) {
       index.items[String(id)] = {
         path,
         branch,
-        base: await git(source, 'rev-parse', 'HEAD'),
+        base: await git(source, 'rev-parse', `refs/heads/${target}`),
         source,
         target,
         state: 'preparing',

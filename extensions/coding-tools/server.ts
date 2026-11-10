@@ -4,13 +4,12 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import type { Context } from '@earendil-works/chord'
 import { BACKGROUND_CONTEXT, withCancel } from '@earendil-works/chord/context'
-import { Type } from '@earendil-works/pi-ai'
+import { bool, num, obj, opt, str } from '@earendil-works/pi-schema'
 import {
   type ConversationId,
   defineDoc,
   defineExtension,
   defineTool,
-  InboxDoc,
   LiveDoc,
   type ToolExecutionApi,
   type ToolExecutionResult,
@@ -28,19 +27,11 @@ import { createNodePhotonImages } from '@earendil-works/pi-durable/images/node'
 import { git } from '../../lib/git.ts'
 import type { ExtensionHost } from '../../server/extensions.ts'
 import { implementAction } from '../../lib/actions.ts'
+import { watchSteer } from '../../lib/steer.ts'
 import { CancelAction, CancelledDoc, Committed } from './refs.ts'
 
 /** Lets Pi's read tool shrink an image past the model's limits (2000x2000 by default) instead of refusing it. */
 const images = await createNodePhotonImages()
-
-/** Pi's edit tool, with how to recover from its two common failures. */
-function editTool() {
-  const edit = createEditTool()
-  return {
-    ...edit,
-    description: `${edit.description} After "Could not find", read the region again before retrying; after "Found N occurrences", widen oldText with surrounding lines.`,
-  }
-}
 
 function defaultBashTimeout() {
   const seconds = Number(process.env.ULTIMATE_BASH_TIMEOUT ?? 600)
@@ -144,7 +135,6 @@ async function untilStopped(
   if (!(await api.snapshot(Cancelled, id, context)))
     await api.commit((tx) => tx.doc(Cancelled, id), context)
   const cancelled = (await api.watchDoc(Cancelled, id, context))!
-  const inbox = interruptible ? await api.watchDoc(InboxDoc, id, context) : undefined
   const started = performance.now()
   const { context: command, cancel } = withCancel(context)
   let reason: string | undefined
@@ -156,15 +146,14 @@ async function untilStopped(
   const inspectCancelled = (value: typeof cancelled.value) => {
     if (value?.calls[api.callId] !== undefined) stop('Cancelled by the user')
   }
-  const inspectInbox = (value: NonNullable<typeof inbox>['value']) => {
-    if (value?.items.some((item) => item.mode === 'steer'))
-      stop('Interrupted by a steering message')
-  }
-  cancelled.start(async (value) => inspectCancelled(value))
-  inbox?.start(async (value) => inspectInbox(value))
+  cancelled.start(async (call) => {
+    if (call.kind === 'value') inspectCancelled(call.value)
+  })
+  const stopSteer = interruptible
+    ? await watchSteer(api, context, () => stop('Interrupted by a steering message'))
+    : undefined
   try {
     inspectCancelled(cancelled.value)
-    if (inbox) inspectInbox(inbox.value)
     return await run(command)
   } catch (error) {
     if (!reason || context.abortSignal?.aborted) throw error
@@ -180,7 +169,7 @@ async function untilStopped(
       structuredOutput: { output: retained.text, truncated: retained.truncated, exitCode: 130 },
     }
   } finally {
-    await Promise.all([cancelled.stop(), inbox?.stop()])
+    await Promise.all([cancelled.stop(), stopSteer?.()])
   }
 }
 
@@ -284,10 +273,16 @@ async function madeCommits(path: string, conversation: number) {
 
 export default function codingTools(host: Pick<ExtensionHost, 'emit'>) {
   const shell = createBashTool()
-  const parameters = Type.Object({
-    ...shell.parameters.properties,
-    interruptible: Type.Optional(
-      Type.Boolean({
+  const parameters = obj({
+    command: str({ description: 'Bash command to execute' }),
+    timeout: opt(
+      num({
+        description:
+          'Timeout in seconds (optional; without it a default tripwire, 600 s unless configured, stops the command)',
+      }),
+    ),
+    interruptible: opt(
+      bool({
         description:
           'Only for commands that just wait or poll (CI checks, deploys, a file appearing): a steering message ends the command early. Never combine with commands that change things.',
       }),
@@ -296,7 +291,6 @@ export default function codingTools(host: Pick<ExtensionHost, 'emit'>) {
   // In the tool itself, not a wrap, so the events carry the call's trace and conversation.
   const bashTool = defineTool({
     ...shell,
-    description: `${shell.description} Set interruptible for a command that only waits or polls, so a steering message can end it early.`,
     parameters,
     async execute({ interruptible, ...args }, api, context) {
       const change = interruptible ? changes(args.command) : undefined
@@ -333,7 +327,7 @@ export default function codingTools(host: Pick<ExtensionHost, 'emit'>) {
     tools: [
       createReadTool({ images }),
       createWriteTool(),
-      editTool(),
+      createEditTool(),
       bashTool,
     ] as ToolRegistration[],
     wraps: [
