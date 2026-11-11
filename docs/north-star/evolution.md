@@ -96,7 +96,7 @@ A seam permits new behavior without edits to upstream files. Each seam below is 
 - **A new extension folder** in `.ultimate/extensions/<name>/` or `~/.ultimate/extensions/<name>/`. Discovery finds the extension. It is on by default (`extensions/README.md`). A folder named after a built-in replaces that whole built-in. Thus, the copy no longer follows upstream (inferred)
 - **Extension APIs and points.** A new extension uses an upstream contract through `host.need` or `host.want`. Alternatively, it fills a core-tier point ([Contracts](../extensions/contracts.md), [Core tier](../extensions/core-tier.md))
 - **Durable events.** A reactor reads the events of upstream extensions in order, across crashes ([Durable events](../extensions/events.md#durable-events))
-- **Web contributions.** A web facet adds slots, panels, surfaces, renderers, and commands. It can also wrap the composer, put a badge on a panel tab, and draw a part of the UI of another extension again (`a99235ce`, `8d09848d`, [Slots and panels](../extensions/slots.md), [Renderers](../extensions/renderers.md))
+- **Web contributions.** A web facet adds slots, panels, surfaces, renderers, and commands. It can also wrap the composer, put a badge on a panel tab, and draw a part of the UI of another extension again (`a99235ce`, `8d09848d`, [Contracts](../extensions/contracts.md), [Slots and panels](../extensions/slots.md), [Renderers](../extensions/renderers.md))
 - **Hooks.** A server facet adds a hook such as `beforeInput` (`extensions/lineage/server.ts`). The transactional form of `beforeInput` comes from a local Pi patch ([Borrowed from Pi](../pi-upstream.md))
 - **Agent definitions.** A new definition, an overlay, or a new `reviewer-<name>.md` in `.ultimate/agents/` or `~/.ultimate/agents/` ([Subagents](../subagents.md))
 - **MCP servers.** `mcpServers` in user or trusted project settings adds external tools through one tool ([MCP](../../extensions/mcp/README.md))
@@ -122,6 +122,7 @@ These areas changed on 2026-11-09 and 2026-11-10, the last two days at the snaps
 | Sidebar     | `extensions/sidebar`        |       6 | Open questions outrank work, and the Inbox row (`59136892`, `8bce83ea`, `995c52d4`)                      |
 | Core server | `server/`                   |       6 | Load waits, extension test folders, and dangling links (`1441b930`, `961fd373`, `96de0d29`)              |
 | Claude Code | `extensions/claude-code`    |       5 | Model catalog discovery, and its own refusal of a turn (`983ad978`, `a14a0ccc`)                          |
+| Landing     | `extensions/workspaces`     |       5 | One default model, the reading column, and moved tests (`ba854f0e`, `5bd94ec0`, `c387c88b`)              |
 
 The test move touches most extension folders on 2026-11-10 (`c387c88b`). This table counts author dates, including contributions merged later.
 

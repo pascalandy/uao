@@ -376,7 +376,7 @@ Each row is a merged outside pull request. `git log --merges --format='%h %s' d0
 | [#116](https://github.com/HazAT/ultimate/pull/116) | A person's own families apply over the project's team settings      | `885ee383`, `a57641c6` |
 | [#117](https://github.com/HazAT/ultimate/pull/117) | Inline code renderers for Markdown                                  | `c8cb825d`, `d3909db6` |
 
-Other numbers from #49 to #117 have no merge in this snapshot's history.
+Other numbers from #49 to #117 have no merge in the November 9 sync's history.
 
 ### The November 11 sync
 
@@ -387,7 +387,7 @@ The November 11 sync adds 49 commits to this era. Upstream wrote all of them on 
   - `panelBadges` and `Rendered` in the web SDK. An extension can put a badge on any panel tab and draw a part of the UI of another extension again (`a99235ce`, `8d09848d`, [B03](bricks/B03-reloadable-extensions.md))
   - `TodosApi.add` and an optional idempotency key on `todos/add` (`a9d47b01`, [B12](bricks/B12-human-in-the-loop.md))
 - Reworked:
-  - the model that the user selects in Get ready becomes the model of the default family, so new conversations and branches start on it (`fa9670c8`, `7eb49b86`, [B04](bricks/B04-models-and-providers.md))
+  - the model that the user selects in Get ready becomes the model of the default family, so new conversations and branches start on it (`fa9670c8`, [B04](bricks/B04-models-and-providers.md))
   - one default gives both the model and the thinking level. A provider that is not registered is not evidence of a missing login (`ba854f0e`, [D038](decisions/D038-models-follow-logins.md))
   - a conversation shows the family that it started on, not the first family with the same model (`f81d842b`, [B04](bricks/B04-models-and-providers.md))
   - a Pi Durable patch appends a new or returning prompt section. Before, Pi Durable sent the full system prompt again (`a5dea087`, [D026](decisions/D026-stable-system-prompt.md))
@@ -424,7 +424,7 @@ At the snapshot, a change unit reaches `main` in these steps:
 
 The landing queue uses `git merge` defaults (`extensions/workspaces/lander.ts`). Git makes a landing merge only if it cannot fast-forward. Its message is `Merge <sha> from #<n> into main` (`extensions/workspaces/lander.ts`). Since `9a79b7f9`, the message also carries the trailer `Ultimate-Conversation: <n>`, so the catch-up can label the merge.
 
-The 248 landing merges with `#<n>` name 241 conversations (`git log --merges --format=%s 11c89136`). Of these conversations, 208 appear in the work trailers, and the other 33 do not (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' 32e45c95`). Their landings contain work from other conversations, as `0eb16c0` shows below. The other units reached `main` by a fast-forward or through another unit, given those merge subjects and trailers (inferred).
+The 248 landing merges with `#<n>` name 241 conversations (`git log --merges --format=%s 11c89136`). Of these conversations, 208 appear in the work trailers, and the other 33 do not (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' 11c89136`). Their landings contain work from other conversations, as `0eb16c0` shows below. The other units reached `main` by a fast-forward or through another unit, given those merge subjects and trailers (inferred).
 
 Landings and their commit trailers can name different conversations. `0eb16c0` names `#209732`. Its commit `8c44921` has trailer `216060`.
 

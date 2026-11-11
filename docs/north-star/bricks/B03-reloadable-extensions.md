@@ -12,7 +12,7 @@ A web facet goes live through a rebuild of the production bundle, about two seco
 
 Each extension keeps its tests in `extensions/<name>/test/`. That folder is not part of the extension, so a save there reloads nothing (`c387c88b`, `961fd373`). `disable` can turn off an outside extension that claims the core tier (`0b4c4a0e`).
 
-A web facet can put a badge on any right-panel tab with `panelBadges` (`a99235ce`). With `Rendered`, an extension can draw a part of the UI of another extension again ([Contracts](../../../docs/extensions/contracts.md), `8d09848d`). A background read stays quiet when its request does not reach the server (`11706651`). When the user removes a dangling extension link, the host also removes its record (`96de0d29`).
+A web facet can put a badge on any right-panel tab with `panelBadges` (`a99235ce`). With `Rendered`, an extension can draw a part of the UI of another extension again ([Contracts](../../../docs/extensions/contracts.md), `8d09848d`).
 
 ## Where it lives
 

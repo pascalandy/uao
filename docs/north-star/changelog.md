@@ -37,7 +37,7 @@ Notes:
 1. The [fixes entry](https://danielgriesser.com/ultimate/changelog/fixes-2026-11-02/) lists 29 commits. Most of them come from the outside pull requests in [history.md](history.md#outside-contributions-in-the-november-9-sync)
 2. The [fixes entry](https://danielgriesser.com/ultimate/changelog/fixes-2026-11-09/) lists 12 commits. Only `fa9670c8` reached uao in this sync: the model that Get ready selects becomes the model of new conversations and branches ([B04](bricks/B04-models-and-providers.md)). The other 11 commits reached uao earlier
 
-The Wire entry is new in the feed since the review of 2026-11-10. Its commits were already in the earlier snapshot `32e45c95`. The feed now gives some dates that differ from the review of 2026-11-02. This review uses the dates of the feed at the review date. The published feed selects changes. The feed is not a complete record of upstream commits. The performance figures in the changelog are upstream measurements. This review does not repeat those measurements.
+The fixes entry of 2026-11-10 and the Wire entry are new in the feed since the review of 2026-11-10. The commits of the Wire entry were already in the earlier snapshot `32e45c95`. The feed now gives some dates that differ from the review of 2026-11-02. This review uses the dates of the feed at the review date. The published feed selects changes. The feed is not a complete record of upstream commits. The performance figures in the changelog are upstream measurements. This review does not repeat those measurements.
 
 ## Reproduce the comparison
 
