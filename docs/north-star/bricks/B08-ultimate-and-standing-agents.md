@@ -6,7 +6,7 @@ The user talks to one agent, @ultimate, which keeps its conversation between vis
 
 @ultimate can also pursue a user-granted hands-off goal ([B12](B12-human-in-the-loop.md), `agents/ultimate.md`).
 
-The first-run walkthrough introduces Ultimate before project setup (`79107fdd`). It supports replay and skipping the remaining steps (`79107fdd`, `skills/how-ultimate-works/SKILL.md`). Start here stays in @ultimate's conversation until setup runs or the user dismisses it (`c5ec041a`, `08c63235`).
+The first-run walkthrough introduces Ultimate before project setup (`79107fdd`). It supports replay and skipping the remaining steps (`79107fdd`, `skills/how-ultimate-works/SKILL.md`). Start here stays in @ultimate's conversation until setup runs or the user dismisses it (`c5ec041a`, `08c63235`). An onboarding start whose run failed before an answer, for example because of an expired login, can start again (`b59483eb`, `e77a4a21`, `extensions/onboarding/README.md`).
 
 Voice can be a standing agent when live voice is enabled ([B12](B12-human-in-the-loop.md), `f3b257b6`). The lander is now code with a log conversation ([D042](../decisions/D042-model-free-landing.md)).
 
@@ -34,3 +34,4 @@ Voice can be a standing agent when live voice is enabled ([B12](B12-human-in-the
 - `eeae136` replaces the Board surface with the @ultimate button
 - `001a193d` adds the goal role to @ultimate
 - `33f42e7f` lets an experienced user turn onboarding off in user settings
+- `b59483eb` and `e77a4a21` let a failed onboarding start run again

@@ -12,6 +12,8 @@ A web facet goes live through a rebuild of the production bundle, about two seco
 
 Each extension keeps its tests in `extensions/<name>/test/`. That folder is not part of the extension, so a save there reloads nothing (`c387c88b`, `961fd373`). `disable` can turn off an outside extension that claims the core tier (`0b4c4a0e`).
 
+A web facet can put a badge on any right-panel tab with `panelBadges` (`a99235ce`). With `Rendered`, an extension can draw a part of the UI of another extension again ([Contracts](../../../docs/extensions/contracts.md), `8d09848d`).
+
 ## Where it lives
 
 - `extensions/`: the built-ins, each with a README
@@ -46,3 +48,5 @@ Each extension keeps its tests in `extensions/<name>/test/`. That folder is not 
 - `47c08a50` replaces Vite hot reload in the browser with a rebuilt production bundle
 - `c387c88b` moves each extension's tests into its own folder
 - `a67802e1` and `9c1cbdda` share `useAction` reads and key them by conversation
+- `a99235ce` adds `panelBadges`, and `8d09848d` adds `Rendered`
+- `96de0d29` removes the record of a dangling extension link

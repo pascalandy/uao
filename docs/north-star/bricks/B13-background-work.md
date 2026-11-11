@@ -30,3 +30,4 @@ Event filters and subscribers can name a standing agent across chapters (`extens
 - `6d96d892` keys nested tool receipts by call so each codemode call acts
 - `903ce43e` keeps every subscriber delivery failure
 - `db1d8d12` gives a later chapter its own script folders in `<project>@<chapter>/<id>`
+- `bf6830af` and `42ab5da0` signal a process group only for an integer pid above 1, because `kill(-1)` reaches every process of the user (`lib/process-group.ts`)

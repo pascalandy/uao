@@ -8,4 +8,4 @@ The system prompt does not change between turns. Facts that change, such as the 
 
 **Rejected.** Prompt sections that listed the conversations and the surface on screen (`803cbee`).
 
-**Evidence.** `803cbee`. `7054ecf` moves the identity of a conversation into an input note for the same reason.
+**Evidence.** `803cbee`. `7054ecf` moves the identity of a conversation into an input note for the same reason. `a5dea087` patches Pi Durable to append a new or returning prompt section. Before, Pi Durable sent the full system prompt again, 40 times in two days (`a5dea087`, [Borrowed from Pi](../../pi-upstream.md)).

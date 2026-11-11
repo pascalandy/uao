@@ -10,6 +10,8 @@ Agent definitions, summaries, and previews use model families ([D043](../decisio
 
 Claude Code discovers the account's model catalog at startup and on status (`983ad978`). A newer Claude Code model gets the limits of its family (`d328809b`). Claude Code's auto-memory is off by default (`0ac012e7`). A person's own family choices for a project apply over the project's team settings (`885ee383`). The branch tool can name a family for the coordinator's model (`0c176481`).
 
+The model that the user selects in Get ready becomes the model of the default family, with thinking high. Thus, @ultimate, new conversations, and branches start on it (`fa9670c8`, `extensions/onboarding/README.md`). Get ready keeps the effective settings of the other families (`7eb49b86`). One default gives both the model and the thinking level (`ba854f0e`, `lib/agents.ts`). A conversation records the family that it started on, and the composer shows that family (`f81d842b`, `extensions/models/README.md`). Claude Code reports its own refusal of a turn as the reason, and stderr no longer decides a retry (`a14a0ccc`).
+
 Keep warm renews idle @ultimate's existing Claude Code cache, without transcript entries (`f9d91e85`). The user controls these billable pings (`extensions/keep-warm/README.md`).
 
 ## Where it lives
@@ -50,3 +52,7 @@ Keep warm renews idle @ultimate's existing Claude Code cache, without transcript
 - `526412e5` honors long cache retention on the Anthropic API for keep warm
 - `dd691fc1` retries a Claude Code turn relay request that fails in transport before any response byte
 - `630b6940` raises Node's dual-stack connection timeout, because relay requests failed on macOS (`server/http.ts`)
+- `fa9670c8` makes the model of Get ready the model of the default family
+- `ba854f0e` takes the model and the thinking level from one default
+- `f81d842b` records the family that a conversation started on
+- `a14a0ccc` reports Claude Code's own refusal of a turn

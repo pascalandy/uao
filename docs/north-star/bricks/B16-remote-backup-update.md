@@ -39,3 +39,4 @@ Only the UI itself and loopback pages can frame it: the server sends a `Content-
 - `5c83c82f` keeps Tailscale teardown alive during a systemd stop
 - `7849a479` prints the remote URL when Tailscale registers or removes it
 - `ec0f235d` restarts after a landing's install when facets still fail
+- `6187f056` leaves no `.part` file when a snapshot download fails at once
