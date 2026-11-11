@@ -111,6 +111,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Steer**: a message that enters a run in progress, after the current tool calls (`extensions/messages/README.md`)
 - **Question**: one structured request for a user answer, carried by a message (`extensions/messages/questions.ts`). Its answer card stays open until the user answers or dismisses the message (`extensions/questions/README.md`)
 - **Question pointer**: a card in @ultimate's conversation that opens a branch's question and retains its answer summary (`5014cc55`, `ae0d4fc2`)
+- **Inbox**: the surface that lists each item that waits on the user, oldest first, with its answer card (`995c52d4`, `extensions/inbox/README.md`)
 - **Settle**: to answer or dismiss an open question through @ultimate from the user's words in its chat. Code: `messages.settle` (`7b09649d`)
 - **Hands-off goal**: a user-granted goal during which @ultimate decides what it would otherwise ask the user (`extensions/goal/README.md`). Code: the extension `goal`. Chapter changes still require the user (`ef738270`)
 - **Goal decision**: a choice that @ultimate records for the user during a hands-off goal, including the reason (`extensions/goal/README.md`). Code: `goal {action: 'decide'}`. Not: a north-star decision

@@ -6,10 +6,10 @@ This file says how uao relates to `HazAT/ultimate`: the snapshot, the fork point
 
 Each status in the north-star is true at the snapshot:
 
-- Upstream: `HazAT/ultimate` at `32e45c95`, 2026-11-10 (author date, 2026-11-09 UTC)
-- Fork: `pascalandy/uao` at `e683f686`, 2026-11-09, the merge of this snapshot
+- Upstream: `HazAT/ultimate` at `11c89136`, 2026-11-10 (author date)
+- Fork: `pascalandy/uao` at `b3aef5f4`, 2026-11-11, the merge of this snapshot
 
-`git log --oneline 32e45c95..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
+`git log --oneline 11c89136..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
 
 The [changelog review](changelog.md) compares the public entries with this snapshot and records later upstream changes. Read that review when you assess a sync. Later upstream entries do not change a brick's status until their code reaches uao.
 
@@ -20,6 +20,7 @@ The [changelog review](changelog.md) compares the public entries with this snaps
 - 2026-10-29: upstream `17d186b` (2026-10-29), merged into uao by `58a9e05`
 - 2026-11-01: upstream `d0a2e17b` (2026-11-01), merged into uao by `739d025c`
 - 2026-11-09: upstream `32e45c95` (2026-11-10), merged into uao by `e683f686`, the first merge of the job `uao-sync`, run by hand before its first Wednesday
+- 2026-11-11: upstream `11c89136` (2026-11-10), merged into uao by `b3aef5f4`, the first Wednesday run of the job `uao-sync`
 
 ## Fork point
 

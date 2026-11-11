@@ -55,7 +55,7 @@ The post also names a better flow timeline and design polish. [Next](bricks/READ
 
 ### The claims of the explainer at the snapshot
 
-These states describe upstream at `32e45c95`. A **partial** claim exceeds what the code supports in the stated way:
+These states describe upstream at `11c89136`. A **partial** claim exceeds what the code supports in the stated way:
 
 | Claim in the explainer                                     | State   | Code evidence and limit                                                                                                                                                                                                                 | Brick                                           |
 | ---------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |

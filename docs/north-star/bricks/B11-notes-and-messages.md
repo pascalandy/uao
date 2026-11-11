@@ -14,7 +14,7 @@ One project's @ultimate can tell another project's @ultimate what changed (`exte
 
 A branch that @ultimate starts while it owes another agent an answer records that request. When the branch concludes, @ultimate's final answer goes to that agent (`71582661`). `notify` skips an answer that the caller already received as a reply (`d20dad42`). One set of status rules decides whether a message is open, owed, or awaited (`c058fba7`). A user's answer names the card that it answers (`8e944092`).
 
-Branches can ask the user directly after @ultimate weighs in ([D044](../decisions/D044-branches-ask-the-user.md)). Question pointers keep their summaries and outcomes outside the bounded message log (`ae0d4fc2`, `extensions/messages/notice.ts`).
+Branches can ask the user directly after @ultimate weighs in ([D044](../decisions/D044-branches-ask-the-user.md)). Question pointers keep their summaries and outcomes outside the bounded message log (`ae0d4fc2`, `extensions/messages/notice.ts`). When the message log trims to 300 messages, it keeps each open message (`cfccc89c`). A pointer shows an open question that scrolled out of the view of the transcript (`cbac5781`).
 
 ## Where it lives
 
@@ -41,3 +41,4 @@ Branches can ask the user directly after @ultimate weighs in ([D044](../decision
 - `91618d16` routes an answer only to the conversation that asked its question
 - `71582661` sends a branch's result to the agent whose request it worked on
 - `01d0a9ed` lets a conversation send a message after its workspace is gone
+- `cfccc89c` keeps open messages when the message log trims

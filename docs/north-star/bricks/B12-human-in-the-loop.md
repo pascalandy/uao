@@ -4,6 +4,8 @@ Status: shipped, at the snapshot. Source: upstream.
 
 The user stays in control with no need to watch each conversation. Questions wait as answer cards until the user answers or dismisses them. The user can review a diff before it lands, pause the whole host, stop one bash call, and explore a tangent in a side chat.
 
+The Inbox lists each item that waits on the user, oldest first, and shows the answer card of the selected item (`995c52d4`, `extensions/inbox/README.md`). A row under @ultimate's sidebar row counts the items (`extensions/inbox/README.md`). An open question to the user ranks above work in progress on sidebar rows and on the phone button (`59136892`, `8bce83ea`).
+
 The cards render the structured questions of a message without a model (`extensions/questions/README.md`). A card offers choices, multiple choices, confirmation, text, or a scale, plus a separate comment field (`extensions/questions/README.md`). Branches ask in their own conversation after @ultimate weighs in ([D044](../decisions/D044-branches-ask-the-user.md)). @ultimate can settle those questions from the user's words in its chat (`7b09649d`).
 
 The user can start one hands-off goal and let @ultimate make goal decisions and give preview approvals ([D037](../decisions/D037-goals-delegate-approvals.md)). @ultimate records criteria and goal decisions, then leaves a goal report (`extensions/goal/README.md`). The user can end the goal early (`extensions/goal/README.md`).
@@ -29,7 +31,8 @@ The narrator is off by default (`extensions/sounds/web.tsx`). When enabled, the 
 - `extensions/questions/`: answer cards
 - `extensions/goal/`: hands-off goals, goal decisions, and goal reports
 - `extensions/messages/questions.ts`: the questions of a message and their validation
-- `extensions/todos/`: the to-do list
+- `extensions/inbox/`: the items that wait on the user
+- `extensions/todos/`: the to-do list. Other extensions add to-dos through `TodosApi.add` (`a9d47b01`)
 - `extensions/review/`: diffs and line comments
 - `extensions/pause/`: the host-wide pause
 - `extensions/side-chat/`: side chats
@@ -67,3 +70,5 @@ The narrator is off by default (`extensions/sounds/web.tsx`). When enabled, the 
 - `3fa3753c` accepts image drops in the composer and prevents file drops from navigating away
 - `c3d5a2ea` shows a notice when a background compaction fails
 - `f46c0050` lets the user inject or discard again a side chat whose ending task faulted
+- `995c52d4` adds the Inbox
+- `a9d47b01` adds `TodosApi.add` and an optional idempotency key on `todos/add`
