@@ -2,7 +2,7 @@
 
 Source: upstream. This review uses the public [changelog](https://danielgriesser.com/ultimate/changelog/) and its [JSON feed](https://danielgriesser.com/ultimate/changelog/feed.json). The review uses the feed as it was fetched at 07:03 UTC on 2026-11-18.
 
-At that fetch, the feed had 28 entries. Each commit that an entry lists is an ancestor of the [snapshot](upstream.md#snapshot). No entry described code after the snapshot.
+At that fetch, the feed had 28 entries. Each commit that an entry listed was an ancestor of the [snapshot](upstream.md#snapshot). No entry described code after the snapshot.
 
 Later on 2026-11-18, upstream added two entries, [a reel of a branch's screenshots](https://danielgriesser.com/ultimate/changelog/reel/) and [talk a question through](https://danielgriesser.com/ultimate/changelog/talk-it-through/). Their seven commits are not in the snapshot, so the next sync reviews them. Upstream also added 12 commits to the fixes entry of 16 November and dated it 2026-11-17. These 12 commits are in the snapshot.
 
@@ -45,7 +45,7 @@ Notes:
 
 1. The [fixes entry](https://danielgriesser.com/ultimate/changelog/fixes-2026-11-02/) lists 29 commits. Most of them come from the outside pull requests in [history.md](history.md#outside-contributions-in-the-november-9-sync)
 2. The [fixes entry](https://danielgriesser.com/ultimate/changelog/fixes-2026-11-09/) now lists 49 commits, against 12 at the review of 2026-11-11, and the feed now dates it 2026-11-15. 30 of these commits reached uao in this sync, such as Pi 1.5.2 (`3f11fcc2`) and the 402 billing limit (`446d54c6`). The other 19 reached uao earlier
-3. The [fixes entry](https://danielgriesser.com/ultimate/changelog/fixes-2026-11-16/) lists 16 commits. They include the end of the landing distiller (`cd77dc1e`), background process groups (`5abd5a39`), and messages to the user from standing agents (`400f5758`). Many come from the outside pull requests in [history.md](history.md#outside-contributions-in-the-november-18-sync)
+3. The [fixes entry](https://danielgriesser.com/ultimate/changelog/fixes-2026-11-16/) listed 16 commits at that fetch. They include the end of the landing distiller (`cd77dc1e`), background process groups (`5abd5a39`), and messages to the user from standing agents (`400f5758`). Many come from the outside pull requests in [history.md](history.md#outside-contributions-in-the-november-18-sync)
 4. The entry also lists `45cdaf28` and `5015bf60`
 
 Seven entries are new in the feed since the review of 2026-11-11. The Inbox entry is one of them, but its commits were already in the earlier snapshot `11c89136`. The feed now gives some dates that differ from the review of 2026-11-02. This review uses the dates of the feed at the review date. The published feed selects changes. The feed is not a complete record of upstream commits. The performance figures in the changelog are upstream measurements. This review does not repeat those measurements.
