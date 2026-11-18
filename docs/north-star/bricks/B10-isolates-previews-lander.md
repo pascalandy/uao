@@ -12,6 +12,10 @@ Previews copy user configuration into a private user home (`1efbcb19`). User ext
 
 A preview's `HOME` is its own folder, with the other entries of the real home linked back, so writes to `~/.ultimate` stay private (`8f67613f`). A preview lands on its own branch and never pushes (`d1fe28fb`). The lander log shows the running step and the duration of each step (`a1825fcd`). Each step names the check that it runs (`e0b337a3`). A landing card shows the changed lines and the estimated tokens (`f7ba0607`). A temporary folder that is still being written no longer fails a landing (`c99fc625`).
 
+A landing's weight now counts only its diff, and a repository too large to weigh never fails a landing (`e59a9873`, `e4a143e3`). The lander runs the tests with `TMPDIR` on tmpfs again, not in the host home (`412781c0`). The starter gets a one-line landing card that names the pushed commit, with the divergence (`cbc96a2c`, `9bd52084`). The landing card also shows the acceptance criteria that the branch met ([B07](B07-conversation-tree.md), `53e54861`).
+
+A crash no longer leaves preview servers running (`058c555e`). A preview with read-only copies or a deleted home still stops (`c65112fb`). `instance start` can take a model for one start, so a check does not edit the user settings (`06c356c2`). The sidebar shows when a branch waits on its reviewers or on a preview (`655ed511`).
+
 ## Where it lives
 
 - `extensions/workspaces/`: isolates and the landing queue
@@ -42,3 +46,6 @@ A preview's `HOME` is its own folder, with the other entries of the real home li
 - `27f9d781` keeps source checkouts with live descendant worktrees. `1a0541ee` removes that PR's additional lander conclusion guard
 - `d1fe28fb` keeps previews from landing on the previewed branch and from pushing
 - `9a79b7f9` adds the `Ultimate-Conversation` trailer to each landing merge
+- `e59a9873` makes a landing's weight count only its diff
+- `058c555e` stops the preview servers that a crash left running
+- `cbc96a2c` gives the starter a one-line landing card

@@ -6,9 +6,9 @@ A dream is ordinary branch work (`be1608a7`). @ultimate writes its handoff, star
 
 Dream before compaction fires at 70% context by default (`1353fb6b`). Dream after a pause defaults to at least 50% context after eight hours without user input (`6c37a236`, `extensions/automations/triggers.ts`). Both are ordinary context automations that wake @ultimate (`extensions/dream/built-ins.ts`).
 
-Approved proposals become ordinary branches or memory writes (`extensions/dream/DREAM.md`). @ultimate can prepare a fresh chapter, but only the user can press Fall asleep ([D040](../decisions/D040-dream-as-ordinary-work.md)). The switch preserves memory and open work through a seed, backups, and a journaled restart (`extensions/dream/server.ts`, `extensions/dream/seed.ts`).
+Approved proposals become ordinary branches or memory writes (`extensions/dream/DREAM.md`). The dream's memory pass is one of only two ways to write project memory ([B07](B07-conversation-tree.md), `cd77dc1e`). @ultimate can prepare a fresh chapter, but only the user can press Fall asleep ([D040](../decisions/D040-dream-as-ordinary-work.md)). The switch preserves memory and open work through a seed, backups, and a journaled restart (`extensions/dream/server.ts`, `extensions/dream/seed.ts`).
 
-Old chapters remain readable, and the user can switch back (`extensions/dream/README.md`). A seeded chapter starts its first backup when cloud backups are available (`ef1883dc`, `5704358d`). The [chapter mechanics](../../../extensions/dream/README.md#chapters) own the checks and recovery rules.
+Old chapters remain readable, and the user can switch back (`extensions/dream/README.md`). A seeded chapter starts its first backup when cloud backups are available (`ef1883dc`, `5704358d`). A new chapter keeps the conditions that the user edited on the built-in triggers (`34dcbea1`). The [chapter mechanics](../../../extensions/dream/README.md#chapters) own the checks and recovery rules.
 
 ## Where it lives
 

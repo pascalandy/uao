@@ -89,7 +89,7 @@ These flows connect the parts at the snapshot. The linked files hold the mechani
 | `server/web.ts`            | Builds, serves, and switches the production web bundle                         | [Running the server](../running.md)                                |
 | `server/harness.ts`        | Opens Pi Durable on the active chapter                                         | [Durability](../durability.md)                                     |
 | `server/api.ts`            | HTTP routes, extension actions, UI writes, and the event stream                | [Running the server](../running.md)                                |
-| `server/discovery.ts`      | Finds built-in, user, and project resources, in order                          | [Discovery and settings](../settings.md)                           |
+| `lib/discovery.ts`         | Finds built-in, user, and project resources, in order                          | [Discovery and settings](../settings.md)                           |
 | `server/extensions.ts`     | Loads server facets with their tools, hooks, and actions                       | [Server facets](../extensions/server.md)                           |
 | `server/trace.ts`          | The call trace                                                                 | [Tracing](../extensions/introspection.md#tracing)                  |
 | `shared/protocol.ts`       | Typed contracts between server and browser                                     | `AGENTS.md`                                                        |
@@ -97,6 +97,8 @@ These flows connect the parts at the snapshot. The linked files hold the mechani
 | `lib/`                     | Shared helpers: exec, git, JSON files, settings, secrets, and chapters         | `AGENTS.md`                                                        |
 | `lib/agents.ts`            | Agent definitions, overlay saves, and deferred tools                           | [Subagents](../subagents.md)                                       |
 | `lib/ago.ts`               | The relative-time formatter that server code and the web SDK share             | `0104d7a`                                                          |
+| `lib/effect.ts`            | Durable effect tasks for effects outside the store                             | [Durability](../durability.md)                                     |
+| `lib/timers.ts`            | The named timer helpers that lint requires                                     | `b4f0474f`                                                         |
 | `web/src/`                 | The app shell, the surface host, and the extension registry                    | [Writing extensions](../../extensions/README.md)                   |
 | `web/src/sdk/`             | The SDK that web facets import as `@/sdk`, including `Card` and `formatAgo`    | [SDK](../extensions/sdk.md)                                        |
 | `extensions/`              | The built-ins, each with a README                                              | [Writing extensions](../../extensions/README.md)                   |
@@ -116,9 +118,12 @@ These flows connect the parts at the snapshot. The linked files hold the mechani
 | `extensions/keep-warm/`    | Idle cache pings, outside the task scheduler                                   | [Keep warm](../../extensions/keep-warm/README.md)                  |
 | `extensions/voice-live/`   | WebRTC sessions and durable Voice-to-@ultimate delivery                        | [Live voice](../../extensions/voice-live/README.md)                |
 | `extensions/status/`       | Read-only instance summary for dashboards                                      | [Status](../../extensions/status/README.md)                        |
+| `extensions/entries/`      | Entry kinds that core extensions on both sides of a dependency read            | [Entries](../../extensions/entries/README.md)                      |
+| `extensions/projects/`     | The projects rail for each Ultimate on this machine                            | [Projects](../../extensions/projects/README.md)                    |
+| `extensions/read-aloud/`   | Spoken agent answers                                                           | [Read aloud](../../extensions/read-aloud/README.md)                |
 | `.ultimate/`               | The project setup of this repository: checks, push target, review team         | [.ultimate/README.md](../../.ultimate/README.md)                   |
 | `scripts/`                 | Dependency graph check, reset, restore, and machine setup                      | `package.json`                                                     |
-| `lint/`                    | Custom lint rules for boundaries, durability, and fast tests                   | `AGENTS.md`                                                        |
+| `lint/`                    | Custom lint rules for boundaries, durability, timers, comments, and fast tests | [Review quality](../../AGENTS.md#review-quality)                   |
 | `test/`                    | Core tests, tests across extensions, and shared helpers                        | [Tests](../../extensions/README.md#tests)                          |
 | `extensions/<name>/test/`  | One extension's tests, with browser tests and e2e tests in subfolders          | [Tests](../../extensions/README.md#tests)                          |
 | `patches/`                 | Pinned patches to Pi packages                                                  | [Borrowed from Pi](../pi-upstream.md)                              |

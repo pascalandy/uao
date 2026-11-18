@@ -8,11 +8,11 @@ The sidebar's project path opens read-only History (`6ee7d47c`). Its Memory row 
 
 Recall adds relevant memories after @ultimate's input when optional classification is available (`48f2f2e6`). The [recall mechanics](../../../extensions/recall/README.md) describe its thresholds and cache limits.
 
-Landing memory extraction allows 16,384 output tokens, including reasoning (`5b4de93a`, `extensions/lineage/memory.ts`). This budget replaces the smaller summary budget for that task (`5b4de93a`).
+A landing no longer writes project memory. Only @ultimate's `remember` and the dream's memory pass, which the user approves, write memories (`cd77dc1e`). Each memory must pass one test: would a branch that starts next month act differently without it (`cd77dc1e`, `agents/ultimate.md`). The `memory` tool takes a plain-text query, which recall answers when classification is available, and it reads several slugs at once. An unknown slug gets the index, not a failure (`4ded0eef`, `d9f0cbca`).
 
-The Plan panel shows an epic without plan tasks by its status and acceptance criteria (`34624b5d`). Plan text preserves literal tags and line breaks (`34624b5d`).
+The Plan panel shows an epic without plan tasks by its status and acceptance criteria (`34624b5d`). Plan text preserves literal tags and line breaks (`34624b5d`). A coordinator confirms each acceptance criterion that it meets. Phase estimates the progress of the other criteria. The plan pill, the checklist, the sidebar, and the landing card show the confirmed count beside the estimate (`53e54861`, `extensions/plan/README.md`).
 
-A hover on a branch row in the sidebar shows the branch's summary history (`870a0217`). A steer refreshes the title, summary, and tag of a conversation (`37580ddf`). The catch-up reads only the target's first-parent history, and a failed catch-up no longer fails an input (`29b5223d`). Since `9a79b7f9`, each landing merge carries the trailer that labels its row in that catch-up.
+A hover on a branch row in the sidebar shows the branch's summary history (`870a0217`). A steer refreshes the title, summary, and tag of a conversation (`37580ddf`). The catch-up reads only the target's first-parent history, and a failed catch-up no longer fails an input (`29b5223d`). Since `9a79b7f9`, each landing merge carries the trailer that labels its row in that catch-up. @ultimate has no workspace, so it gets no commit catch-up (`cbc96a2c`). The sidebar header shows the project's name and its GitHub repository (`45cdaf28`).
 
 ## Where it lives
 
@@ -45,3 +45,5 @@ A hover on a branch row in the sidebar shows the branch's summary history (`870a
 - `1dbeb9d3` opens the project folder in Zed from History on the host
 - `870a0217` adds the summary history of a branch
 - `29b5223d` limits the catch-up to the target's first-parent history
+- `cd77dc1e` removes the landing distiller, which `5b4de93a` had given a larger output budget
+- `53e54861` adds the progress of acceptance criteria

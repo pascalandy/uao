@@ -12,6 +12,10 @@ Claude Code discovers the account's model catalog at startup and on status (`983
 
 The model that the user selects in Get ready becomes the model of the default family, with thinking high. Thus, @ultimate, new conversations, and branches start on it (`fa9670c8`, `extensions/onboarding/README.md`). Get ready keeps the effective settings of the other families (`7eb49b86`). One default gives both the model and the thinking level (`ba854f0e`, `lib/agents.ts`). A conversation records the family that it started on, and the composer shows that family (`f81d842b`, `extensions/models/README.md`). Claude Code reports its own refusal of a turn as the reason, and stderr no longer decides a retry (`a14a0ccc`).
 
+This repository runs its review family on GPT-6.2 Astra and its fast family on GPT-6.2 Sol. The built-in review and fast families stay on GPT-6 Astra and GPT-6.1 Sol until the Pi catalog lists GPT-6.2 (`9a0d2931`, `db80d3fa`, `.ultimate/settings.json`). ⌘K **Refresh model catalog** reads `~/.pi/agent/models.json` again and fetches each provider's catalog from pi.dev, with no restart (`9a0d2931`, `extensions/models/README.md`). `modelFamilies` in `~/.ultimate/settings.json` gives the user's default families for each project on the machine. It applies over the built-ins and under the saved and team families (`db80d3fa`, [Discovery and settings](../../../docs/settings.md)).
+
+A 402 response is a billing limit, not a broken login, and old provider failures expire (`446d54c6`). Claude Code turns no longer expand `@` mentions into file contents (`33ba31a1`). The host no longer installs npm undici as the dispatcher of Node's own fetch (`09c45130`). A test now holds the dual-stack connection timeout of `630b6940` (`6cde269a`).
+
 Keep warm renews idle @ultimate's existing Claude Code cache, without transcript entries (`f9d91e85`). The user controls these billable pings (`extensions/keep-warm/README.md`).
 
 ## Where it lives
@@ -56,3 +60,6 @@ Keep warm renews idle @ultimate's existing Claude Code cache, without transcript
 - `ba854f0e` takes the model and the thinking level from one default
 - `f81d842b` records the family that a conversation started on
 - `a14a0ccc` reports Claude Code's own refusal of a turn
+- `9a0d2931` moves this repository's review and fast families to GPT-6.2 and adds Refresh model catalog
+- `db80d3fa` adds user-level `modelFamilies`
+- `446d54c6` reports a 402 response as a billing limit

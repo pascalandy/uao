@@ -66,3 +66,4 @@ The date of a decision is the date of its commit: `git log -1 --format=%ad --dat
 | [D042](D042-model-free-landing.md)            | 2026-10-28 | upstream | active           | Use one model-free path to the target branch               |
 | [D043](D043-model-families.md)                | 2026-10-28 | upstream | active           | Run agents and features on model families                  |
 | [D044](D044-branches-ask-the-user.md)         | 2026-10-30 | upstream | active           | Let branches ask after @ultimate weighs in                 |
+| [D045](D045-code-explains-itself.md)          | 2026-11-14 | upstream | active           | Let product code explain itself                            |

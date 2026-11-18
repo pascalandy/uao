@@ -8,7 +8,7 @@ The user talks to one agent, @ultimate, which keeps its conversation between vis
 
 The first-run walkthrough introduces Ultimate before project setup (`79107fdd`). It supports replay and skipping the remaining steps (`79107fdd`, `skills/how-ultimate-works/SKILL.md`). Start here stays in @ultimate's conversation until setup runs or the user dismisses it (`c5ec041a`, `08c63235`). An onboarding start whose run failed before an answer, for example because of an expired login, can start again (`b59483eb`, `e77a4a21`, `extensions/onboarding/README.md`).
 
-Voice can be a standing agent when live voice is enabled ([B12](B12-human-in-the-loop.md), `f3b257b6`). The lander is now code with a log conversation ([D042](../decisions/D042-model-free-landing.md)).
+A standing agent can send a message to the user, as @ultimate and branches can ([D044](../decisions/D044-branches-ask-the-user.md), `400f5758`). Voice can be a standing agent when live voice is enabled ([B12](B12-human-in-the-loop.md), `f3b257b6`). The lander is now code with a log conversation ([D042](../decisions/D042-model-free-landing.md)).
 
 @ultimate derives other local projects and their standing agents from project manifests (`08d193b3`, `extensions/messages/remote.ts`). The subagent prompt derives agent models from current definitions (`08d193b3`, `extensions/subagents/server.ts`). Instructions prohibit storing those derived facts in project memory (`08d193b3`, `agents/ultimate.md`).
 
@@ -35,3 +35,4 @@ Voice can be a standing agent when live voice is enabled ([B12](B12-human-in-the
 - `001a193d` adds the goal role to @ultimate
 - `33f42e7f` lets an experienced user turn onboarding off in user settings
 - `b59483eb` and `e77a4a21` let a failed onboarding start run again
+- `400f5758` lets standing agents message the user

@@ -8,6 +8,8 @@ Update reports an owed restart when `server/` or `shared/` differs from the buil
 
 The browser runs a production bundle, not the Vite dev server (`47c08a50`). A change to `web/` or a web facet rebuilds the bundle in a short-lived child process, and open pages switch to it with their view and drafts (`AGENTS.md`, `server/web.ts`). Reloads and restarts wait for the checkout and its packages after a landing (`1441b930`). When a facet fails to load against an old core, Update restarts the host through the checked swap (`f20cc792`, `ec0f235d`).
 
+A supervised core ignores SIGINT and SIGTERM and logs a warning, because only the supervisor stops it. Such a signal came from a stop of the whole service, or from an agent that killed a process by port or name (`4f2845dc`, `e402524f`, [Running the server](../../../docs/running.md)). Queued extension reloads stop when the server closes (`8030aac9`). On macOS, the supervisor opens the installed Chrome app of the origin, when there is one (`0cb60feb`).
+
 ## Where it lives
 
 - `bin/ultimate.ts`: the supervisor
@@ -37,3 +39,5 @@ The browser runs a production bundle, not the Vite dev server (`47c08a50`). A ch
 - `47c08a50` serves the web UI as a production bundle that a child process builds
 - `f20cc792` restarts the host when a facet fails to load against an old core
 - `1441b930` makes loads wait for the checkout and its packages after a landing
+- `4f2845dc` keeps the supervised core alive on outside signals
+- `0cb60feb` opens the installed Chrome app of the origin on macOS

@@ -1,6 +1,6 @@
 # Principles
 
-These rules shape every design choice in uao. Each principle links to the decisions behind it. Principle 11 has no decision file yet, so it cites its commit.
+These rules shape every design choice in uao. Each principle links to the decisions behind it.
 
 1. **The conversation outlives the code.** A change takes effect without ending the conversation that made the change. When possible, put behavior in an extension. Keep the supervisor tiny. Change the supervisor rarely (`AGENTS.md`). ([D001](decisions/D001-reload-by-layer.md), [D003](decisions/D003-supervisor-swap.md))
 2. **Before you show state, commit the state.** State reaches SQLite before the UI shows it. A tool that runs again after a crash must do no harm. An effect outside the transaction must accept a second run (`docs/durability.md`). ([D002](decisions/D002-pi-durable-sqlite.md))
@@ -12,6 +12,6 @@ These rules shape every design choice in uao. Each principle links to the decisi
 8. **Before you build, ask.** A question gets one proposal ([D017](decisions/D017-questions-get-proposals.md)). A feature gets an assessment ([D025](decisions/D025-assess-first.md)). The build waits for approval, which @ultimate can give during a user-granted hands-off goal ([D037](decisions/D037-goals-delegate-approvals.md)). A small, clear instruction gets done at once ([D025](decisions/D025-assess-first.md))
 9. **Wake only when needed.** Upward updates are notes ([D041](decisions/D041-state-based-waking.md)). Finished branches send waking reports ([D041](decisions/D041-state-based-waking.md)). The system prompt stays stable between turns to preserve the provider cache ([D026](decisions/D026-stable-system-prompt.md))
 10. **Remove what costs more than it gives.** Everything stays on record, so the agent can see what works. A feature that adds nothing goes, such as Sketch (`e6909945`). No backward-compatibility shims or speculative fallbacks (`AGENTS.md`). ([D014](decisions/D014-remove-canvas.md), [D028](decisions/D028-cloud-only-backs-up.md), [D030](decisions/D030-previews-on-real-models.md))
-11. **Rules about behavior live in prompts.** Prompts and agent definitions hold the rules about how agents behave. Code checks protect only against data loss, security problems, and impossible states. Lint enforces only what the user asked for (`AGENTS.md`, `6b8477d`)
+11. **Rules about behavior live in prompts.** Prompts and agent definitions hold the rules about how agents behave. Code checks protect only against data loss, security problems, and impossible states. Lint enforces only what the user asked for, and each lint message says why (`AGENTS.md`, `6b8477d`). Product code explains itself, without comments ([D045](decisions/D045-code-explains-itself.md))
 12. **Design each visible result.** A result that a person sees gets a renderer that matches the existing cards. ([D012](decisions/D012-design-visible-results.md))
 13. **Add, do not edit upstream.** uao keeps its own work in places that upstream does not edit, to decrease merge conflicts ([sync rule](upstream.md#sync-rule)). Source: uao. ([D034](decisions/D034-follow-upstream.md))

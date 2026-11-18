@@ -6,10 +6,10 @@ This file says how uao relates to `HazAT/ultimate`: the snapshot, the fork point
 
 Each status in the north-star is true at the snapshot:
 
-- Upstream: `HazAT/ultimate` at `11c89136`, 2026-11-10 (author date)
-- Fork: `pascalandy/uao` at `b3aef5f4`, 2026-11-11, the merge of this snapshot
+- Upstream: `HazAT/ultimate` at `6b6d88b6`, 2026-11-18 (author date)
+- Fork: `pascalandy/uao` at `09b162a4`, 2026-11-18, the merge of this snapshot
 
-`git log --oneline 11c89136..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
+`git log --oneline 6b6d88b6..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
 
 The [changelog review](changelog.md) compares the public entries with this snapshot and records later upstream changes. Read that review when you assess a sync. Later upstream entries do not change a brick's status until their code reaches uao.
 
@@ -21,6 +21,7 @@ The [changelog review](changelog.md) compares the public entries with this snaps
 - 2026-11-01: upstream `d0a2e17b` (2026-11-01), merged into uao by `739d025c`
 - 2026-11-09: upstream `32e45c95` (2026-11-10), merged into uao by `e683f686`, the first merge of the job `uao-sync`, run by hand before its first Wednesday
 - 2026-11-11: upstream `11c89136` (2026-11-10), merged into uao by `b3aef5f4`, the first Wednesday run of the job `uao-sync`
+- 2026-11-18: upstream `6b6d88b6` (2026-11-18), merged into uao by `09b162a4`, the second Wednesday run of the job `uao-sync`
 
 ## Fork point
 
@@ -40,13 +41,12 @@ uao does not change these files ([D034](decisions/D034-follow-upstream.md)). Rea
 - [Push permission](../../AGENTS.md#push-permission) and `docs/worktrees.md` name `origin` as `HazAT/ultimate`. In uao, `origin` is `pascalandy/uao`
 - `extensions/cloud/README.md` still places the backup Worker in `HazAT/ultimate-fleet`. The Worker code remains absent, so uao needs its own Worker for backups (inferred from `67caeb6` and `extensions/cloud/README.md`)
 - `README.md` and the [explainer](sources/explainer-page.md) give a setup prompt for `HazAT/ultimate` (`4c4b02f1`). A uao setup must use `pascalandy/uao` instead (inferred from the remotes)
-- `CONTRIBUTING.md` and `extensions/dream/DREAM.md` search `HazAT/ultimate` for feature reference PRs (`465cf344`). The contribution policy now accepts selected core improvements ([D016](decisions/D016-personal-project.md))
+- `CONTRIBUTING.md`, `extensions/dream/DREAM.md`, `agents/ultimate.md`, and `skills/integrate-ultimate/SKILL.md` search `HazAT/ultimate` for feature reference PRs (`465cf344`). The contribution policy now accepts selected core improvements ([D016](decisions/D016-personal-project.md))
 - `extensions/update/` compares the clone with `origin`. In uao, the extension follows `pascalandy/uao` (inferred from `extensions/update/README.md` and the remotes)
 - `.ultimate/settings.json` sets `"push": "origin"`, so the lander pushes to `pascalandy/uao` (inferred from the remotes)
 - `README.md` tells a fork to paste the changelog's follow prompt into @ultimate (`c19ee333`). uao does not need that prompt, because it merges upstream each week ([D034](decisions/D034-follow-upstream.md))
-- `lib/schema.ts` and `server/http.ts` cite `HazAT/ultimate` pull requests as the origin of workarounds (`91a29827`, `f16640f0`). The rule for such origin comments comes from `924a0b0c`. These links are history, not instructions
 
-The old machine-specific paths and user names in `docs/worktrees.md`, `docs/running.md`, and `extensions/pause/README.md` are gone (`eb5b61d2`). `AGENTS.md` no longer advertises the private backup Worker (`55544315`).
+The old machine-specific paths and user names in `docs/worktrees.md`, `docs/running.md`, and `extensions/pause/README.md` are gone (`eb5b61d2`). The comment cleanup removed the links to `HazAT/ultimate` pull requests from `lib/schema.ts` and `server/http.ts` (`950a7ef9`, `b889d083`, [D045](decisions/D045-code-explains-itself.md)). `AGENTS.md` no longer advertises the private backup Worker (`55544315`).
 
 ## Sync rule
 

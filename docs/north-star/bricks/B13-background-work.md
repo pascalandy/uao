@@ -8,6 +8,8 @@ Automation grants and the `act` operation are removed ([D039](../decisions/D039-
 
 Event filters and subscribers can name a standing agent across chapters (`extensions/automations/triggers.ts`, `extensions/automations/server.ts`). Context conditions can require a period without user input (`6c37a236`). Dream ships two context automations ([B15](B15-dreams-and-chapters.md)).
 
+Automations are now in the core tier, so settings cannot turn them off ([Core tier](../../../docs/extensions/core-tier.md), `4601a36c`). A skipped fire no longer counts toward the hourly cap (`bc938b06`, `985124ae`). `$AUTOMATION_STATE` is a folder, and a watcher script keeps its state in files inside it (`ef16ed0c`, `agents/watcher.md`). Code waits through the named helpers of `lib/timers.ts`, and signals replace polls where a signal already exists (`8e5b688c`).
+
 ## Where it lives
 
 - `extensions/automations/`: triggers, actions, the ledger, and the UI
@@ -31,3 +33,5 @@ Event filters and subscribers can name a standing agent across chapters (`extens
 - `903ce43e` keeps every subscriber delivery failure
 - `db1d8d12` gives a later chapter its own script folders in `<project>@<chapter>/<id>`
 - `bf6830af` and `42ab5da0` signal a process group only for an integer pid above 1, because `kill(-1)` reaches every process of the user (`lib/process-group.ts`)
+- `4601a36c` moves automations into the core tier
+- `bc938b06` stops counting skipped fires toward the hourly cap

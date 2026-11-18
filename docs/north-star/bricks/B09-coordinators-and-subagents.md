@@ -4,7 +4,7 @@ Status: shipped, at the snapshot. Source: upstream.
 
 A coordinator runs each branch. It assesses the request, plans, decides, and verifies. The coordinator delegates bounded work to subagents. Workers implement, scouts read, designers build UI from screenshots, and a reviewer leads a team of specialist reviewers. The post calls the coordinators "the real heroes of Ultimate".
 
-A coordinator continues unfinished work unless it is blocked or a child, the lander, or a reply will wake it (`agents/coordinator.md`). The watchdog notes branches idle for 30 minutes, or two hours when they wait for another conversation's reply (`extensions/watchdog/idle.ts`). Branches that wait for the user do not count as idle (`extensions/watchdog/idle.ts`).
+A coordinator continues unfinished work unless it is blocked or a child, the lander, or a reply will wake it (`agents/coordinator.md`). The watchdog no longer notes idle branches. Instead, the sidebar shows what each branch waits on ([B11](B11-notes-and-messages.md), `b5818c41`, `extensions/watchdog/README.md`). The watchdog reports a failure that a tally owns to @ultimate (`df9719c9`). Workers and coordinators run the project's own checks (`8efec082`). When a parent stops a child during its report, the child keeps the status that it settled with (`569ccc43`).
 
 An overlay can give a coordinator deferred tools, even when its base inherits every tool (`lib/agents.ts`, `extensions/messages/branch.ts`).
 
@@ -18,7 +18,7 @@ Shipped agent definitions name model families instead of pinned models (`741ec0d
 - `extensions/subagents/`: delegation
 - `extensions/messages/branch.ts`: the branch tool and the coordinator's model
 - `lib/agents.ts`: tool inheritance and deferred tools
-- `extensions/watchdog/`: failure reports and idle-branch notes
+- `extensions/watchdog/`: failure reports
 
 ## Decisions
 
@@ -46,3 +46,4 @@ Shipped agent definitions name model families instead of pinned models (`741ec0d
 - `fa6830aa` keeps model fallback within confirmed logins ([D038](../decisions/D038-models-follow-logins.md))
 - `6b0fb859` makes subagents on the fly
 - `0c176481` adds an optional family to the branch tool
+- `b5818c41` removes the idle-branch note of the watchdog
