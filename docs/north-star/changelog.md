@@ -1,8 +1,10 @@
 # Changelog review
 
-Source: upstream. This review uses the public [changelog](https://danielgriesser.com/ultimate/changelog/) and its [JSON feed](https://danielgriesser.com/ultimate/changelog/feed.json). The review date is 2026-11-18 UTC.
+Source: upstream. This review uses the public [changelog](https://danielgriesser.com/ultimate/changelog/) and its [JSON feed](https://danielgriesser.com/ultimate/changelog/feed.json). The review uses the feed as it was fetched at 07:03 UTC on 2026-11-18.
 
-The feed has 28 entries at the review date. Each commit that an entry lists is an ancestor of the [snapshot](upstream.md#snapshot). No entry describes code after the snapshot.
+At that fetch, the feed had 28 entries. Each commit that an entry lists is an ancestor of the [snapshot](upstream.md#snapshot). No entry described code after the snapshot.
+
+Later on 2026-11-18, upstream added two entries, [a reel of a branch's screenshots](https://danielgriesser.com/ultimate/changelog/reel/) and [talk a question through](https://danielgriesser.com/ultimate/changelog/talk-it-through/). Their seven commits are not in the snapshot, so the next sync reviews them. Upstream also added 12 commits to the fixes entry of 16 November and dated it 2026-11-17. These 12 commits are in the snapshot.
 
 ## Entries in the snapshot
 
@@ -58,4 +60,4 @@ curl -s https://danielgriesser.com/ultimate/changelog/feed.json |
 	while read -r sha; do git merge-base --is-ancestor "$sha" 6b6d88b6 || echo "$sha"; done
 ```
 
-At the review date, the script printed nothing for the 148 listed commits, and `upstream/main` was the snapshot.
+At the fetch of 07:03 UTC, the script printed nothing for the 148 listed commits, and `upstream/main` was the snapshot.
