@@ -14,15 +14,20 @@ Each extension keeps its tests in `extensions/<name>/test/`. That folder is not 
 
 A web facet can put a badge on any right-panel tab with `panelBadges` (`a99235ce`). With `Rendered`, an extension can draw a part of the UI of another extension again ([Contracts](../../../docs/extensions/contracts.md), `8d09848d`).
 
+Automations joined the core tier. The new core extension `entries` holds the entry kinds that extensions on the two sides of a dependency read, so a reader does not import the writer ([Core tier](../../../docs/extensions/core-tier.md), `4601a36c`, `0e27be80`). The Extensions panel shows core-tier extensions in an Always on section without a switch (`1fb18e43`). A surface can show a badge after its title (`7b2c18d8`). The web SDK adds `ComposerPlaceholder` and `EmptyTranscript` (`f2f72298`, `8504f1e2`). The `diagrams` extension draws `mermaid` code blocks as Unicode box diagrams (`c23dd36a`). A streamed update no longer makes the app and the sidebar draw everything again (`fa11fd0c`).
+
+Lint now enforces more rules on extension code: no comments except contract documentation ([D045](../decisions/D045-code-explains-itself.md)), timers only through `lib/timers.ts` (`b4f0474f`), and a case for each member of a union in a switch (`5d652bb5`). The rules and their checks are in a table in `AGENTS.md` (`b4f0474f`).
+
 ## Where it lives
 
 - `extensions/`: the built-ins, each with a README
 - `shared/extension-api.ts`: API tokens, the core-tier reader, and `defaultOff`
-- `server/discovery.ts` and `server/extensions.ts`: find and load server facets
+- `lib/discovery.ts` and `server/extensions.ts`: find and load server facets
 - `server/web.ts` and `server/web-build.ts`: build and serve the web bundle
 - `server/vite-extensions.ts` and `web/src/extensions.ts`: map and load each web facet
 - `web/src/sdk/`: the SDK that web facets import as `@/sdk`
 - `lint/ultimate.ts` and `scripts/deps.ts`: enforce the boundaries
+- `extensions/entries/`: entry kinds that core extensions share
 
 ## Decisions
 
@@ -30,6 +35,7 @@ A web facet can put a badge on any right-panel tab with `panelBadges` (`a99235ce
 - [D007](../decisions/D007-surfaces.md) Make apps surfaces beside the agent
 - [D024](../decisions/D024-typed-contracts-core-tier.md) Connect extensions through typed contracts
 - [D031](../decisions/D031-resource-built-ins-off.md) Disable by default the built-ins that need resources
+- [D045](../decisions/D045-code-explains-itself.md) Let product code explain itself
 
 ## Evidence
 
@@ -50,3 +56,6 @@ A web facet can put a badge on any right-panel tab with `panelBadges` (`a99235ce
 - `a67802e1` and `9c1cbdda` share `useAction` reads and key them by conversation
 - `a99235ce` adds `panelBadges`, and `8d09848d` adds `Rendered`
 - `96de0d29` removes the record of a dangling extension link
+- `4601a36c` moves automations into the core tier and adds `extensions/entries`
+- `b4f0474f` adds the timer helpers, the lint rule `ultimate/no-raw-timer`, and the rule table
+- `1fb18e43` puts core-tier extensions in an Always on section

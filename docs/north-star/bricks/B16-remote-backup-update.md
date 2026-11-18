@@ -12,6 +12,8 @@ Agents can start backups and clone updates through actions (`extensions/cloud/se
 
 An owed restart stays visible when core files changed since process start ([B02](B02-self-change-while-running.md), `fe5907cd`). The supervisor dashboard keeps the Tailscale URL above the local URL (`fc77dee5`).
 
+The projects rail at the left edge of the window lists each Ultimate that runs on this machine, so the user can switch projects with one click (`f5e963f1`, `extensions/projects/README.md`). The rail shows only while two or more projects run. Each project has its own color (`55da7426`, `extensions/projects/README.md`). On a page opened over the tailnet, the rail links use the Tailscale port (`5015bf60`). When Update fails, the status answers without the clone (`72bb1a1b`).
+
 Only the UI itself and loopback pages can frame it: the server sends a `Content-Security-Policy` header with a `frame-ancestors` directive (`751b5e44`, `dcd6d4b8`, `server/main.ts`). Tailscale reads the owner's login again while its status lacks it (`b8deef07`). `SECURITY.md` gives a security policy, with Tailscale, project trust, and prompt injection in its scope (`c21f2d6d`, `29f3db4e`).
 
 ## Where it lives
@@ -22,6 +24,7 @@ Only the UI itself and loopback pages can frame it: the server sends a `Content-
 - `extensions/update/`: updates
 - `lib/fast-forward.ts`: fetch and fast-forward
 - `lib/remote.ts`: local instances, user remotes, then the optional cloud register
+- `extensions/projects/`: the projects rail
 
 ## Decisions
 
@@ -40,3 +43,4 @@ Only the UI itself and loopback pages can frame it: the server sends a `Content-
 - `7849a479` prints the remote URL when Tailscale registers or removes it
 - `ec0f235d` restarts after a landing's install when facets still fail
 - `6187f056` leaves no `.part` file when a snapshot download fails at once
+- `f5e963f1` adds the projects rail

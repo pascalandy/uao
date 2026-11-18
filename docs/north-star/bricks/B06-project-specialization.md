@@ -12,7 +12,11 @@ An enabled extension can ship agent definitions in its own `agents/` folder (`ab
 
 An agent definition can name a model family ([D043](../decisions/D043-model-families.md)). A standing agent's frontmatter can set its icon and tint (`17157665`), and a `title` that the UI shows as its name (`b9fb3b92`). A subagent can also start without a definition, from a label, a family or a model, tools, and instructions (`6b0fb859`).
 
-Extensions declare their required secrets for setup and the Secrets panel (`457c5a53`, `40b17d20`). A named provider's login can satisfy a declared secret (`07172eed`).
+Extensions declare their required secrets for setup and the Secrets panel (`457c5a53`, `40b17d20`). A named provider's login can satisfy a declared secret (`07172eed`). An OpenAI API key login can supply the `OPENAI_API_KEY` of voice. An OAuth login cannot (`fa24927a`).
+
+An agent definition can list the skills that its agent sees in `skills:`. An empty list gives no skills, and no list gives all skills. The Agent card shows the listed skills as pills (`85b68619`, [Discovery and settings](../../../docs/settings.md)). The shipped scout, dream-pass, watcher, and reviewer definitions have empty lists (`3f1ca441`).
+
+A project's `.ultimate/settings.json` can set the name and the icon of its installed app with `app`, and fix the port with `port` (`b1012b4f`, [Discovery and settings](../../../docs/settings.md)). A taken port then stops the start with its number (`docs/running.md`). While the project's `.ultimate/` is undecided, setup shows a warning (`a100d9ff`).
 
 ## Where it lives
 
@@ -21,7 +25,7 @@ Extensions declare their required secrets for setup and the Secrets panel (`457c
 - `skills/write-extension/`, `skills/ui-preview-round/`, and `skills/verify-ui/`: procedures for extensions and UI checks
 - `server/skills.ts`: skill discovery, diagnostics, scopes, and `/skill:name` commands
 - `extensions/onboarding/`: setup cards, the project choice, and the Extensions panel
-- `server/discovery.ts` and `server/project-setup.ts`: precedence and trust
+- `lib/discovery.ts` and `lib/project-setup.ts`: precedence and trust
 - `lib/agents.ts`: definition discovery and overlay saves
 - `skills/adopt-ultimate-setup/SKILL.md`: selection and adaptation of this repository's project setup
 
@@ -46,3 +50,5 @@ Extensions declare their required secrets for setup and the Secrets panel (`457c
 - `ba7984e` keeps an overlay's `addTools` when its base inherits every tool
 - `710be091` adds a tour that adapts selected project setup without copying the whole folder
 - `e342ebe8` preserves symlinks during atomic JSON writes
+- `85b68619` adds the skills list of a definition
+- `b1012b4f` adds the app name, the app icon, and the fixed port of a project

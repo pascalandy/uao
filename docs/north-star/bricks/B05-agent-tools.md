@@ -12,6 +12,10 @@ Upstream removed Sketch, because no conversation used it outside its previews (`
 
 The browser tool runs Chromium with its sandbox on by default (`dbe9bb50`). It kills a browser that drops its connection and prefers Playwright's Chromium (`3fb5c2fc`). An automated browser never moves the user's tabs (`0040f365`). Codemode search filters by kind and returns compact hits by default (`1cc67661`). Codemode reads closed chapters through a read-only harness (`0d1e509f`).
 
+`bash` with `background: true` starts a command, such as a dev server, in its own process group. It records the group and returns the command that stops it (`5abd5a39`, `extensions/coding-tools/README.md`). Agents had stopped dev servers by name or port, and one such kill stopped the Ultimate core (`5abd5a39`). When a conversation concludes, a durable effect stops the groups that it started before the conclusion (`115c86e9`, `a9c6efb6`). The Git attribution hooks of `bash` apply only to their first worktree (`fe47d47f`). `ultimate.entries` in codemode returns a compact view, and `full: true` returns the stored records (`c9c1bb26`).
+
+The browser tool waits for a render before a screenshot (`b9cc436c`). A short `timeoutMs` no longer fails the launch (`d029734b`). A failed call names its error before the console errors (`1974900a`). A selector without a scope fails when it matches more than one element (`aa4f4917`, `bdbdac57`). The user can add a secret under a name of their choice from the Secrets panel (`29f05387`). A notice about a missing secret goes away when the user saves the secret (`a1abfdb3`).
+
 ## Where it lives
 
 - `extensions/coding-tools/`: read, write, edit, and bash
@@ -41,3 +45,5 @@ The browser tool runs Chromium with its sandbox on by default (`dbe9bb50`). It k
 - `e6909945` removes Sketch
 - `4b314408` starts child processes from a small helper process, so a launch does not stall the host
 - `6cc90767` limits `images: "latest"` to the current turn
+- `5abd5a39` adds background process groups to `bash`, and `115c86e9` stops them after a conclusion
+- `fe47d47f` limits the Git attribution hooks to their first worktree

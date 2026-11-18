@@ -4,7 +4,7 @@ Status: shipped, at the snapshot. Source: upstream.
 
 The user stays in control with no need to watch each conversation. Questions wait as answer cards until the user answers or dismisses them. The user can review a diff before it lands, pause the whole host, stop one bash call, and explore a tangent in a side chat.
 
-The Inbox lists each item that waits on the user, oldest first, and shows the answer card of the selected item (`995c52d4`, `extensions/inbox/README.md`). A row under @ultimate's sidebar row counts the items (`extensions/inbox/README.md`). An open question to the user ranks above work in progress on sidebar rows and on the phone button (`59136892`, `8bce83ea`).
+The Inbox lists each item that waits on the user, oldest first, and shows the answer card of the selected item (`995c52d4`, `extensions/inbox/README.md`). A row under @ultimate's sidebar row counts the items (`extensions/inbox/README.md`). An open question to the user ranks above work in progress on sidebar rows and on the phone button (`59136892`, `8bce83ea`). Other extensions can add items to the Inbox through `inbox.items` (`c497f99f`). The Inbox shows its count after its title (`7b2c18d8`). An answer card keeps its picks when the user leaves the surface and comes back (`63b8aaa7`).
 
 The cards render the structured questions of a message without a model (`extensions/questions/README.md`). A card offers choices, multiple choices, confirmation, text, or a scale, plus a separate comment field (`extensions/questions/README.md`). Branches ask in their own conversation after @ultimate weighs in ([D044](../decisions/D044-branches-ask-the-user.md)). @ultimate can settle those questions from the user's words in its chat (`7b09649d`).
 
@@ -12,7 +12,9 @@ The user can start one hands-off goal and let @ultimate make goal decisions and 
 
 The user can enable **Play by itself** to release a rate-limit pause after a chosen delay (`extensions/pause/README.md`). This setting is off by default, and only the user can change it (`extensions/pause/server.ts`). A pause that the user starts always waits for Play (`extensions/pause/server.ts`).
 
-Voice input inserts a recording's transcript into the unsent draft (`a0608d3f`). A live voice session instead lets Voice answer status questions and send work to @ultimate (`f3b257b6`, `26c21a52`). Both use an OpenAI API key for audio (`extensions/voice/README.md`, `extensions/voice-live/README.md`). Live voice ships off by default (`extensions/voice/README.md`, `extensions/voice-live/README.md`).
+Voice input inserts a recording's transcript into the unsent draft (`a0608d3f`). A live voice session instead lets Voice answer status questions and send work to @ultimate (`f3b257b6`, `26c21a52`). Both use an OpenAI API key for audio (`extensions/voice/README.md`, `extensions/voice-live/README.md`). Live voice ships off by default (`extensions/voice/README.md`, `extensions/voice-live/README.md`). In a live session, Voice can move the page, read open questions, and answer a question after it reads the answer back to the user (`799df8e1`).
+
+Read aloud puts a speaker button on agent messages. It plays the whole answer, which the summary model rewrites lightly for listening (`e78fefa8`, `extensions/read-aloud/README.md`). It uses OpenAI speech with a key, or browser speech without one (`extensions/read-aloud/README.md`). It is on by default, because `defaultOff` does not list it (`e78fefa8`, `shared/extension-api.ts`). The narrator can use a local command for speech (`e8de47a0`).
 
 The user can install the web app on a device's home screen (`12fd115c`). Draft images survive a page reload (`4eb6a626`). Between @ultimate's messages, the transcript folds updates and steps into one expandable line (`ebb71f13`).
 
@@ -38,6 +40,7 @@ The narrator is off by default (`extensions/sounds/web.tsx`). When enabled, the 
 - `extensions/side-chat/`: side chats
 - `extensions/sounds/`: sound cues
 - `extensions/voice/` and `extensions/voice-live/`: dictated drafts and live voice
+- `extensions/read-aloud/`: spoken answers
 - `extensions/attachments/`: uploaded files for the prompt
 - `extensions/push/` and `extensions/share/`: Web Push notifications and the share target
 - `web/public/manifest.webmanifest`: the installable web app
@@ -72,3 +75,6 @@ The narrator is off by default (`extensions/sounds/web.tsx`). When enabled, the 
 - `f46c0050` lets the user inject or discard again a side chat whose ending task faulted
 - `995c52d4` adds the Inbox
 - `a9d47b01` adds `TodosApi.add` and an optional idempotency key on `todos/add`
+- `c497f99f` lets other extensions add Inbox items
+- `799df8e1` lets Voice read and answer open questions
+- `e78fefa8` adds Read aloud

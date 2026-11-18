@@ -33,7 +33,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Branch**: a conversation that forks from the root or from a branch to do one feature, fix, or experiment. Its prompt is its first input (`extensions/lineage/README.md`). Not: a subagent
 - **Intent**: the one line that names a branch in the tally. The full prompt stays in the branch (`ad1b2dd`)
 - **Abstract**: the summary of one conversation in the tally. The abstract changes with the work. A landing keeps the abstract unchanged (`fc99691`)
-- **Project memory**: the decisions, facts, and lessons that a root keeps by slug. A new branch starts from a brief of this memory. Code: `lineage.memory`, tool `remember` (`4c1b652`)
+- **Project memory**: the decisions, facts, and lessons that a root keeps by slug. A new branch starts from a brief of this memory. A landing no longer writes it (`cd77dc1e`). Code: `lineage.memory`, tool `remember` (`4c1b652`)
 - **Memory surface**: the full-screen view of project memory. The sidebar's Memory row opens it (`21669aa1`)
 - **Recall**: an input hook that adds relevant project memories to @ultimate's context. It uses the optional `classify` extension (`48f2f2e6`)
 - **Catch-up**: the update that a branch receives when it resumes. It holds the new tally events of its tree, then the new commits on its target (`extensions/lineage/README.md`)
@@ -97,6 +97,8 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Panel**: a tab in the right panel (`docs/extensions/slots.md`)
 - **Surface**: a full-screen app that the user switches to. The Agent surface is the conversation. The agent is accessible with one keystroke on every surface (`790c34e`)
 - **Codemode**: a tool that runs one JavaScript script in a QuickJS sandbox. The script can call tools and read Ultimate's state (`extensions/codemode/README.md`)
+- **Entries extension**: the core extension that holds the entry kinds that extensions on the two sides of a dependency read (`4601a36c`, `extensions/entries/README.md`)
+- **Projects rail**: the switcher at the left edge of the window. It lists each Ultimate that runs on this machine (`f5e963f1`, `extensions/projects/README.md`)
 - **MCP**: Model Context Protocol. Ultimate connects external tool servers and exposes them through one `mcp` tool (`5eae312d`, `extensions/mcp/server.ts`)
 - **Web bundle**: the production build of `web/` and the enabled web facets that the browser runs. A child process builds it, and open pages switch to a new bundle after a change (`47c08a50`, `server/web.ts`). Not: the Vite dev server, which the browser no longer uses
 - **Wire**: an optional System tab that keeps the raw request and response of a conversation's recent model calls. It ships off by default (`9b8f1866`, `c16450c9`, `extensions/wire/README.md`)
@@ -119,6 +121,8 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **To-do**: an open item for the user or for @ultimate, in one short list for each project (`extensions/todos/README.md`)
 - **Side chat**: a temporary fork of @ultimate for a tangent. The user discards it, or injects a summary into the main conversation (`extensions/side-chat/README.md`)
 - **Voice input**: microphone recording that becomes unsent text at the composer's cursor. Not: a live voice session (`a0608d3f`)
+- **Read aloud**: a speaker button on agent messages that plays the whole answer, lightly rewritten for listening (`e78fefa8`, `extensions/read-aloud/README.md`). Not: the narrator
+- **Wait label**: the label on a sidebar row or a System lane that says what a conversation waits on: work, the user, an agent, a remote project, a timer, or its starter (`900c96cc`, `lib/waits.ts`)
 - **Narrator**: optional speech for questions, failures, landings, and new branches. It uses OpenAI audio when a key is present, or browser speech otherwise (`451ac392`)
 - **Push notification**: a Web Push message from the optional `push` extension for a question, a landing, or a failed run of @ultimate. A question's notification can carry Reply and Approve (`ff44988c`, `extensions/push/README.md`)
 - **Attachment**: a file that the user adds to a draft. An image goes inline. Another file uploads to the host, and the prompt names its path (`80016496`, `extensions/attachments/README.md`)
@@ -129,6 +133,8 @@ This file defines the names in uao. Each thing has one name, and each name has o
 
 - **Task**: a unit of work that Pi Durable runs and checkpoints, such as a model request or a tool call ([Pi Durable](https://earendil.com/posts/pi-durable/)). Not: a task in a plan of `extensions/plan/`
 - **Epic**: a plan record for a piece of work, its approach, and its acceptance criteria. An epic can have no plan tasks (`extensions/plan/README.md`, `34624b5d`)
+- **Effect task**: a durable task for an effect outside the store, such as a post or a push. The commit that decides the effect creates it, and it runs at least once (`4dfe1142`, `lib/effect.ts`)
+- **Background group**: a process group that `bash` starts with `background: true`. Ultimate records it and stops it after its conversation concludes (`5abd5a39`, `extensions/coding-tools/README.md`)
 - **Replay-safe**: a tool that can run again after a crash with no harm. Pi Durable runs an interrupted tool again only when it has this mark (`docs/durability.md`)
 - **Automation**: a rule for background work that acts when its trigger fires. Code: the tool `automation` (`extensions/automations/README.md`)
 - **Trigger**: the condition that fires an automation. A trigger uses a schedule, a script, a domain event, or a context threshold (`extensions/automations/README.md`)

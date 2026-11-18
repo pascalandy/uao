@@ -36,7 +36,7 @@ flowchart LR
 The layers go from the foundation up. A layer depends only on the layers below it. `pnpm check` enforces the boundaries between extensions (`AGENTS.md`).
 
 1. **Pi and Pi Durable.** Durable conversations, tasks, hooks, and providers. The packages are pinned, and `patches/` holds local patches ([Borrowed from Pi](../pi-upstream.md))
-2. **Core.** `server/` holds the harness, the storage, the HTTP API, discovery, and the web bundle. `shared/protocol.ts` holds the contracts between server and browser
+2. **Core.** `server/` holds the harness, the storage, the HTTP API, and the web bundle. Discovery and project setup moved to `lib/` (`4c6ef265`). `shared/protocol.ts` holds the contracts between server and browser
 3. **Web core.** `web/` holds the surface host and its primitives, the SDK, the transcript, the composer, and the palette
 4. **Core tier.** The extensions that are always on. Each depends only on the core tier. [Core tier](../extensions/core-tier.md) names them
 5. **Optional built-ins.** The other built-ins. They reach the core tier through points or events
@@ -72,7 +72,7 @@ These flows connect the parts at the snapshot. The linked files hold the mechani
 - **A feature lands.** [Life of a change unit](history.md#life-of-a-change-unit) gives the steps from @ultimate to `main`
 - **A crash.** The supervisor starts a new generation (`bin/ultimate.ts`). The generation opens the storage of the active chapter, and the harness resumes (`server/harness.ts`). A reactor commits its writes and its cursor in one transaction (`server/events.ts`). Messages and the lander keep receipts and checkpoints, so a second run does no harm (`extensions/messages/send.ts`, `extensions/workspaces/lander.ts`). [Durability](../durability.md) holds the rules
 - **A question to the user.** Branches ask after @ultimate weighs in ([D044](decisions/D044-branches-ask-the-user.md)). The `message` tool validates structured questions (`extensions/messages/questions.ts`). Answer cards render them without a model (`extensions/questions/README.md`). A branch's question creates a pointer in @ultimate's chat, and the answer reaches it as a note (`5014cc55`, `extensions/messages/notice.ts`). @ultimate can settle the card from the user's words in its chat (`7b09649d`). During a hands-off goal, @ultimate decides most questions itself ([D037](decisions/D037-goals-delegate-approvals.md))
-- **An answer to a branch.** When only branches' replies or reports made up @ultimate's run, its answer wakes each eligible branch (`dce7b5cf`, `aaa55768`). The next answer does not repeat that exchange ([D041](decisions/D041-state-based-waking.md))
+- **An answer to a branch.** @ultimate's answer wakes each eligible branch whose reply or report was an input of its run, also when the run had other inputs (`dce7b5cf`, `b015f0fa`). The next answer does not repeat that exchange ([D041](decisions/D041-state-based-waking.md))
 - **A compaction.** The deferred `compact` tool commits a compaction with its wake-up for a non-subagent conversation (`extensions/lineage/server.ts`). @ultimate's manual compaction uses its own hook (`extensions/lineage/server.ts`). Automatic compaction continues the current run (`extensions/lineage/server.ts`). Dreams start from separate context automations ([B15](bricks/B15-dreams-and-chapters.md))
 - **A hands-off goal.** The user's start action commits the goal and its delivery task (`extensions/goal/server.ts`). Each input reads the current goal into a note before @ultimate runs (`extensions/goal/server.ts`). @ultimate records goal decisions and ends with a goal report ([B12](bricks/B12-human-in-the-loop.md)). A queued start after the goal ends grants nothing (`65a251f`)
 - **A dream.** @ultimate starts an ordinary branch and weighs in on its proposals ([D040](decisions/D040-dream-as-ordinary-work.md)). The dream branch asks the user (`e34af09d`). @ultimate can prepare a chapter, and the user authorizes the switch (`extensions/dream/server.ts`)
@@ -89,7 +89,7 @@ These flows connect the parts at the snapshot. The linked files hold the mechani
 | `server/web.ts`            | Builds, serves, and switches the production web bundle                         | [Running the server](../running.md)                                |
 | `server/harness.ts`        | Opens Pi Durable on the active chapter                                         | [Durability](../durability.md)                                     |
 | `server/api.ts`            | HTTP routes, extension actions, UI writes, and the event stream                | [Running the server](../running.md)                                |
-| `server/discovery.ts`      | Finds built-in, user, and project resources, in order                          | [Discovery and settings](../settings.md)                           |
+| `lib/discovery.ts`         | Finds built-in, user, and project resources, in order                          | [Discovery and settings](../settings.md)                           |
 | `server/extensions.ts`     | Loads server facets with their tools, hooks, and actions                       | [Server facets](../extensions/server.md)                           |
 | `server/trace.ts`          | The call trace                                                                 | [Tracing](../extensions/introspection.md#tracing)                  |
 | `shared/protocol.ts`       | Typed contracts between server and browser                                     | `AGENTS.md`                                                        |
@@ -97,6 +97,8 @@ These flows connect the parts at the snapshot. The linked files hold the mechani
 | `lib/`                     | Shared helpers: exec, git, JSON files, settings, secrets, and chapters         | `AGENTS.md`                                                        |
 | `lib/agents.ts`            | Agent definitions, overlay saves, and deferred tools                           | [Subagents](../subagents.md)                                       |
 | `lib/ago.ts`               | The relative-time formatter that server code and the web SDK share             | `0104d7a`                                                          |
+| `lib/effect.ts`            | Durable effect tasks for effects outside the store                             | [Durability](../durability.md)                                     |
+| `lib/timers.ts`            | The named timer helpers that lint requires                                     | `b4f0474f`                                                         |
 | `web/src/`                 | The app shell, the surface host, and the extension registry                    | [Writing extensions](../../extensions/README.md)                   |
 | `web/src/sdk/`             | The SDK that web facets import as `@/sdk`, including `Card` and `formatAgo`    | [SDK](../extensions/sdk.md)                                        |
 | `extensions/`              | The built-ins, each with a README                                              | [Writing extensions](../../extensions/README.md)                   |
@@ -116,9 +118,12 @@ These flows connect the parts at the snapshot. The linked files hold the mechani
 | `extensions/keep-warm/`    | Idle cache pings, outside the task scheduler                                   | [Keep warm](../../extensions/keep-warm/README.md)                  |
 | `extensions/voice-live/`   | WebRTC sessions and durable Voice-to-@ultimate delivery                        | [Live voice](../../extensions/voice-live/README.md)                |
 | `extensions/status/`       | Read-only instance summary for dashboards                                      | [Status](../../extensions/status/README.md)                        |
+| `extensions/entries/`      | Entry kinds that core extensions on both sides of a dependency read            | [Entries](../../extensions/entries/README.md)                      |
+| `extensions/projects/`     | The projects rail for each Ultimate on this machine                            | [Projects](../../extensions/projects/README.md)                    |
+| `extensions/read-aloud/`   | Spoken agent answers                                                           | [Read aloud](../../extensions/read-aloud/README.md)                |
 | `.ultimate/`               | The project setup of this repository: checks, push target, review team         | [.ultimate/README.md](../../.ultimate/README.md)                   |
 | `scripts/`                 | Dependency graph check, reset, restore, and machine setup                      | `package.json`                                                     |
-| `lint/`                    | Custom lint rules for boundaries, durability, and fast tests                   | `AGENTS.md`                                                        |
+| `lint/`                    | Custom lint rules for boundaries, durability, timers, comments, and fast tests | [Review quality](../../AGENTS.md#review-quality)                   |
 | `test/`                    | Core tests, tests across extensions, and shared helpers                        | [Tests](../../extensions/README.md#tests)                          |
 | `extensions/<name>/test/`  | One extension's tests, with browser tests and e2e tests in subfolders          | [Tests](../../extensions/README.md#tests)                          |
 | `patches/`                 | Pinned patches to Pi packages                                                  | [Borrowed from Pi](../pi-upstream.md)                              |
