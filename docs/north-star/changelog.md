@@ -2,7 +2,7 @@
 
 Source: upstream. This review uses the public [changelog](https://danielgriesser.com/ultimate/changelog/) and its [JSON feed](https://danielgriesser.com/ultimate/changelog/feed.json). The review date is 2026-11-18 UTC.
 
-The feed has 28 entries. Each commit that an entry lists is an ancestor of the [snapshot](upstream.md#snapshot). No entry describes code after the snapshot.
+The feed has 28 entries at the review date. Each commit that an entry lists is an ancestor of the [snapshot](upstream.md#snapshot). No entry describes code after the snapshot.
 
 ## Entries in the snapshot
 
