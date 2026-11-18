@@ -62,7 +62,9 @@ Info's Workspace section (`Workspaces` in `ui.tsx`) shows the lander queue, the 
 statistics over every checkout, read-only: landing goes through agents. Concluding a conversation can release its clean, landed checkout.
 `isolation` says why the project cannot be isolated, if it cannot; `info {id}` reads the record and current tips; `create {cwd?, title?}` returns a new conversation ID.
 `github` returns `https://github.com/<owner>/<repo>` of the project's `origin`, or null off GitHub; landing cards and
-the root row link commit ranges with it.
+the root row link commit ranges with it. `repo` returns the same repository as `{key, name, url, visibility?}` for the
+sidebar's project header: `name` and `visibility` come from one `gh repo view` per process (`readGithubRepo`,
+`lib/project-identity.ts`), and without `gh`, signed out or offline it is the key's `owner/repo` without a visibility.
 The service's `land(id)` fast-forwards a worker's source (its owner's checkout) to the worker's clean tip, for
 `subagent land`; it refuses moved or diverged targets and never rebases or pushes. The only way to the project's
 target branch is `workspace submit`.
@@ -181,7 +183,8 @@ lander's sidebar row shows the feature it lands or landed last.
      commit the submitter is concluded unless work is still under way: messages' `underway` (a run or queued input, a
      busy subagent, a reply-enabled message of its own still open, a pending notify or subagent report), through the
      `workspaces.branches` extension point messages provides. Then the conversation that started the branch
-     (`starter`, from the same extension point) wakes with the same card, saying whether the branch is concluded or
+     (`starter`, from the same extension point) wakes with the same card, its text cut to one line (branch, sha,
+     pushed, `needs restart`, flaky checks) plus the divergence, saying whether the branch is concluded or
      still has work under way (which then reports when it stops, as any branch does). Last, a concluded branch's
      checkout is released. A root or standing agent refuses concluding and stays open. Any later input resumes a
      concluded branch.

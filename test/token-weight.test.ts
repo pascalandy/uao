@@ -1,8 +1,8 @@
-import { writeFile } from 'node:fs/promises'
+import { rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, it } from 'vitest'
 import { git } from '../lib/git.ts'
-import { areaOf, weightDelta } from '../lib/token-weight.ts'
+import { areaOf, landingWeight, weightDelta } from '../lib/token-weight.ts'
 import { temp } from './helpers.ts'
 
 const commit = async (repo: string, files: Record<string, string>) => {
@@ -22,6 +22,11 @@ it('weighs a landing in lines and estimated tokens, leaving out the lockfile', a
     'pnpm-lock.yaml': 'z'.repeat(4000) + '\n',
   })
   expect(await weightDelta(repo, base, sha)).toEqual({ added: 2, removed: 1, tokens: 200 })
+  // Weighs only what changed: a deleted file takes its bytes away, an untouched one is not read.
+  await rm(join(repo, 'b.md'))
+  const deleted = await commit(repo, { 'c.ts': 'w'.repeat(39) + '\n' })
+  expect(await weightDelta(repo, sha, deleted)).toEqual({ added: 1, removed: 1, tokens: -90 })
+  expect(await weightDelta(repo, sha, sha)).toEqual({ added: 0, removed: 0, tokens: 0 })
   expect(
     [
       'server/main.ts',
@@ -32,4 +37,15 @@ it('weighs a landing in lines and estimated tokens, leaving out the lockfile', a
       'skills/s/SKILL.md',
     ].map(areaOf),
   ).toEqual(['core', 'extensions', 'tests', 'docs', 'agents', 'skills'])
+})
+
+it('leaves the weight out instead of failing when it cannot be taken', async () => {
+  const repo = await temp('ultimate-weight-')
+  await git(repo, 'init', '-q', '-b', 'main')
+  const base = await commit(repo, { 'a.ts': 'x'.repeat(400) + '\n' })
+  const sha = await commit(repo, { 'a.ts': 'x'.repeat(800) + '\n' })
+  expect(await landingWeight(repo, base, sha)).toEqual(await weightDelta(repo, base, sha))
+  // A listing that fails, as the tree of a monorepo does past the buffer, is no reason to fail the landing.
+  await expect(weightDelta(repo, 'no-such-revision', sha)).rejects.toThrow('no-such-revision')
+  expect(await landingWeight(repo, 'no-such-revision', sha)).toBeUndefined()
 })
