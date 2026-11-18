@@ -33,7 +33,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Branch**: a conversation that forks from the root or from a branch to do one feature, fix, or experiment. Its prompt is its first input (`extensions/lineage/README.md`). Not: a subagent
 - **Intent**: the one line that names a branch in the tally. The full prompt stays in the branch (`ad1b2dd`)
 - **Abstract**: the summary of one conversation in the tally. The abstract changes with the work. A landing keeps the abstract unchanged (`fc99691`)
-- **Project memory**: the decisions, facts, and lessons that a root keeps by slug. A new branch starts from a brief of this memory. Only `remember` and the dream's memory pass write it (`cd77dc1e`). Code: `lineage.memory`, tool `remember` (`4c1b652`)
+- **Project memory**: the decisions, facts, and lessons that a root keeps by slug. A new branch starts from a brief of this memory. A landing no longer writes it (`cd77dc1e`). Code: `lineage.memory`, tool `remember` (`4c1b652`)
 - **Memory surface**: the full-screen view of project memory. The sidebar's Memory row opens it (`21669aa1`)
 - **Recall**: an input hook that adds relevant project memories to @ultimate's context. It uses the optional `classify` extension (`48f2f2e6`)
 - **Catch-up**: the update that a branch receives when it resumes. It holds the new tally events of its tree, then the new commits on its target (`extensions/lineage/README.md`)

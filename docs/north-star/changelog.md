@@ -52,7 +52,7 @@ Seven entries are new in the feed since the review of 2026-11-11. The Inbox entr
 
 ## Reproduce the comparison
 
-These commands use the fetched feed and the `upstream` remote. The script prints each listed commit that is not an ancestor of the snapshot. No output means that every listed commit is in the snapshot:
+These commands compare the live feed with the snapshot through the `upstream` remote. The script prints each listed commit that is not an ancestor of the snapshot. No output means that every listed commit is in the snapshot:
 
 ```bash
 curl -s https://danielgriesser.com/ultimate/changelog/feed.json |
@@ -60,4 +60,4 @@ curl -s https://danielgriesser.com/ultimate/changelog/feed.json |
 	while read -r sha; do git merge-base --is-ancestor "$sha" 6b6d88b6 || echo "$sha"; done
 ```
 
-At the fetch of 07:03 UTC, the script printed nothing for the 148 listed commits, and `upstream/main` was the snapshot.
+At the fetch of 07:03 UTC, the script printed nothing for the 148 listed commits, and `upstream/main` was the snapshot. A later run also prints the seven commits of the two later entries.

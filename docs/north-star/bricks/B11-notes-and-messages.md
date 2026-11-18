@@ -18,7 +18,7 @@ Branches can ask the user directly after @ultimate weighs in ([D044](../decision
 
 @ultimate's final answer reaches each branch whose reply or report it read in that run (`b015f0fa`). A message to the user ends the run like a final answer (`cba8151e`, `extensions/messages/README.md`). It does not end the run while a branch that the run read waits for its answer, or while the run owes a request its result (`4fe7c0e1`, `f6b61e8f`). An automation that a run creates while it owes a request answers that request with its first fire. That fire also answers the branches that the creating run read (`1607dc9e`, `b5818c41`). One answer to several messages arrives once (`2d99681e`).
 
-The sidebar, the System lanes, and the Open messages popover show what each conversation waits on: work, the user, an agent, a remote project, a timer, or its starter (`900c96cc`, `lib/waits.ts`). For a remote `tell`, the reply is the wait, and the label shows the progress of the remote project (`70a00e62`, `20941e80`). `tell` posts from a durable effect task. A crash no longer leaves a message `sent` with no post (`4dfe1142`), and Stop cancels a `tell` that has not finished (`424101e3`).
+Sidebar rows and System lanes show what each conversation waits on: work, the user, an agent, a remote project, a timer, or its starter (`900c96cc`, `lib/waits.ts`). For a remote `tell`, the reply is the wait, and the label shows the progress of the remote project (`70a00e62`, `20941e80`). `tell` posts from a durable effect task. A crash no longer leaves a message `sent` with no post (`4dfe1142`), and Stop cancels a `tell` that has not finished (`424101e3`).
 
 ## Where it lives
 

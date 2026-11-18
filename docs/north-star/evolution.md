@@ -31,7 +31,7 @@ The runtime risk follows the layer, not the count. A broken web facet shows an e
 | Supervisor          | `bin/`                            | None   | `pnpm start` only      | Base                   | Medium, 34         |
 | Built-in definition | `agents/<name>.md`                | Beside | Note 3                 | Base                   | High, 141          |
 | Project definition  | A new file in `.ultimate/agents/` | Beside | At its next start      | Base                   | Low, note 4        |
-| Project setting     | `.ultimate/settings.json`         | Beside | Live                   | Base                   | Medium, 29         |
+| Project setting     | `.ultimate/settings.json`         | Beside | Live, `port` at start  | Base                   | Medium, 29         |
 | Personal setting    | `~/.ultimate/settings.json`       | Beside | Live                   | None                   | None               |
 | Project skill       | `.ultimate/skills/<name>/`        | Beside | Note 3                 | Base                   | Medium, 37         |
 | Pi patch            | `patches/`, `pnpm-workspace.yaml` | 1      | Note 5                 | Base, note 5           | Medium, 45, note 5 |

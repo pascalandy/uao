@@ -14,7 +14,7 @@ A preview's `HOME` is its own folder, with the other entries of the real home li
 
 A landing's weight now counts only its diff, and a repository too large to weigh never fails a landing (`e59a9873`, `e4a143e3`). The lander runs the tests with `TMPDIR` on tmpfs again, not in the host home (`412781c0`). The starter gets a one-line landing card that names the pushed commit, with the divergence (`cbc96a2c`, `9bd52084`). The landing card also shows the acceptance criteria that the branch met ([B07](B07-conversation-tree.md), `53e54861`).
 
-A crash no longer leaves preview servers running (`058c555e`). A preview with read-only copies or a deleted home still stops (`c65112fb`). `instance start` can take a model for one start, so a check does not edit the user settings (`06c356c2`). The sidebar shows when a branch waits on its reviewers or on a preview (`655ed511`).
+A crash no longer leaves preview servers running (`058c555e`). A preview with read-only copies or a deleted home still stops (`c65112fb`). `instance start` can take a model for one start, so a check does not edit the user settings (`06c356c2`). A sidebar row shows `reviewing`, `preview up`, or `preview awaits you` for a branch (`655ed511`, `extensions/sidebar/root.tsx`).
 
 ## Where it lives
 

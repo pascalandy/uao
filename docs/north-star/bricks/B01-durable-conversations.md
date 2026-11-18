@@ -13,7 +13,8 @@ When a server closes, the release callbacks of the extensions run first. Then th
 ## Where it lives
 
 - `server/harness.ts`: opens Pi Durable on the active chapter
-- `server/project.ts`: finds the home of each project
+- `lib/project-paths.ts`: finds the home of each project
+- `server/project.ts`: the manifests of the projects on this machine
 - `extensions/lineage/server.ts`: self-compaction and wake-up tasks
 - `patches/`: version-pinned patches to Pi packages
 - `lib/effect.ts`: durable effect tasks
