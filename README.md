@@ -1,5 +1,7 @@
 # Ultimate
 
+![Isometric drawing of a lakeside tower-house whose rooftop crane lifts a pergola-covered terrace into place above the lit library and gym](docs/assets/hero-v2b.png)
+
 > [!NOTE]
 > **A personal project, shared as inspiration.** Ultimate is not a library or a product with users to support. Copy
 > what you like, fork it, do whatever you want with it. To make it work your way, ask Ultimate to change itself; it
