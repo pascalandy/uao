@@ -15,6 +15,8 @@ import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { discoverAgents } from '../../lib/agents.ts'
+import { providerKeyStandsIn } from '../../lib/openai.ts'
+import { readFamilyLayers } from '../../lib/families-settings.ts'
 import { isolatable } from '../../lib/git.ts'
 import { implementAction } from '../../lib/actions.ts'
 import { meansNone } from '../../lib/errors.ts'
@@ -23,7 +25,7 @@ import { readSecret, secretMetadata } from '../../lib/secrets.ts'
 import type { ExtensionHost } from '../../server/extensions.ts'
 import { ConversationsApi } from '../conversations/api.ts'
 import { HealthApi } from '../health/api.ts'
-import type { MemoryDoc, RootsDoc, TallyDoc } from '../lineage/refs.ts'
+import { Memory, Roots, Tally } from '../lineage/api.ts'
 import { Standing } from '../subagents/api.ts'
 import { TailscaleApi } from '../tailscale/api.ts'
 import { CheckAction } from './refs.ts'
@@ -53,15 +55,11 @@ type CheckHost = Pick<
   | 'extensions'
   | 'need'
   | 'want'
-  | 'doc'
   | 'harness'
 >
 
 const configured = (host: Pick<CheckHost, 'modelRuntime'>, provider: string) =>
   host.modelRuntime.getProviderAuthStatus(provider).configured
-
-const configuredNonOAuthApiKey = (host: Pick<CheckHost, 'modelRuntime'>, provider: string) =>
-  configured(host, provider) && !host.modelRuntime.isUsingOAuth(provider)
 
 const loggedIn = (host: Pick<CheckHost, 'modelRuntime'>) =>
   host.modelRuntime.getAvailableSnapshot().length > 0
@@ -153,6 +151,16 @@ async function agentsArea(host: AreaHost): Promise<SetupIssue[]> {
   return issues
 }
 
+async function familiesArea(host: AreaHost, { settings }: AreaInputs) {
+  const { errors } = await readFamilyLayers(host.userHome, host.projectRoot, (await settings) ?? {})
+  return errors.map((error): SetupIssue => ({
+    area: 'Model families',
+    status: 'warn',
+    summary: 'a modelFamilies setting is invalid',
+    impact: error,
+  }))
+}
+
 const shortPath = (host: Pick<CheckHost, 'projectRoot' | 'userHome'>, path: string) =>
   path.startsWith(`${host.projectRoot}/`)
     ? path.slice(host.projectRoot.length + 1)
@@ -195,7 +203,7 @@ async function secretsArea(host: AreaHost): Promise<SetupIssue[]> {
     if (!extension.enabled || !extension.server || extension.server.error) continue
     const missing = extension.layer === 'default' ? optional : chosen
     for (const { name, provider } of extension.server.secrets ?? [])
-      if (!set.has(name) && !(provider && configuredNonOAuthApiKey(host, provider)))
+      if (!set.has(name) && !(provider && providerKeyStandsIn(host.modelRuntime, provider)))
         missing.set(name, [...(missing.get(name) ?? []), extension.name])
   }
   for (const name of chosen.keys()) optional.delete(name)
@@ -336,10 +344,10 @@ async function worktreeArea(host: AreaHost, inputs: AreaInputs): Promise<SetupIs
   }
 }
 
-type ReadCurrentDoc = (
-  doc: ConversationDocToken<JsonObject>,
+type ReadCurrentDoc = <T extends JsonObject>(
+  doc: ConversationDocToken<T>,
   id: ConversationId,
-) => Promise<Readonly<JsonObject> | undefined>
+) => Promise<Readonly<T> | undefined>
 
 const snapshots =
   (host: Pick<CheckHost, 'harness'>): ReadCurrentDoc =>
@@ -351,19 +359,12 @@ type AreaHost = Omit<CheckHost, 'projectSettings' | 'projectSetup'>
 type AreaInputs = { read: ReadCurrentDoc; settings: Promise<JsonObject | undefined> }
 
 async function memoryArea(host: AreaHost, { read }: AreaInputs): Promise<SetupIssue | undefined> {
-  const rootsDoc = host.doc('lineage.roots')
-  const memoryDoc = host.doc('lineage.memory')
-  const tallyDoc = host.doc('lineage.tally')
-  if (!rootsDoc || !memoryDoc || !tallyDoc) return undefined
-  const listed = (await read(rootsDoc, ROOT_CONVERSATION_ID)) as
-    | (typeof RootsDoc)['value']
-    | undefined
+  const listed = await read(Roots, ROOT_CONVERSATION_ID)
   const empty: number[] = []
   for (const root of listed?.roots ?? []) {
-    const tally = (await read(tallyDoc, root)) as (typeof TallyDoc)['value'] | undefined
-    const rootHasNeverBranched = tally?.since === undefined
+    const rootHasNeverBranched = (await read(Tally, root))?.since === undefined
     if (rootHasNeverBranched) continue
-    const doc = (await read(memoryDoc, root)) as (typeof MemoryDoc)['value'] | undefined
+    const doc = await read(Memory, root)
     if (!Object.keys(doc?.memories ?? {}).length) empty.push(root)
   }
   if (!empty.length) return undefined
@@ -411,6 +412,7 @@ export async function check(
         loginArea,
         summaryArea,
         agentsArea,
+        familiesArea,
         providersArea,
         secretsArea,
         extensionsArea,
@@ -475,7 +477,11 @@ export default function setup(host: ExtensionHost) {
   const burstCheckCacheMs = 30_000
   const current = async (tx: Tx) => {
     if (Date.now() - cache.at > burstCheckCacheMs) {
-      cache.issues = await check(host, (doc, id) => tx.doc(doc, id))
+      cache.issues = await check(
+        host,
+        <T extends JsonObject>(doc: ConversationDocToken<T>, id: ConversationId) =>
+          tx.doc(doc, id) as Promise<Readonly<T>>,
+      )
       cache.at = Date.now()
     }
     return cache.issues
@@ -484,7 +490,7 @@ export default function setup(host: ExtensionHost) {
     name: 'setup',
     hooks: [
       hook(GenerationTask, {
-        // Pi upstream: @earendil-works/pi-durable@1.5.2 — patched transactional beforeInput hook.
+        // Pi upstream: @earendil-works/pi-durable@1.6.0 — patched transactional beforeInput hook.
         beforeInput: async function cachePreservingInputNote(_input, { tx, conversationId }) {
           const standing = await tx.doc(Standing, ROOT_CONVERSATION_ID)
           if (standing.ultimate !== conversationId) return undefined

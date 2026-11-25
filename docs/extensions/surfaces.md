@@ -8,7 +8,7 @@ usually docked beside it. The `documents` extension provides the Documents tab.
 
 - **Switching**: the title bar lists the surfaces as tabs (Agent first, then by `order`, then title); on phones the brand
   opens them as a menu. ⌘K has "Switch to …"; `mod+1…9` select the first nine (Ctrl+1…9 off macOS, which Chrome lets
-  the page take before its tab switching). In code: `useUltimate().showSurface(id)` or
+  the page take before its tab switching). In code: `showSurface(id)` from `@/sdk/solid` or
   `context.showSurface(id)` in a command. Switching never interrupts the agent: the run goes on, and the transcript and
   the composer's draft are where they were.
 - **Durable**: the choice is UI state `shell.surface`; it survives reloads and restarts and follows every tab. Until the
@@ -17,7 +17,7 @@ usually docked beside it. The `documents` extension provides the Documents tab.
 - **Failure**: if the chosen surface is not installed, or its component throws, Agent shows instead, with a notice; a
   fixed version comes back on its own. If even Agent fails, a bare header, conversation, and status line remain. The
   window title and `surface` below name what is on screen, so Agent while it stands in.
-- `useUltimate().surface` and `context.surface` give the id of the surface on screen.
+- `useSurface()` from `@/sdk/solid` and `context.surface` give the id of the surface on screen.
 
 The contribution:
 
@@ -25,7 +25,7 @@ The contribution:
 | ------------- | --------------------------------------------------------------------------------------------------------- |
 | `id`          | Global and stored in `shell.surface`: use the extension name (`commits`) or prefix it (`commits.graph`)   |
 | `title`       | Shown in the switcher, the title bar, ⌘K, and the window title                                            |
-| `icon`        | A `lucide-react` icon                                                                                     |
+| `icon`        | An `@lucide/solid` icon                                                                                   |
 | `description` | One line under the title in the switcher                                                                  |
 | `order`       | Position after Agent; lower first (default 0), then by title. It decides which `mod+<n>` selects it       |
 | `component`   | The surface itself                                                                                        |
@@ -57,7 +57,8 @@ function MyApp() {
 
 ## Primitives
 
-Import them from `@/sdk`. Each is a thin wrapper over the shell's own parts; the Agent surface is nothing but these.
+The shell's own parts are Solid: a Solid surface imports them from `@/sdk/solid` (with `Slot` and `ErrorCard`),
+and the Agent surface is nothing but these.
 
 | Primitive                                 | What it renders                                                                                                                                                                                                                                                                                     |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -65,8 +66,8 @@ Import them from `@/sdk`. Each is a thin wrapper over the shell's own parts; the
 | `<StatusLine />`                          | The bottom line with the `statusline.left` and `statusline.right` slots                                                                                                                                                                                                                             |
 | `<Conversation variant="main" \| "dock">` | The shown conversation: transcript and composer, filling their box. `main` centres a reading column; `dock` fits a narrow region.                                                                                                                                                                   |
 | `<Dock title? side?>`                     | A collapsible, resizable side region, `right` by default; `title` (default `conversation`) labels it. Drag the inner edge to resize, double-click it to reset. Collapsed, it is a rail that pulses while the agent works. Open state and width persist per surface (`shell.dock.<surface>.<side>`). |
-| `<Sidebar />`                             | The `sidebar` slot as a left column, toggled with `mod+b`; nothing while the slot is empty                                                                                                                                                                                                          |
-| `<Panels />`                              | The right panel with every extension's panel tabs, toggled with `mod+alt+b`                                                                                                                                                                                                                         |
+| `<Sidebar />`                             | The `sidebar` slot as a left column, toggled with `mod+b`; nothing while the slot is empty. Drag its right edge to resize, double-click it to reset; the width persists across surfaces (`shell.sidebarWidth`).                                                                                     |
+| `<Panels />`                              | The right panel with every extension's panel tabs, toggled with `mod+alt+b`. Drag its left edge to resize, double-click it to reset; the width persists across surfaces (`shell.panelWidth`). Neither widens past the point where the conversation beside them would drop below 360px.              |
 | `<Slot name variant? />`                  | Any slot by name, each item in its own error boundary; `variant="inline"` for one-line places                                                                                                                                                                                                       |
 
 Everything else on a surface is your own components, styled like the rest of Ultimate (see [styling](styling.md)).

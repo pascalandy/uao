@@ -2,13 +2,21 @@
  * Messages: messages between conversations and the user, delivered as inputs or notes. Other extensions send one-way
  * messages and answer the user's open questions here.
  */
-import type { EntryId, TaskId, Tx, ConversationId } from '@earendil-works/pi-durable'
+import type {
+  ConversationHandle,
+  EntryId,
+  InputSubmissionDraft,
+  SubmissionId,
+  TaskId,
+  Tx,
+  ConversationId,
+} from '@earendil-works/pi-durable'
 import type { Context } from '@earendil-works/chord/context'
 import { defineDoc } from '@earendil-works/pi-durable'
 import { defineApi } from '../../shared/extension-api.ts'
 import type { Device } from '../../shared/events.ts'
-import { MessagesDoc } from './refs.ts'
-import type { Question, Remote, Serves, Via } from './refs.ts'
+import { JudgementsDoc, MessagesDoc } from './refs.ts'
+import type { Judged, Question, Remote, Via } from './refs.ts'
 
 /** One message as the log stores it. */
 export type Message = {
@@ -38,11 +46,28 @@ export type Message = {
   remote?: Remote
   /** A reply to another Ultimate's request whose serving work goes on; that request stays open for the result. */
   interim?: true
+  /** The owner already settled this request before its original answer was delivered. */
+  ownerSettled?: true
   /** The questions a reply-expected message to the user asks, answered on its card. */
   questions?: Question[]
   /** A user answer or dismissal that @ultimate settled for the user, not their own click. */
   via?: Via
+  /** How the judge weighed this branch's final answer before it went to the starter. */
+  judged?: Judged
 }
+/**
+ * The tool call ids of every reply-expected question a conversation asked the user, oldest first, on that
+ * conversation. Unlike the message log it is never trimmed, so a call keeps marking where its question was asked.
+ */
+export const AskedCalls = defineDoc<{ calls: string[] }>({
+  kind: 'board.asked-calls',
+  checkpointWhen: () => false,
+  version: 1,
+  scope: 'conversation',
+  history: 'latest',
+  fork: 'initial',
+  initial: () => ({ calls: [] }),
+})
 /** Every message between conversations and the user, on the root conversation. */
 export const Messages = defineDoc<{ messages: Message[]; next: number }>({
   kind: MessagesDoc.kind,
@@ -103,25 +128,50 @@ export type MessagesService = {
     ctx: Context,
   ): Promise<{ message: number; delivered: number }>
   /**
-   * Inside `tx`, what work conversation `to` starts now answers: `serves`, the newest agent's request it still owes,
-   * and `branches`, those whose reply or report its current run read and it has not messaged since. An
-   * `automations.fired` input whose data carries them routes the woken run's final answer there (route.ts). Pass
-   * `answersBack: false` for work whose answer never returns to `to` (a prompt-only automation): it serves nothing.
+   * In the creation transaction, let `automation` take over the requests related to @ultimate's current run.
+   * Omit the id if the automation doesn't wake @ultimate. Return the branches that still expect the run's feedback.
    */
-  owed(
+  owed(tx: Tx, to: ConversationId, automation?: string): Promise<{ branches?: ConversationId[] }>
+  /** Admit an automation fire and track requests it owns in the same transaction. */
+  submitFire(
     tx: Tx,
-    to: ConversationId,
-    answersBack?: boolean,
-  ): Promise<{ serves?: Serves; branches?: ConversationId[] }>
-  /**
-   * Inside `tx`, the work `by` started to serve `serves` (an automation) ended before it answered: another Ultimate's
-   * request still open on it gets a failed reply saying `why`, so that Ultimate learns of it at once. `fired` is the
-   * input entry of the run that failed, if one ran: work that run handed the request on to keeps it open.
-   */
-  dropped(tx: Tx, by: ConversationId, serves: Serves, why: string, fired?: number): Promise<void>
+    to: ConversationHandle,
+    input: InputSubmissionDraft,
+    automation: { id: string; name: string },
+  ): Promise<SubmissionId>
+  /** In `tx`, fail any requests the automation still owns, naming the source and why it ended. */
+  dropped(tx: Tx, automation: string, source: string, why: string): Promise<void>
 }
 export { MessageSent } from './refs.ts'
 export type { Question, Serves } from './refs.ts'
+/** The judge's verdict on each of a branch's final answers, by answer entry, on the branch; never trimmed. */
+export const Judgements = defineDoc<{ answers: Record<number, Judged> }>({
+  kind: JudgementsDoc.kind,
+  checkpointWhen: () => false,
+  version: 1,
+  scope: 'conversation',
+  history: 'latest',
+  fork: 'initial',
+  initial: () => ({ answers: {} }),
+})
+
+/** What the judge reads about a branch's final answer: excerpts of its previous answer, the inputs it answered and the answer. */
+export type JudgeState = {
+  branch_said_before: string
+  inputs: { from: string; text: string }[]
+  final_answer: string
+}
+export type JudgeService = {
+  /**
+   * The probability that the branch's final answer is something its starter must act on or know now, rather than
+   * back-and-forth with the user. It throws an Error whose message is a short cause safe to show the user (never a
+   * provider's response body) when it cannot judge. Messages reports on a throw or anything outside [0, 1].
+   */
+  report(state: JudgeState, signal: AbortSignal): Promise<number>
+}
+/** The extension point that judges whether a branch's answer wakes its starter; classify provides it. `want` it. */
+export const Judge = defineApi<JudgeService>()('messages.judge')
+
 /** Messages between conversations; core, so `need` it. */
 export const MessagesApi = defineApi<MessagesService>()('messages')
 

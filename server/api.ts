@@ -10,8 +10,24 @@ import type {
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { onCommit } from '../lib/commits.ts'
 import { inProcess } from '../lib/errors.ts'
-import type { ServerEvents, ConversationSummary, ConfigureRequest } from '../shared/protocol.ts'
-import { UI_REVISION, imageMimeTypes, maxImageBytes, maxImages } from '../shared/protocol.ts'
+import type {
+  ServerEvents,
+  ConversationSummary,
+  ConfigureRequest,
+  ReadSpec,
+  SubscriptionsAnswer,
+  SubscriptionsRequest,
+  UiOp,
+} from '../shared/protocol.ts'
+import { createReads } from './reads.ts'
+import type { Reads } from './reads.ts'
+import {
+  MAX_SUBSCRIPTION_BATCH_BYTES,
+  UI_REVISION,
+  imageMimeTypes,
+  maxImageBytes,
+  maxImages,
+} from '../shared/protocol.ts'
 import { listModels } from './models.ts'
 import { hostDefault } from '../lib/agents.ts'
 import { expandSkillCommand } from './skills.ts'
@@ -20,13 +36,14 @@ import { context } from './harness.ts'
 import type { OpenHost, PreparedHost } from './harness.ts'
 import type { createSystem } from './system.ts'
 import { requestSwap } from './supervisor-protocol.ts'
-import { UiState } from '../shared/ui-state.ts'
+import { UiState, UiWriters } from '../shared/ui-state.ts'
 import type { JsonValue } from '@earendil-works/chord/json'
+import { diffRevisions } from '@earendil-works/chord/delta'
 import { clampThinkingLevel, getSupportedThinkingLevels } from '@earendil-works/pi-ai'
 import { Metadata } from './metadata.ts'
-import { EVENT_LOG_LABEL, emit } from './events.ts'
-import { UserInputEvent } from '../shared/events.ts'
-import { admit, deviceOf } from './request-security.ts'
+import { EVENT_LOG_LABEL, emit, uiChange } from './events.ts'
+import { ChangedEvent, UserInputEvent } from '../shared/events.ts'
+import { admit, deviceOf, sourceOf } from './request-security.ts'
 import type { Access } from './request-security.ts'
 import { conversationIndex } from './project.ts'
 import { shortTitle } from '../lib/title.ts'
@@ -50,13 +67,22 @@ export class Events {
 async function body(
   request: IncomingMessage,
   limit = 1024 * 1024,
+  drainLimit = limit,
 ): Promise<Record<string, unknown>> {
   let data = ''
+  let bytes = 0
+  let tooLarge = false
   request.setEncoding('utf8')
   for await (const chunk of request) {
-    data += chunk.toString()
-    if (Buffer.byteLength(data) > limit) throw new HttpError(413, 'Request too large')
+    const piece = chunk.toString()
+    bytes += Buffer.byteLength(piece)
+    if (bytes > limit) {
+      tooLarge = true
+      data = ''
+      if (bytes > drainLimit) throw new HttpError(413, 'Request too large')
+    } else data += piece
   }
+  if (tooLarge) throw new HttpError(413, 'Request too large')
   try {
     const value = JSON.parse(data || '{}')
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error()
@@ -69,19 +95,38 @@ function text(value: unknown, name: string): string {
   if (typeof value !== 'string' || !value.trim()) throw new HttpError(400, `Expected ${name}`)
   return value
 }
-const validUiKey = (key: unknown) =>
+const validUiKey = (key: unknown): key is string =>
   typeof key === 'string' && key.length <= 200 && /^[A-Za-z0-9_.:-]+$/.test(key)
+function uiOps(ops: unknown): UiOp[] {
+  if (!Array.isArray(ops)) throw new HttpError(400, 'Invalid UI update')
+  return ops.map((op: unknown) => {
+    if (!op || typeof op !== 'object' || Array.isArray(op))
+      throw new HttpError(400, 'Invalid UI update')
+    const { key, value, who, seq } = op as Record<string, unknown>
+    if (!validUiKey(key)) throw new HttpError(400, 'Invalid UI key')
+    if (key === UI_REVISION) throw new HttpError(400, 'The UI revision is the server’s')
+    if (who !== undefined && who !== 'person' && who !== 'agent' && who !== 'app')
+      throw new HttpError(400, 'Invalid UI writer')
+    if (seq !== undefined && !Number.isSafeInteger(seq))
+      throw new HttpError(400, 'Invalid UI sequence')
+    return { key, value: value as JsonValue | undefined, who, seq: seq as number | undefined }
+  })
+}
+const maxUiWriters = 1000
 const actionPath = /^\/api\/extensions\/([^/]+)\/actions\/([^/]+)$/
-const subscriptionPath = /^\/api\/events\/([0-9a-f-]+)\/(\d+)$/
+const subscriptionPath = /^\/api\/events\/([0-9a-f-]+)$/
 const maxResentSummaryTitleCharacters = 200
+const asSent = (value: unknown) => JSON.parse(JSON.stringify(value)) as JsonValue
 const taskGraphBroadcastIntervalMs = 100
 const liveViewMinimumEntries = 150
+const minReadEveryMs = 250
+const maxReadEveryMs = 24 * 60 * 60_000
 type StreamUniqueSubscriptionId = number
 
 interface Connection {
   send: ReturnType<typeof eventStream>['send']
   subscriptions: Map<StreamUniqueSubscriptionId, () => Promise<void>>
-  closedBeforeOpen: Set<StreamUniqueSubscriptionId>
+  queue: Promise<void>
   ended: boolean
 }
 function reply(response: ServerResponse, status: number, data: unknown) {
@@ -119,41 +164,98 @@ function eventStream(response: ServerResponse) {
     },
   }
 }
+const browserRequest = (request: IncomingMessage) =>
+  request.headers['sec-fetch-site'] === 'same-origin' || !!request.headers.origin
+const validConversationId = (id: unknown) =>
+  id === undefined || (typeof id === 'number' && Number.isSafeInteger(id) && id >= 1)
+const argsOf = (data: Record<string, unknown>) =>
+  (Object.hasOwn(data, 'args') ? data.args : null) as JsonValue
+const readInterval = (againAfterMs: unknown) =>
+  typeof againAfterMs === 'number' && Number.isFinite(againAfterMs)
+    ? Math.min(maxReadEveryMs, Math.max(minReadEveryMs, againAfterMs))
+    : undefined
+function readSpec(value: unknown): ReadSpec {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new HttpError(400, 'Invalid read')
+  const read = value as Record<string, unknown>
+  const { extension, action, conversation } = read
+  if (typeof extension !== 'string' || typeof action !== 'string')
+    throw new HttpError(400, 'Invalid read')
+  if (!validConversationId(conversation)) throw new HttpError(400, 'Invalid conversation id')
+  return {
+    extension,
+    action,
+    args: argsOf(read),
+    ...(conversation === undefined ? {} : { conversation: conversation as number }),
+  }
+}
 async function runAction(
   request: IncomingMessage,
   response: ServerResponse,
   extensions: Extensions,
+  reads: Reads,
   [, name, key]: RegExpExecArray,
   data: Record<string, unknown>,
 ) {
-  if (request.headers['sec-fetch-site'] !== 'same-origin' && !request.headers.origin)
-    throw new HttpError(403, 'Extension actions require a browser request')
-  if (!extensions.action(name, key)) throw new HttpError(404, 'Unknown extension action')
-  const id = data.conversationId
-  if (id !== undefined && (typeof id !== 'number' || !Number.isSafeInteger(id) || id < 1))
-    throw new HttpError(400, 'Invalid conversation id')
+  if (!browserRequest(request)) {
+    const { error, rev } = reads.refused(403, 'Extension actions require a browser request')
+    reply(response, 403, { error, rev })
+    return
+  }
+  const id = data.conversationId as number | undefined
+  if (!validConversationId(id)) {
+    const { error, rev } = reads.refused(400, 'Invalid conversation id')
+    reply(response, 400, { error, rev })
+    return
+  }
+  const args = argsOf(data)
+  const { rev, publish } = reads.answering({
+    extension: name,
+    action: key,
+    args,
+    ...(id === undefined ? {} : { conversation: id }),
+  })
+  if (!extensions.action(name, key)) {
+    const current = publish({ error: 'Unknown extension action', status: 404 })
+    reply(response, 404, {
+      error: 'Unknown extension action',
+      rev,
+      ...(current ? {} : { superseded: true }),
+    })
+    return
+  }
   const controller = new AbortController()
   const cancel = () => {
     if (!response.writableEnded) controller.abort()
   }
   response.once('close', cancel)
   try {
-    const argsWithMissingMeaningNone = (Object.hasOwn(data, 'args') ? data.args : {}) as JsonValue
     const result = await extensions.invoke(
       name,
       key,
-      argsWithMissingMeaningNone,
+      args,
       controller.signal,
       id === undefined ? undefined : parseConversationId(id),
       'ui',
       deviceOf(request.headers),
+      sourceOf(request.headers),
     )
-    reply(response, 200, { result })
+    const current = publish({ result: result ?? null })
+    reply(response, 200, { result, rev, ...(current ? {} : { superseded: true }) })
   } catch (error) {
-    const clientLeft = controller.signal.aborted || (error as Error)?.name === 'AbortError'
-    if (!clientLeft) console.error(`Extension action ${name}/${key}:`, error)
-    const userFacingActionError = error instanceof Error ? error.message : String(error)
-    reply(response, 500, { error: userFacingActionError.slice(0, 500) })
+    const clientLeft = controller.signal.aborted
+    const aborted = clientLeft || (error as Error)?.name === 'AbortError'
+    if (!aborted) console.error(`Extension action ${name}/${key}:`, error)
+    const userFacingActionError = (error instanceof Error ? error.message : String(error)).slice(
+      0,
+      500,
+    )
+    const current = clientLeft ? true : publish({ error: userFacingActionError, status: 500 })
+    reply(response, 500, {
+      error: userFacingActionError,
+      rev,
+      ...(current ? {} : { superseded: true }),
+    })
   } finally {
     response.off('close', cancel)
   }
@@ -166,10 +268,23 @@ export async function createApi(
   system: Awaited<ReturnType<typeof createSystem>>,
   extensions: Extensions,
   access: Access,
+  pageConnected: () => void,
 ) {
   const { harness, root } = opened
   const streams = new Set<() => Promise<void>>()
   const connections = new Map<string, Connection>()
+  const reads = createReads(async (spec, signal) => {
+    if (!extensions.action(spec.extension, spec.action))
+      throw new HttpError(404, 'Unknown extension action')
+    return await extensions.invoke(
+      spec.extension,
+      spec.action,
+      spec.args,
+      signal,
+      spec.conversation === undefined ? undefined : parseConversationId(spec.conversation),
+      'ui',
+    )
+  })
   let onGraph = () => {}
   const latestCommitGraph: { tasks?: TaskGraph } = {}
   const graph = await harness.observeTaskGraph(
@@ -185,13 +300,17 @@ export async function createApi(
   )
   latestCommitGraph.tasks ??= graph.value
   const tasks = () => latestCommitGraph.tasks!
+  let sentTasks = asSent(tasks()) as unknown as TaskGraph
   let closed = false
   let summaries: ConversationSummary[] = []
   const projectIndex = conversationIndex(host.home)
-  const indexListener: Parameters<typeof events.listeners.add>[0] = (name, data) => {
-    if (name === 'conversations') projectIndex.update(data as ConversationSummary[])
+  function publishSummaries(next: ConversationSummary[]) {
+    const ops = diffRevisions(asSent(summaries), asSent(next))
+    if (!ops.length) return
+    summaries = next
+    projectIndex.update(summaries)
+    events.emit('conversationsOps', ops)
   }
-  events.listeners.add(indexListener)
   let refreshing = Promise.resolve()
   async function refreshConversations(ids?: Set<ConversationId>) {
     const records = await harness.commit(async (tx) => {
@@ -236,7 +355,7 @@ export async function createApi(
     for (const fresh of refreshed) {
       const summary = {
         ...fresh,
-        busy: Object.values(tasks().tasks).some(
+        busy: Object.values(sentTasks.tasks).some(
           (task) => task.conversationId === fresh.id && !task.background,
         ),
       }
@@ -244,34 +363,29 @@ export async function createApi(
       if (index < 0) summariesIncludingConcurrentUpdates.push(summary)
       else summariesIncludingConcurrentUpdates[index] = summary
     }
-    if (JSON.stringify(summariesIncludingConcurrentUpdates) !== JSON.stringify(summaries)) {
-      summaries = summariesIncludingConcurrentUpdates
-      events.emit('conversations', summaries)
-    }
+    publishSummaries(summariesIncludingConcurrentUpdates)
   }
-  await refreshConversations()
-  projectIndex.update(summaries)
-  let lastGraph = JSON.stringify(tasks())
   const scheduleGraph = batch(taskGraphBroadcastIntervalMs, () => {
-    const graphJson = JSON.stringify(tasks())
-    if (graphJson !== lastGraph) {
-      lastGraph = graphJson
-      events.emit('tasks', tasks())
-      const next = summaries.map((summary) => ({
-        ...summary,
-        busy: Object.values(tasks().tasks).some(
-          (task) => task.conversationId === summary.id && !task.background,
-        ),
-      }))
-      if (JSON.stringify(next) !== JSON.stringify(summaries)) {
-        summaries = next
-        events.emit('conversations', summaries)
-      }
+    const next = asSent(tasks()) as unknown as TaskGraph
+    const ops = diffRevisions(sentTasks as unknown as JsonValue, next as unknown as JsonValue)
+    if (ops.length) {
+      sentTasks = next
+      events.emit('tasksOps', ops)
+      publishSummaries(
+        summaries.map((summary) => ({
+          ...summary,
+          busy: Object.values(next.tasks).some(
+            (task) => task.conversationId === summary.id && !task.background,
+          ),
+        })),
+      )
     }
   })
   onGraph = () => {
     if (!closed) scheduleGraph()
   }
+  await refreshConversations()
+  projectIndex.update(summaries)
   const unsubscribe = onCommit(harness, (publication) => {
     if (closed) return
     const ids = new Set<ConversationId>()
@@ -301,10 +415,11 @@ export async function createApi(
     const connection: Connection = {
       send: sse.send,
       subscriptions: new Map(),
-      closedBeforeOpen: new Set(),
+      queue: Promise.resolve(),
       ended: false,
     }
     connections.set(id, connection)
+    pageConnected()
     const { send } = sse
     send('stream', { id })
     send('system', system.current())
@@ -313,7 +428,7 @@ export async function createApi(
     ui!.start(async (call) => {
       if (call.kind === 'value') send('uiOps', { ops: call.ops })
     })
-    send('tasks', tasks())
+    send('tasks', sentTasks)
     events.listeners.add(send)
     const stop = async () => {
       if (connection.ended) return
@@ -321,9 +436,10 @@ export async function createApi(
       connections.delete(id)
       events.listeners.delete(send)
       streams.delete(stop)
-      await ui!.stop()
-      await Promise.all([...connection.subscriptions.values()].map((close) => close()))
       sse.end()
+      const established = [...connection.subscriptions.values()]
+      connection.subscriptions.clear()
+      await Promise.all([ui!.stop(), ...established.map((close) => close())])
     }
     streams.add(stop)
     response.on('close', () => {
@@ -357,10 +473,13 @@ export async function createApi(
           unknown.push(kind)
           continue
         }
-        await conversation.commit(async (tx) => {
-          await tx.doc(token, id)
-        }, context)
-        const watch = await harness.watchDoc(token, id, context)
+        let watch = await harness.watchDoc(token, id, context)
+        if (!watch) {
+          await conversation.commit(async (tx) => {
+            await tx.doc(token, id)
+          }, context)
+          watch = await harness.watchDoc(token, id, context)
+        }
         if (watch) {
           docs.push({ kind, watch })
           watches.push(watch)
@@ -374,11 +493,7 @@ export async function createApi(
       await stop()
       throw error
     }
-    if (
-      connection.ended ||
-      connection.closedBeforeOpen.has(streamUniqueId) ||
-      connection.subscriptions.has(streamUniqueId)
-    ) {
+    if (connection.ended || connection.subscriptions.has(streamUniqueId)) {
       await stop()
       return
     }
@@ -404,7 +519,30 @@ export async function createApi(
         })
       }
     }
-    deliverSnapshotsThenOps()
+    try {
+      deliverSnapshotsThenOps()
+    } catch (error) {
+      connection.subscriptions.delete(streamUniqueId)
+      await stop()
+      throw error
+    }
+  }
+  function subscribeRead(
+    connection: Connection,
+    streamUniqueId: StreamUniqueSubscriptionId,
+    spec: ReadSpec,
+    againAfterMs: number | undefined,
+    fromBrowser: boolean,
+  ) {
+    if (connection.ended || connection.subscriptions.has(streamUniqueId)) return
+    const send = (event: ServerEvents['read']) => connection.send('read', event, streamUniqueId)
+    if (!fromBrowser) {
+      send(reads.refused(403, 'Extension actions require a browser request'))
+      connection.subscriptions.set(streamUniqueId, async () => {})
+      return
+    }
+    const stop = reads.subscribe(spec, againAfterMs, send)
+    connection.subscriptions.set(streamUniqueId, async () => stop())
   }
   function conversationParam(value: unknown) {
     const id = value === undefined ? root.id : Number(value)
@@ -416,6 +554,7 @@ export async function createApi(
       return summaries
     },
     pages: () => connections.size,
+    reads: () => reads.size(),
     async handle(request: IncomingMessage, response: ServerResponse) {
       const url = new URL(request.url ?? '/', 'http://localhost')
       if (!url.pathname.startsWith('/api/')) return false
@@ -430,29 +569,78 @@ export async function createApi(
           return true
         }
         const subscription = subscriptionPath.exec(url.pathname)
-        if (subscription && (request.method === 'POST' || request.method === 'DELETE')) {
+        if (subscription && request.method === 'POST') {
           const connection = connections.get(subscription[1])
           if (!connection) throw new HttpError(410, 'Event stream ended')
-          const sub = Number(subscription[2])
-          if (request.method === 'DELETE') {
-            const close = connection.subscriptions.get(sub)
-            connection.subscriptions.delete(sub)
-            if (close) await close()
-            else connection.closedBeforeOpen.add(sub)
-          } else {
-            const data = await body(request)
-            const docs = data.docs ?? []
-            if (!Array.isArray(docs) || !docs.every((kind) => typeof kind === 'string'))
-              throw new HttpError(400, 'Invalid document kinds')
-            await subscribe(
-              connection,
-              sub,
-              conversationParam(data.conversation),
-              docs,
-              data.view !== false,
+          const data: Partial<Record<keyof SubscriptionsRequest, unknown>> = await body(
+            request,
+            MAX_SUBSCRIPTION_BATCH_BYTES,
+            MAX_SUBSCRIPTION_BATCH_BYTES * 4,
+          )
+          const opens = data.subscribe ?? []
+          const closes = data.unsubscribe ?? []
+          if (
+            !Array.isArray(opens) ||
+            !Array.isArray(closes) ||
+            !closes.every(Number.isSafeInteger)
+          )
+            throw new HttpError(400, 'Invalid subscriptions')
+          const closing = new Set(closes as number[])
+          const specs = opens
+            .map((item: unknown) => {
+              if (typeof item !== 'object' || item === null || Array.isArray(item))
+                throw new HttpError(400, 'Invalid subscription')
+              const spec = item as Record<string, unknown>
+              if (!Number.isSafeInteger(spec.sub))
+                throw new HttpError(400, 'Invalid subscription id')
+              return spec as Record<string, unknown> & { sub: number }
+            })
+            .filter(({ sub }) => !closing.has(sub))
+          const run = connection.queue.then(async () => {
+            if (connection.ended) throw new HttpError(410, 'Event stream ended')
+            const refused: Record<number, number> = {}
+            const keepsSharedReadsRunning = specs.filter((spec) => spec.read !== undefined)
+            for (const spec of keepsSharedReadsRunning)
+              try {
+                subscribeRead(
+                  connection,
+                  spec.sub,
+                  readSpec(spec.read),
+                  readInterval(spec.every),
+                  browserRequest(request),
+                )
+              } catch (error) {
+                refused[spec.sub] = error instanceof HttpError ? error.status : 500
+              }
+            for (const sub of closing) {
+              const close = connection.subscriptions.get(sub)
+              connection.subscriptions.delete(sub)
+              if (close) await close()
+            }
+            await Promise.all(
+              specs
+                .filter((spec) => spec.read === undefined)
+                .map(async (spec) => {
+                  try {
+                    const docs = spec.docs ?? []
+                    if (!Array.isArray(docs) || !docs.every((kind) => typeof kind === 'string'))
+                      throw new HttpError(400, 'Invalid document kinds')
+                    const conversation = conversationParam(spec.conversation)
+                    await subscribe(connection, spec.sub, conversation, docs, spec.view !== false)
+                  } catch (error) {
+                    if (!(error instanceof HttpError))
+                      console.error(`Subscribing to ${JSON.stringify(spec)} failed:`, error)
+                    refused[spec.sub] = error instanceof HttpError ? error.status : 500
+                  }
+                }),
             )
-          }
-          json(200, { ok: true })
+            return refused
+          })
+          connection.queue = run.then(
+            () => undefined,
+            () => undefined,
+          )
+          json(200, { ok: true, refused: await run } satisfies SubscriptionsAnswer)
           return true
         }
         const history = /^\/api\/conversations\/(\d+)\/history$/.exec(url.pathname)
@@ -500,26 +688,56 @@ export async function createApi(
         const mediaBodyLimitBytes = 12 * 1024 * 1024
         const data = await body(request, mayCarryMedia ? mediaBodyLimitBytes : undefined)
         if (action) {
-          await runAction(request, response, extensions, action, data)
+          await runAction(request, response, extensions, reads, action, data)
           return true
         }
         if (url.pathname === '/api/ui') {
-          const set = data.set === undefined ? {} : data.set
-          const remove = data.delete === undefined ? [] : data.delete
-          if (!set || typeof set !== 'object' || Array.isArray(set) || !Array.isArray(remove))
-            throw new HttpError(400, 'Invalid UI update')
-          if (!Object.keys(set).every(validUiKey) || !remove.every(validUiKey))
-            throw new HttpError(400, 'Invalid UI key')
-          if (UI_REVISION in set || remove.includes(UI_REVISION))
-            throw new HttpError(400, 'The UI revision is the server’s')
+          const { tab } = data
+          const requested = uiOps(data.ops)
+          if (new Set(requested.map(({ key }) => key)).size > maxUiWriters)
+            throw new HttpError(413, 'Too many UI keys in one write')
+          if (tab !== undefined && (typeof tab !== 'string' || tab.length > 64))
+            throw new HttpError(400, 'Invalid UI tab')
+          const by = { ...sourceOf(request.headers), ...deviceOf(request.headers) }
           const rev = await root.commit(async (tx) => {
+            const writers = await tx.doc(UiWriters, root.id)
+            const ops = requested.filter(({ key, seq }) => {
+              if (tab === undefined || seq === undefined) return true
+              const writer = `${tab} ${key}`
+              if ((writers[writer] ?? -Infinity) >= seq) return false
+              delete writers[writer]
+              writers[writer] = seq
+              return true
+            })
+            const writtenNow = new Set(requested.map(({ key }) => `${tab} ${key}`))
+            const older = Object.keys(writers).filter((writer) => !writtenNow.has(writer))
+            const overCap = Object.keys(writers).length - maxUiWriters
+            for (const writer of older.slice(0, Math.max(0, overCap))) delete writers[writer]
             const value = await tx.doc(UiState, root.id)
-            const next = { ...value, ...(set as Record<string, JsonValue>) }
-            for (const key of remove) delete next[key]
+            const written = new Map<string, JsonValue | undefined>()
+            const stored = (key: string) =>
+              written.has(key)
+                ? written.get(key)
+                : Object.hasOwn(value, key)
+                  ? value[key]
+                  : undefined
+            const changes = ops.map(({ key, value: after, who }) => {
+              const change = uiChange(who ? { ...by, source: who } : by, {
+                key,
+                value: after,
+                previous: stored(key),
+              })
+              written.set(key, after)
+              return change
+            })
+            const next = { ...value, ...Object.fromEntries(written) }
+            for (const [key, item] of written) if (item === undefined) delete next[key]
             if (Buffer.byteLength(JSON.stringify(next)) > 256 * 1024)
               throw new HttpError(413, 'UI state too large')
-            for (const [key, item] of Object.entries(set)) value[key] = item as JsonValue
-            for (const key of remove) delete value[key]
+            for (const change of changes) if (change) await emit(tx, ChangedEvent, change)
+            for (const [key, item] of written)
+              if (item === undefined) delete value[key]
+              else value[key] = item
             const previous = value[UI_REVISION]
             const revisionInSameCommit = (typeof previous === 'number' ? previous : 0) + 1
             value[UI_REVISION] = revisionInSameCommit
@@ -739,7 +957,6 @@ export async function createApi(
       scheduleGraph.cancel()
       await Promise.all([...streams].map((stop) => stop()))
       await refreshing
-      events.listeners.delete(indexListener)
       await projectIndex.flush()
     },
   }

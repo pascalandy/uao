@@ -7,7 +7,8 @@ import type {
   ToolDiagnostic,
   TaskId,
 } from '@earendil-works/pi-durable'
-import type { ComponentType, ReactNode } from 'react'
+import type { Accessor, Component } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { ImageContent, ToolCall, ToolResultMessage } from '@earendil-works/pi-ai'
 import type { ConversationSummary } from '../../../shared/protocol.ts'
 
@@ -24,7 +25,6 @@ export type SlotName =
   | 'statusline.right'
   | 'composer.toolbar'
   | 'composer.status'
-  | 'composer.actions'
   | 'conversation.overlay'
   | 'transcript.top'
   | 'transcript.start'
@@ -36,16 +36,14 @@ export type SlotName =
  * A slot component, optionally with an `order` (default 0; ties keep folder-name order). In the status line, `phone`
  * keeps the item on the line on a phone; the others move behind its ⋯ popover there.
  */
-export type Contribution =
-  | ComponentType
-  | { component: ComponentType; order?: number; phone?: boolean }
+export type Contribution = Component | { component: Component; order?: number; phone?: boolean }
 
 /** A tab in the right panel. */
 export interface PanelContribution {
   id: string
   title: string
-  icon?: ComponentType<{ className?: string }>
-  component: ComponentType
+  icon?: Component<{ class?: string }>
+  component: Component
   order?: number
   /** `false` keeps the panel out of the tab row until it is opened (`openPanel`, a command); default `true`. */
   tab?: boolean
@@ -53,20 +51,21 @@ export interface PanelContribution {
 
 /**
  * A full-screen composition the user switches to: the built-in Agent surface (`extensions/agent`) or an app. Build it
- * from the primitives in `@/sdk` (`Header`, `Conversation`, `Dock`, `StatusLine`, …) and your own components.
+ * from the primitives in `@/sdk/solid` (`Header`, `Conversation`, `Dock`, `StatusLine`, …) and your own
+ * components.
  */
 export interface SurfaceContribution {
   /** Global id, stored in `shell.surface`; prefix it with the extension name when it is generic. `agent` is the home. */
   id: string
   title: string
-  icon: ComponentType<{ className?: string }>
+  icon: Component<{ class?: string }>
   /** One line for the switcher. */
   description?: string
   /** Position after Agent in the switcher, ⌘K, and `mod+1…9`; lower first (default 0), then by title. */
   order?: number
-  component: ComponentType
+  component: Component
   /** A small component after the title in the title bar's tab, such as a count of what waits there; render nothing to show none. */
-  badge?: ComponentType
+  badge?: Component
 }
 
 /** One tool call as the transcript sees it: the model's call, live progress, and the result. */
@@ -83,7 +82,7 @@ export interface ToolCallView {
   status: 'streaming' | 'pending' | 'running' | 'done' | 'error' | 'interrupted'
   /** Streamed output while running; the result's text once finished. */
   output: string
-  /** Images of the result, such as screenshots; `ToolImages` from `@/components/ai/tool` renders them. */
+  /** Images of the result, such as screenshots; `ToolImages` from `@/components/ai/tool.solid.tsx` renders them. */
   images: readonly ImageContent[]
   /** Last `details()` while running, the result's details once finished; each tool defines its shape. */
   details?: unknown
@@ -97,46 +96,85 @@ export interface ToolCallView {
 }
 
 /** `core` is the rendering so far, starting with the generic tool card. */
-export type ToolRenderer = ComponentType<{ call: ToolCallView; core: ReactNode }>
-/** A tool call as one short line of plain text, for a folded run's step list; hooks are allowed. */
-export type ToolLineRenderer = ComponentType<{ call: ToolCallView }>
+export type SolidToolProps = { call: ToolCallView; core: JSX.Element }
+export type ToolRenderer = Component<SolidToolProps>
 /**
  * `core` is the core's rendering of the entry: return it for entries you leave alone, or wrap it. `blocks` are the
  * content blocks of an assistant message a compact row shows, when it shows only some.
  */
-export type EntryRenderer = ComponentType<{
+export type SolidEntryProps = {
   entry: EntryRecord
-  core: ReactNode
+  core: JSX.Element
   blocks?: readonly number[]
+}
+export type EntryRenderer = Component<SolidEntryProps>
+/** A tool call as one short line of plain text, for a folded run's step list. */
+export type ToolLineRenderer = Component<{ call: ToolCallView }>
+
+/**
+ * A link in Markdown (messages, reports): `href` and the link's `children`, and
+ * `core`, the rendering so far, starting with the default link that opens in a new tab. Return `core` for links you
+ * leave alone.
+ */
+export type LinkRenderer = Component<{
+  href: string
+  children: JSX.Element
+  core: JSX.Element
 }>
 
 /**
- * A link in Markdown (messages, reports): `href` and the link's `children`, and `core`, the rendering so far, starting
- * with the default link that asks before opening in a new tab. Return `core` for links you leave alone.
+ * An inline code span in Markdown (messages, reports): its text as `code`, `inLink` when it sits inside a link (which
+ * is already a control: add no button there), and `core`, the rendering so far, starting with the default `<code>`.
+ * Return `core` for spans you leave alone.
  */
-export type LinkRenderer = ComponentType<{ href: string; children: ReactNode; core: ReactNode }>
+export type InlineCodeRenderer = Component<{
+  code: string
+  inLink: boolean
+  core: JSX.Element
+}>
 
 /**
- * An inline code span in Markdown (messages, reports): its text as `code`, and `core`, the rendering so far, starting
- * with the default `<code>`. Return `core` for spans you leave alone.
+ * A fenced code block in Markdown by its language: `code`, `language`, `incomplete` while the
+ * fence still streams, and `core`, the rendering so far, starting with the highlighted block with its copy button.
  */
-export type InlineCodeRenderer = ComponentType<{ code: string; core: ReactNode }>
-
-/**
- * A fenced code block in Markdown, by its language: `code`, `language`, `incomplete` while the fence still streams, and
- * `core`, the rendering so far, starting with the highlighted block with its copy button.
- */
-export type CodeBlockRenderer = ComponentType<{
+export type CodeBlockRenderer = Component<{
   code: string
   language: string
   incomplete: boolean
-  core: ReactNode
+  core: JSX.Element
 }>
 
-export type InboxRenderer = ComponentType<{ item: InboxItem; core: ReactNode; cancel: ReactNode }>
+/**
+ * A queued input above the composer: `item`, `core`, the core's row, and `cancel`, its cancel button. Return `core` for
+ * items you leave alone.
+ */
+export type SolidInboxProps = {
+  item: InboxItem
+  core: JSX.Element
+  cancel: JSX.Element
+}
+export type InboxRenderer = Component<SolidInboxProps>
 
 /** Wraps the shown conversation's composer (`core`); `dock` when it sits in a narrow side region. */
-export type ComposerRenderer = ComponentType<{ core: ReactNode; dock?: boolean }>
+export type SolidComposerProps = { core: JSX.Element; dock?: boolean }
+export type ComposerRenderer = Component<SolidComposerProps>
+
+/** Where a `ComposerRedirect` sends what the composer inside it submits, and what its empty composer says. */
+export interface ComposerTarget {
+  placeholder: string
+  /** `images` are the pasted ones, given only to a target with `images: true`; any other refuses them. */
+  send: (text: string, images: readonly { data: string; mimeType: string }[]) => Promise<unknown>
+  images?: true
+  /** True while the target holds something of its own to send, so Enter sends even with an empty composer. */
+  ready?: () => boolean
+  /**
+   * Keeps the draft under this key instead of the scoped conversation's, for a conversation that does not exist yet (a
+   * cold voice session): the composer then shows none of the scoped conversation's run, queue, toolbar or status.
+   */
+  draft?: string
+  /** `false` hides the box's dictation control, for a target that takes voice its own way. */
+  dictation?: false
+}
 
 /** What a document renderer receives: the shown conversation's document of its kind, live. */
 export interface DocumentProps {
@@ -150,8 +188,8 @@ export interface DocumentProps {
 export interface DocumentContribution {
   kind: string
   title: string
-  icon?: ComponentType<{ className?: string }>
-  component: ComponentType<DocumentProps>
+  icon?: Component<{ class?: string }>
+  component: Component<DocumentProps>
 }
 
 /** Navigation and shell actions, passed to commands and returned by `useUltimate()`. */
@@ -222,7 +260,7 @@ export interface CompactContribution {
    */
   thread?: (row: CompactRow, docs: CompactDocs) => boolean | 'hidden'
   /** The line a receded stretch shows; the first matching facet's wins, an update count otherwise. */
-  summary?: ComponentType<CompactSummaryProps>
+  summary?: Component<CompactSummaryProps>
 }
 /** A compact transcript row: an entry, and the visible tool calls it shows when it shows only some of its blocks. */
 export interface CompactRow {
@@ -245,9 +283,10 @@ export type CompactCallTest = (call: ToolCall, docs: CompactDocs) => boolean
 
 /**
  * A value one extension's browser code asks for and another provides: the web's extension point. The asking extension
- * declares it in its `ui.tsx` as `definePoint<Input, Value>('<owner>.<point>')` and renders `<Provided point input>`;
- * a higher extension imports it and lists `provide(Point, useValue)` under `provides`. Dependencies keep pointing at
- * the owner, as with a server extension point.
+ * declares it in a `.ts` file its `ui.solid.tsx` re-exports, as `definePoint<Input, Value>('<owner>.<point>')`, and
+ * reads it with `useProvided` or renders it with `<Provided point input>` from `@/sdk/solid`; a higher
+ * extension imports it and lists `provide(Point, …)` under `provides`. Dependencies keep pointing at the owner, as with
+ * a server extension point.
  */
 export interface Point<Input, Value> {
   readonly point: string
@@ -291,8 +330,8 @@ export const ComposerPlaceholder = definePoint<
  * rendering so far as `core` and returns it, wraps it or replaces it.
  */
 export const EmptyTranscript = definePoint<
-  { conversation: ConversationId; core: ReactNode },
-  ReactNode
+  { conversation: ConversationId; core: JSX.Element },
+  JSX.Element
 >('ultimate.emptyTranscript')
 /**
  * The text another conversation can follow to read message `id` of `conversation` (`codemode` provides it); a stored
@@ -312,32 +351,168 @@ export const ErrorReport = definePoint<
   { title: string; send: (report: string) => void } | undefined
 >('ultimate.errorReport')
 
+/** How a file reached a prompt box. */
+export type UploadSource = 'paste' | 'drop' | 'file' | 'recording'
+
 /**
- * Where the composer puts a file that is not an inline image (`attachments` provides it): `upload` stores it on the
- * host and resolves with its absolute path, which the prompt references; files up to `maxBytes` attach, and the host
- * keeps them `keptMs`. Without a provider only images attach.
+ * Where the composer puts a file that is not an inline image. A provider with `accepts` (a MIME prefix such as
+ * `video/`) takes the files it names (`video` provides one); the last provider without it takes the rest
+ * (`attachments`). `upload` stores the file, may report a short `status` and a `progress` from 0 to 1 while it
+ * works, stops when `signal` aborts (the chip was removed), and resolves with what the prompt references: `path`, the
+ * prompt `line` when the provider writes its own (otherwise the standard attached-file line), the chip's `note`, and
+ * an `image` URL the chip shows instead of its file icon (a video's first frame).
+ * Files up to `maxBytes` attach, and the host keeps them `keptMs`. Without a provider only images attach.
  */
 export const FileUpload = definePoint<
   null,
-  { upload: (file: File) => Promise<string>; maxBytes: number; keptMs: number } | undefined
+  | {
+      accepts?: string
+      upload: (
+        file: File,
+        options: {
+          source: UploadSource
+          conversation: ConversationId | undefined
+          status: (note: string, progress?: number) => void
+          signal: AbortSignal
+        },
+      ) => Promise<{ path: string; line?: string; note?: string; image?: string }>
+      maxBytes: number
+      keptMs: number
+    }
+  | undefined
 >('ultimate.fileUpload')
 
-/** What a facet provides for a point: `useValue` is a hook, run once per `<Provided>` with its input. */
+/**
+ * What a prompt box's dictation control gets (`voice` provides it, a mic button): `name` names the box for the control's
+ * agent label, `conversation` is the box's conversation or undefined for a draft-only box, `insert` puts words into that
+ * same box at its cursor, and `level` drives the box's hairline with the live voice level, 0 to 1, until `undefined`
+ * ends dictation. No control while nothing provides it.
+ */
+export const Dictation = definePoint<
+  {
+    name: string
+    conversation: ConversationId | undefined
+    insert: (text: string) => void
+    level: (value: number | undefined) => void
+  },
+  JSX.Element
+>('ultimate.dictation')
+/**
+ * What a prompt box's record control gets, beside its attach button: `draft` is the box's draft key (boxes showing one
+ * conversation share it; a box without one is keyed by its `name`, so give such boxes distinct names), `attach` adds recorded files to that box like a drop (as `source`, `recording` by default; a
+ * recording waits for a send in flight, then attaches even to a busy box) and resolves once their uploads settle, false
+ * when the box refused them or moved to another draft meanwhile, and
+ * `recording` turns the box's hairline red while true. Nothing shows while nothing provides it.
+ */
+export const PromptRecorder = definePoint<
+  {
+    name: string
+    draft: number | string | undefined
+    attach: (files: readonly File[], source?: UploadSource) => Promise<boolean>
+    recording: (on: boolean) => void
+  },
+  JSX.Element
+>('ultimate.promptRecorder')
+
+export type PromptInput = {
+  text: string
+  images: { data: string; mimeType: string }[]
+}
+
+/** A `PromptBox`'s inputs; its draft survives reloads under `draft`. */
+export interface PromptBoxProps {
+  /** Where the draft is kept: a conversation id, or a key of its own; undefined keeps it only in memory. */
+  draft: number | string | undefined
+  /** Names the box in its controls' labels: `Prompt for <name>`, `Send prompt to <name>`. */
+  name: string
+  placeholder: string
+  /** Sends the trimmed text with attachment lines and the pasted images; a rejection keeps the draft and shows it. */
+  onSubmit: (input: PromptInput, how: 'followUp' | undefined) => Promise<unknown>
+  /** What attaches: `images` inline (pasted, dropped), `files` through the upload target (images too when `images` is off). */
+  accepts?: { images?: boolean; files?: boolean }
+  /** The conversation the box writes for; dictation transcribes for it. */
+  conversation?: ConversationId
+  /** The textarea's element id. */
+  id?: string
+  /** Sweeps the hairline: the receiver is working. */
+  running?: boolean
+  /** Locks the box while the receiver loads. */
+  loading?: boolean
+  /** Why sending is not possible now; shown in the box and disables send. */
+  blocked?: string
+  /** True while the receiver holds something of its own to send, so Enter sends an empty box. */
+  ready?: () => boolean
+  /** Before the box's own keys; true when it handled the key. */
+  onKeyDown?: (event: KeyboardEvent & { currentTarget: HTMLTextAreaElement }) => boolean
+  /** The send button's label; default `Send prompt to <name>`. */
+  sendLabel?: string
+  /** The send button's tooltip; default `Send (Enter)`. */
+  sendTitle?: string
+  /** Controls at the start of the box's row (model, thinking). */
+  toolbar?: JSX.Element
+  /** Quiet text before the row's buttons while there is no error. */
+  hint?: JSX.Element
+  /** Buttons before send (stop). */
+  actions?: JSX.Element
+  /** Attaches files dropped anywhere on the page, not only on the box. */
+  pageDrop?: boolean
+  /** Focuses the box when it mounts, except behind a touch keyboard. */
+  autofocus?: boolean
+  /** `false` hides the dictation control. */
+  dictation?: false
+  /**
+   * A light box in one line, text · attach · mic · send, inside its owner's own form, with the error under it.
+   */
+  minimal?: boolean
+  /**
+   * The text the owner keeps, attachment lines included, instead of a `draft`: the box shows it, splits the
+   * attachment lines off as chips and calls `onValue` with the next text; `false` refuses that change. The owner
+   * clears it after a send.
+   */
+  value?: string
+  onValue?: (value: string) => boolean | void
+  /** The textarea's label; default `Prompt for <name>`. */
+  label?: string
+  /** Greys the box out: no typing, attaching, dictating or sending. */
+  disabled?: boolean
+  /** `false` leaves sending to the owner's own button; Enter still calls `onSubmit`. */
+  sendButton?: false
+  /** The textarea element, for the owner to focus it. */
+  ref?: (element: HTMLTextAreaElement) => void
+  /**
+   * With `value`/`onValue`: whether a file is still uploading, for an owner whose own button sends; hold the send until
+   * it is false. A box that unmounts while uploading reports false.
+   */
+  onUploading?: (busy: boolean) => void
+}
+
+/** What a facet provides for a point. */
 export interface Provision {
   point: string
-  use: (input: never) => unknown
+  use: unknown
 }
-export const provide = <Input, Value>(
+/**
+ * A facet's value for `point`. A point whose value is UI takes a component, rendered with the input as its props; any
+ * other takes a function from the input accessor to the value's accessor, run once under each reader:
+ * `provide(PreviewUp, (id) => createMemo(() => running().has(id())))`.
+ */
+export function provide<Input, Value>(
   point: Point<Input, Value>,
-  useValue: (input: Input) => Value,
-): Provision => ({ point: point.point, use: useValue })
+  value: JSX.Element extends Value
+    ? Component<Input & object>
+    : (input: Accessor<Input>) => Accessor<Value>,
+): Provision {
+  return { point: point.point, use: value }
+}
 
-/** The browser facet of an extension: `extensions/<name>/web.tsx` default-exports one. */
+/**
+ * The browser facet of an extension: `extensions/<name>/web.solid.tsx` default-exports one.
+ */
 export interface WebExtension {
   slots?: Partial<Record<SlotName, Contribution | readonly Contribution[]>>
   panels?: readonly PanelContribution[]
   /** Badges after a right-panel tab's label or icon, by panel id (any extension's panel), in discovery order. */
-  panelBadges?: Readonly<Record<string, ComponentType>>
+  panelBadges?: Readonly<Record<string, Component>>
   surfaces?: readonly SurfaceContribution[]
   /** Tool-call renderers by tool name. */
   tools?: Readonly<Record<string, ToolRenderer>>
@@ -355,13 +530,13 @@ export interface WebExtension {
   /** Fenced code block renderers by language; they compose in discovery order, each wrapping the one before it. */
   codeBlocks?: Readonly<Record<string, CodeBlockRenderer>>
   /** Contributions to the hover action row on stored messages, in discovery order; `text` is what Copy message copies. */
-  messageActions?: readonly ComponentType<{ entry: EntryRecord; text: string }>[]
+  messageActions?: readonly Component<{ entry: EntryRecord; text: string }>[]
   /** Readouts on the hover action row on stored messages, before its time, in discovery order. */
-  messageDetails?: readonly ComponentType<{ entry: EntryRecord }>[]
-  /** Inline labels after the Final answer heading on stored assistant messages. */
-  answerLabels?: readonly ComponentType<{ entry: EntryRecord }>[]
+  messageDetails?: readonly Component<{ entry: EntryRecord }>[]
+  /** Inline labels after the Final answer heading on stored assistant messages, and above an answer cut off at the output limit. */
+  answerLabels?: readonly Component<{ entry: EntryRecord }>[]
   /** Overlays on the user's bubble, rendered after it inside a positioned box exactly its size (`absolute inset-0`). */
-  userBubble?: readonly ComponentType<{ entry: EntryRecord }>[]
+  userBubble?: readonly Component<{ entry: EntryRecord }>[]
   /** Shows matching conversations in compact mode; the visible tools of every matching facet combine. */
   compact?: CompactContribution
   /** Document renderers; a later facet wins a kind. */

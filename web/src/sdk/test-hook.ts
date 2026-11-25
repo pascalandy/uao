@@ -2,10 +2,12 @@ import { parseConversationId } from '../../../lib/ids.ts'
 import type { ConversationId } from '@earendil-works/pi-durable'
 
 import type { EventRecord } from '../../../shared/events.ts'
-import { deadline } from '../../../lib/timers.ts'
+import { deadline, within } from '../../../lib/timers.ts'
 import { CORE_EVENTS, EVENT_FEED } from '../../../shared/events.ts'
 import type { Api } from './api.ts'
 import { ROOT } from './api.ts'
+import type { UiAgent, UiAgentHandle, UiComponent } from './agent.ts'
+import type { UiState } from './ui-state.ts'
 import type { State, Store } from './store.ts'
 
 export type Condition =
@@ -13,6 +15,7 @@ export type Condition =
   | 'quiet'
   | { entry: string }
   | { event: string; where?: Record<string, unknown> }
+  | { ui: string; is?: Record<string, unknown> }
 export interface UntilOptions {
   conversation?: number
   timeoutMs?: number
@@ -27,7 +30,14 @@ interface Sent {
 
 const SENT_KEY = 'ultimate.sent'
 
-export function createTestHook(store: Store, api: Api) {
+export function createTestHook(
+  store: Store,
+  api: Api,
+  agent: UiAgentHandle,
+  uiState: Pick<UiState, 'flush'>,
+  rendered: Promise<void>,
+  readsSettled: (signal: AbortSignal) => Promise<void>,
+) {
   const saved = JSON.parse(sessionStorage.getItem(SENT_KEY) ?? '{"sent":[]}') as {
     sent: [ConversationId, Sent][]
     last?: ConversationId
@@ -84,12 +94,118 @@ export function createTestHook(store: Store, api: Api) {
     })
   }
 
+  const controlsMounted = (timeoutMs = 30_000) => {
+    const gaveUp = new AbortController()
+    return within(
+      timeoutMs,
+      rendered.then(() => readsSettled(gaveUp.signal)),
+      () => {
+        const error = new Error(
+          `Timed out after ${timeoutMs / 1000}s: the page never rendered its surface with the data its components read`,
+        )
+        gaveUp.abort(error)
+        return error
+      },
+    )
+  }
+
   const firstSnapshotReady = (timeoutMs = 30_000) =>
     whenStoreConditionHolds(
       (state) => (state.view && state.tasks ? true : undefined),
       timeoutMs,
       () => 'the page never received its first snapshot',
     )
+
+  const same = (a: unknown, b: unknown): boolean => {
+    if (Array.isArray(a) || Array.isArray(b))
+      return (
+        Array.isArray(a) &&
+        Array.isArray(b) &&
+        a.length === b.length &&
+        a.every((item, index) => same(item, b[index]))
+      )
+    if (a && b && typeof a === 'object' && typeof b === 'object') {
+      const keys = Object.keys(a)
+      return (
+        keys.length === Object.keys(b).length &&
+        keys.every((key) => same((a as never)[key], (b as never)[key]))
+      )
+    }
+    return Object.is(a, b)
+  }
+
+  function untilUi(name: string, is: Record<string, unknown>, timeoutMs: number) {
+    return new Promise<UiComponent>((resolve, reject) => {
+      let ready = false
+      let stopped = false
+      let last: UiComponent | undefined
+      let checking = false
+      let again = false
+      let stopChanges = () => {}
+      const observer = new MutationObserver(() => recheck())
+      const cancel = deadline(timeoutMs, () => {
+        stop()
+        const seen = !ready
+          ? 'the page never rendered its controls'
+          : last
+            ? `${name} is ${JSON.stringify(last)}`
+            : `no component named ${name}`
+        reject(new Error(`Timed out after ${timeoutMs / 1000}s: ${seen}`))
+      })
+      function stop() {
+        stopped = true
+        stopChanges()
+        observer.disconnect()
+        cancel()
+      }
+      const check = async () => {
+        if (checking) {
+          again = true
+          return
+        }
+        checking = true
+        do {
+          again = false
+          last = await agent.named(name)
+          if (
+            !stopped &&
+            last &&
+            Object.entries(is).every(([key, value]) => same(last![key], value))
+          ) {
+            stop()
+            resolve(last)
+          }
+        } while (again && !stopped)
+        checking = false
+      }
+      function recheck() {
+        if (stopped) return
+        check().catch((error: unknown) => {
+          stop()
+          reject(error instanceof Error ? error : new Error(String(error)))
+        })
+      }
+      controlsMounted(timeoutMs).then(
+        () => {
+          if (stopped) return
+          ready = true
+          stopChanges = agent.bridge().subscribe(recheck)
+          observer.observe(document.body, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            characterData: true,
+          })
+          recheck()
+        },
+        (error: unknown) => {
+          if (stopped) return
+          stop()
+          reject(error instanceof Error ? error : new Error(String(error)))
+        },
+      )
+    })
+  }
 
   function busyLine(state: State, id: ConversationId) {
     const item = summary(state, id)
@@ -102,12 +218,36 @@ export function createTestHook(store: Store, api: Api) {
   return {
     api,
 
+    ui: {
+      async snapshot() {
+        await controlsMounted()
+        return agent
+          .bridge()
+          .snapshot()
+          .filter((component) => !component.offPage)
+      },
+      async query(input: Parameters<UiAgent['query']>[0]) {
+        await controlsMounted()
+        return agent.bridge().query(input)
+      },
+      async act(input: Parameters<UiAgent['act']>[0]) {
+        await controlsMounted()
+        return agent.act(input)
+      },
+      ready: () => controlsMounted(),
+      flush: () => uiState.flush(),
+    },
+
     async state() {
       await firstSnapshotReady()
       const state = store.getState()
       return {
         shown: shown(state),
-        conversations: state.conversations.map(({ id, title, busy }) => ({ id, title, busy })),
+        conversations: state.conversations.map(({ id, title, busy }) => ({
+          id,
+          title,
+          busy,
+        })),
         entries: state.view?.entries.map((entry) => entry.kind) ?? [],
       }
     },
@@ -135,6 +275,8 @@ export function createTestHook(store: Store, api: Api) {
 
     async until(condition: Condition, options: UntilOptions = {}) {
       const timeoutMs = options.timeoutMs ?? 300_000
+      if (typeof condition === 'object' && 'ui' in condition)
+        return untilUi(condition.ui, condition.is ?? {}, timeoutMs)
       const started = Date.now()
       await firstSnapshotReady(timeoutMs)
       const left = () => Math.max(0, timeoutMs - (Date.now() - started))
@@ -235,3 +377,9 @@ export function createTestHook(store: Store, api: Api) {
   }
 }
 export type TestHook = ReturnType<typeof createTestHook>
+
+declare global {
+  interface Window {
+    ultimate?: TestHook
+  }
+}

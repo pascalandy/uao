@@ -22,11 +22,36 @@ import type { CoreReport } from '../server/supervisor-protocol.ts'
 import { dashboard } from './dashboard.ts'
 
 const ultimateRoot = resolvePath(fileURLToPath(new URL('..', import.meta.url)))
-const { values, positionals } = parseArgs({
-  options: { port: { type: 'string' }, 'no-open': { type: 'boolean' } },
-  allowPositionals: true,
-})
-if (positionals.length > 1) throw new Error('Usage: ultimate [dir] [--port N] [--no-open]')
+const usage = `Usage: ultimate [dir] [--port N] [--no-open]
+
+Starts Ultimate for the project in dir (default: the current directory), or opens a window of it when it already runs.
+
+  --port N     serve on port N (default: ULTIMATE_PORT, the project's settings port, or the first free from 4747)
+  --no-open    do not open a window (also ULTIMATE_NO_OPEN=1)
+  -h, --help   print this help`
+function usageError(message: string): never {
+  console.error(`${message}\n\n${usage}`)
+  process.exit(1)
+}
+const { values, positionals } = (() => {
+  try {
+    return parseArgs({
+      options: {
+        port: { type: 'string' },
+        'no-open': { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' },
+      },
+      allowPositionals: true,
+    })
+  } catch (error) {
+    return usageError((error as Error).message)
+  }
+})()
+if (values.help) {
+  console.log(usage)
+  process.exit(0)
+}
+if (positionals.length > 1) usageError('Expected at most one project directory')
 const opening = !values['no-open'] && process.env.ULTIMATE_NO_OPEN !== '1'
 const available = (name: string) =>
   process.env.PATH?.split(':').some((path) => existsSync(join(path, name)))
@@ -138,6 +163,7 @@ let swapping = false
 let stopping = false
 let crashPage = false
 let failures = 0
+const stableAfterMs = 60000
 let generation = 0
 let announced = false
 let stderr = ''
@@ -250,6 +276,7 @@ type Core = {
   child: ChildProcess
   port: number
   generation: number
+  readyAt?: number
   stderr: string
   messages: ChildMessage[]
   reports: Map<'web' | 'access', CoreReport>
@@ -361,6 +388,7 @@ function boot(previousBuild?: BuildInfo): Core {
     children.delete(core)
     if (core === active && !swapping && !stopping) {
       active = undefined
+      failures = Date.now() - core.readyAt! < stableAfterMs ? failures + 1 : 0
       display.lifecycle('crashed')
       display.log('error', 'supervisor', `Core ${core.generation} exited unexpectedly`)
       void recover().catch((error: unknown) =>
@@ -404,9 +432,9 @@ async function start(core: Core) {
     return
   }
   active = core
+  core.readyAt = Date.now()
   display.lifecycle('ready', { generation: core.generation, pid: core.child.pid })
   for (const report of core.reports.values()) display.report(report)
-  failures = 0
   crashPage = false
   flush()
   if (!announced) {

@@ -18,9 +18,11 @@ import { guardToolArguments, modelTrace } from './tool-arguments.ts'
 import { readFamilies } from '../lib/families-settings.ts'
 import { callTrace } from './trace.ts'
 import { projectSkills } from './skills.ts'
+import { writeProject } from './project.ts'
 import { requestSwap } from './supervisor-protocol.ts'
 import { activeChapter, finishChapterSwitch } from '../lib/chapters.ts'
 import { defaultAgent } from '../lib/agents.ts'
+import { secretsAuthContext } from '../lib/secrets.ts'
 import type {
   ConversationId,
   Cursor,
@@ -35,9 +37,11 @@ import type {
   SubmissionRecord,
 } from '@earendil-works/pi-durable'
 import { NodeExecutionEnv } from '@earendil-works/pi-durable/env/node'
+import { createNodePhotonImages } from '@earendil-works/pi-durable/images/node'
 import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite/node'
 import { createBuild } from './build.ts'
 import { spawn } from '../lib/spawn.ts'
+import { delegatedCore, isolateWork, workMemoryMax, workSpawn } from '../lib/cgroup.ts'
 import { applyHttpProxySettings, configureHttpDispatcher } from './http.ts'
 import type { Notice } from '../shared/protocol.ts'
 
@@ -121,7 +125,7 @@ export async function prepareHarness(options: HostOptions) {
   const home = options.home ?? process.env.ULTIMATE_HOME ?? projectHome(projectRoot, userHome)
   await mkdir(home, { recursive: true })
   let chapter = await activeChapter(home)
-  const runtime = await ModelRuntime.create()
+  const runtime = await ModelRuntime.create({ authContext: secretsAuthContext(userHome) })
   const settings = SettingsManager.create(projectRoot)
   applyHttpProxySettings(settings.getGlobalSettings().httpProxy)
   configureHttpDispatcher(settings.getHttpIdleTimeoutMs())
@@ -132,7 +136,7 @@ export async function prepareHarness(options: HostOptions) {
   const processHelperExecutionEnv = ({ cwd = projectRoot }: EnvTarget) => {
     let found = envs.get(cwd)
     if (!found) {
-      found = new NodeExecutionEnv({ cwd, spawn })
+      found = new NodeExecutionEnv({ cwd, spawn: workSpawn(spawn) })
       envs.set(cwd, found)
     }
     return found
@@ -181,6 +185,7 @@ export async function prepareHarness(options: HostOptions) {
     skills: (cwd: string) => projectSkills({ ultimateRoot, projectRoot, userHome }, cwd).skills,
     restart: (approved: (generation: number) => Promise<void>) =>
       requestSwap(approved, builds.current()),
+    images: await createNodePhotonImages(),
     ultimateRoot,
     projectRoot,
     userHome,
@@ -201,6 +206,8 @@ export async function prepareHarness(options: HostOptions) {
     extensionSources,
     faux,
     async open(resume = true) {
+      const core = delegatedCore()
+      if (core) await isolateWork(core, () => workMemoryMax(projectRoot, userHome))
       const coreStartForStaleOwnerCheck = identify(process.pid)
       if (!coreStartForStaleOwnerCheck)
         throw new Error(`Cannot identify Ultimate core pid ${process.pid}`)
@@ -217,6 +224,7 @@ export async function prepareHarness(options: HostOptions) {
           throw new Error(
             `A reset or restore of ${home} was interrupted; rerun pnpm reset or pnpm restore`,
           )
+        await writeProject(home, projectRoot)
         await finishChapterSwitch(home, async (file) => {
           const created = await openNodeSqliteStorage(file)
           await created.close(context)

@@ -61,18 +61,21 @@ plain words (the Inbox row shows that first line as is), the link after it, then
 
 The first decision card is the only one: it always carries, next to the verdict question, a **post/skip question
 for the comment** whose "post" option has the drafted comment, in full, as its `preview`; a "merge with changes"
-option has the changes as a diff in its `preview`. Never leave the comment for a later card. Store the draft on the PR's record with codemode `ultimate.action('pr-triage', 'set', {number,
-draft})`, so the post or close the user picks sends exactly that text.
+option has the changes as a diff in its `preview`. Never leave the comment for a later card. Store the draft on the PR's record with codemode `tools.action({extension: 'pr-triage', action: 'set', args: {number,
+draft}})`, so the post or close the user picks sends exactly that text. When the user picks a different verdict than
+the draft assumed, rewrite the draft to fit it and store it again, without asking a second card.
 
 ## 5. Merge, if it merges
 
 After the go, keep the `--no-ff` merge from step 2 so the author's commits stay as they are (no squash, rebase or
 amend), and `workspace submit` it: the lander runs every check on the merged result and pushes. Fixes of your own go
-in separate commits after the merge; one that works around something names its origin (the PR number, the upstream
-issue) and intent in a comment at the code.
+in separate commits after the merge; one that works around something gives its reason (the PR number, the upstream
+issue) in its commit message and a regression test, never a code comment (AGENTS.md "Review quality").
 
 ## GitHub actions are not yours
 
 Never comment, close, retitle, label or approve the pull request. @ultimate does it when the user picked it on the
-decision card. In the comment draft, write agent names in backticks (`` `@ultimate` ``) or without the @: on GitHub
+decision card, with `approved: true` on `post` or `close`. Read the PR's record (`list`) first: a set `commentUrl`
+means the comment is already up, so never post it twice. A close or reference comment goes up right away, a merge's comment only once GitHub shows the PR
+merged (`gh pr view <n> --json state`), never while the merge is still held or landing. In the comment draft, write agent names in backticks (`` `@ultimate` ``) or without the @: on GitHub
 `@name` notifies the real user of that name.

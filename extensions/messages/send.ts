@@ -1,11 +1,11 @@
-import type { ConversationId, EntryId, TaskId } from '@earendil-works/pi-durable'
+import type { ConversationId, EntryId, TaskId, Tx } from '@earendil-works/pi-durable'
 import type { Context } from '@earendil-works/chord/context'
 import { defineDoc, ROOT_CONVERSATION_ID } from '@earendil-works/pi-durable'
 import type { ExtensionHost } from '../../server/extensions.ts'
 import { Standing } from '../subagents/api.ts'
-import { Messages, MessageSent } from './api.ts'
+import { AskedCalls, Messages, MessageSent } from './api.ts'
 import type { Message, Question } from './api.ts'
-import type { Via } from './refs.ts'
+import type { Judged, Via } from './refs.ts'
 import { checkQuestions, gist, openQuestion } from './questions.ts'
 import { isOwed } from '../../lib/message-state.ts'
 import { UserInputEvent } from '../../shared/events.ts'
@@ -13,9 +13,8 @@ import type { Device } from '../../shared/events.ts'
 import { resolveImages } from './images.ts'
 import type { ImagesRef } from './images.ts'
 import { append } from './log.ts'
-import { parentOf, resolveRecipient, senderName, starterOf } from './addresses.ts'
+import { parentOf, resolveRecipient, senderName, serve, starterOf } from './addresses.ts'
 import { delivery } from './delivery.ts'
-import { notice } from './notice.ts'
 
 const AtomicallyCommittedCallReceipts = defineDoc<{ ids: Record<string, number> }>({
   kind: 'board.sent-calls',
@@ -77,6 +76,9 @@ export async function send(
     report?: boolean
     routed?: EntryId
     echo?: boolean
+    judged?: Judged
+    stillReports?: (tx: Tx) => Promise<boolean>
+    serveBranch?: true
   } = {},
 ) {
   const { taskId, callId, requestId, answerId, device, via } = options
@@ -96,17 +98,10 @@ export async function send(
 
   const parent = from === 'user' ? undefined : await parentOf(host, from, ctx)
   const starter = parent ?? (await starterOf(host, from, ctx))
-  if (input.to === 'user') {
-    if (parent !== undefined)
-      throw new Error(
-        `A subagent answers the conversation that started it: give your final answer, or message #${parent}.`,
-      )
-    const isStanding = from !== 'user' && Object.values(standing ?? {}).includes(from)
-    if (!isStanding && starter === undefined)
-      throw new Error(
-        'Only @ultimate, standing agents and branches message the user; send this to the conversation that started you.',
-      )
-  }
+  if (input.to === 'user' && parent !== undefined)
+    throw new Error(
+      `A subagent answers the conversation that started it: give your final answer, or message #${parent}.`,
+    )
   if (!input.text.trim()) throw new Error('Message text must not be empty')
   if (input.questions !== undefined && (input.to !== 'user' || input.reply === false))
     throw new Error('questions go only with a reply-expected message to the user')
@@ -120,6 +115,13 @@ export async function send(
     ? `user (settled for them by @ultimate, from what they said in its chat)`
     : await senderName(host, from, ctx)
   const toLabel = await senderName(host, to, ctx)
+  const branchStarter = from === 'user' ? await starterOf(host, to, ctx) : starter
+  const watcherId =
+    branchStarter !== undefined && Object.values(standing ?? {}).includes(branchStarter)
+      ? branchStarter
+      : primaryId
+  const watcher =
+    watcherId === undefined ? undefined : await host.harness().conversation(watcherId, ctx)
   return host.harness().commit(async (tx) => {
     const receipt =
       taskId === undefined ? undefined : await tx.doc(AtomicallyCommittedCallReceipts, taskId)
@@ -191,6 +193,13 @@ export async function send(
         return response.id
       }
     }
+    if (options.serveBranch && typeof from === 'number' && typeof to === 'number')
+      await serve(host, tx, from, { kind: 'branch', id: to })
+    let { report, note } = options
+    if (report && options.stillReports && !(await options.stillReports(tx))) {
+      report = false
+      note = true
+    }
     const message = await append(tx, {
       from,
       to,
@@ -201,22 +210,18 @@ export async function send(
       ...(callId === undefined ? {} : { call: callId }),
       ...(images ? { images } : {}),
       ...(questions ? { questions } : {}),
-      ...(options.report ? { report: true as const } : {}),
+      ...(report ? { report: true as const } : {}),
       ...(options.routed !== undefined ? { routed: options.routed } : {}),
       ...(options.echo ? { echo: true as const } : {}),
+      ...(options.judged ? { judged: options.judged } : {}),
       ...(via ? { via } : {}),
     })
-    await host.emit(tx, MessageSent, {
-      message: message.id,
-      from,
-      to,
-      reply: message.reply,
-      steer,
-    })
-    if (primaryId !== undefined) {
-      const asked = to === 'user' && message.reply && from !== primaryId && typeof from === 'number'
+    if (to === 'user' && message.reply && typeof from === 'number' && callId !== undefined)
+      (await tx.doc(AskedCalls, from)).calls.push(callId)
+    if (watcherId !== undefined) {
+      const asked = to === 'user' && message.reply && from !== watcherId && typeof from === 'number'
       const answered =
-        from === 'user' && answerId !== undefined && typeof to === 'number' && to !== primaryId
+        from === 'user' && answerId !== undefined && typeof to === 'number' && to !== watcherId
       const notification = asked
         ? {
             kind: 'board.asked' as const,
@@ -244,23 +249,28 @@ export async function send(
                     }),
               },
               content: via
-                ? `You settled #${to}'s questions (message ${answerId}) for the user${input.dismiss ? ', closed without an answer' : ''}.`
+                ? `${watcherId === primaryId ? 'You' : '@ultimate'} settled #${to}'s questions (message ${answerId}) for the user${input.dismiss ? ', closed without an answer' : ''}.`
                 : input.dismiss
                   ? `The user dismissed #${to}'s questions (message ${answerId}).`
                   : `The user answered #${to}'s questions (message ${answerId}):\n${input.text}`,
             }
           : undefined
-      if (notification)
-        await tx.createTask(
-          notice(host),
-          { to: primaryId, ...notification },
-          {
-            conversationId: primaryId,
-            ownership: { kind: 'conversation' },
-            background: true,
-          },
-        )
+      if (notification && watcher) {
+        const { kind, data, content } = notification
+        await watcher.submit(tx, {
+          type: 'write',
+          requestId: `${kind}:${data.message}`,
+          entry: { kind, data, model: [{ role: 'user', content, timestamp: Date.now() }] },
+        })
+      }
     }
+    await host.emit(tx, MessageSent, {
+      message: message.id,
+      from,
+      to,
+      reply: message.reply,
+      steer,
+    })
 
     const userAnswerNotAlreadyCountedInChat =
       from === 'user' && answerId !== undefined && typeof to === 'number' && !via
@@ -278,7 +288,7 @@ export async function send(
         {
           message,
           steer,
-          note: options.note ?? (starter === to && input.reply === false),
+          note: note ?? (starter === to && input.reply === false),
           fromLabel,
           toLabel,
         },

@@ -2,10 +2,13 @@ import type { ConversationId } from '@earendil-works/pi-durable'
 import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { ModelRuntime } from '@earendil-works/pi-coding-agent'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { existsSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { DatabaseSync } from 'node:sqlite'
+import { join, resolve as resolvePath } from 'node:path'
 import { afterEach, expect, it } from 'vitest'
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context'
-import {
+import instance, {
   linkHome,
   previewEnv,
   previewWorkspace,
@@ -17,6 +20,7 @@ import { saveDefinition } from '../../../lib/agents.ts'
 import { writeFamilies } from '../../../lib/families-settings.ts'
 import { writeJson } from '../../../lib/json-file.ts'
 import { at, label } from '../links.ts'
+import type { PreviewsService } from '../../conversations/api.ts'
 
 const homes: string[] = []
 afterEach(async () => {
@@ -174,6 +178,90 @@ it('copies linked read-only skills into the preview as owner-writable files', as
 
   expect(await readFile(join(store, 'locked/SKILL.md'), 'utf8')).toBe('x')
   await chmod(join(store, 'locked'), 0o755)
+})
+
+// Regression: previews wrote through linked ~/.ultimate/extensions/* into the user's dotfiles repository.
+it("gives a preview a private copy of the user's linked extensions", async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ultimate-preview-extensions-'))
+  homes.push(root)
+  const [dotfiles, user, copy] = ['dotfiles', 'user', 'preview'].map((name) => join(root, name))
+  await mkdir(join(dotfiles, 'shell'), { recursive: true })
+  await writeFile(join(dotfiles, 'shell/server.ts'), 'live')
+  await mkdir(join(user, '.ultimate/extensions'), { recursive: true })
+  await symlink(join(dotfiles, 'shell'), join(user, '.ultimate/extensions/shell'))
+
+  await seedUserHome(user, copy)
+  await writeFile(join(copy, '.ultimate/extensions/shell/server.ts'), 'edited')
+
+  expect(await readFile(join(dotfiles, 'shell/server.ts'), 'utf8')).toBe('live')
+  expect(await readFile(join(copy, '.ultimate/extensions/shell/server.ts'), 'utf8')).toBe('edited')
+})
+
+// Regression: `home: "~/…"` was resolved against the server's cwd and created a literal `~` in the clone.
+it('refuses a home that is not absolute before creating anything', async () => {
+  const name = `ultimate-refused-${randomUUID()}`
+  const extension = instance({
+    want: () => undefined,
+    need: () => ({}),
+    implement: () => {},
+    resource: <T>(_key: string, create: () => T) => create(),
+    onClose: () => {},
+    onOpen: () => {},
+  } as never)
+  const result = await extension.tools![0].execute(
+    { action: 'start', home: `~/${name}` },
+    { conversationId: 1, output: () => {} } as never,
+    BACKGROUND_CONTEXT,
+  )
+
+  expect(result.isError).toBe(true)
+  expect(JSON.stringify(result.output)).toContain('absolute path')
+  expect(existsSync(resolvePath('~', name))).toBe(false)
+})
+
+it('keeps a preview tracked and allows retry when stop cannot clean its home', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'ultimate-preview-stop-'))
+  homes.push(home)
+  const host = hostOver(home)
+  const item = {
+    ...preview(40000),
+    home: join(home, 'preview'),
+    temporary: true,
+    child: { exitCode: 0, signalCode: null },
+    output: 'preview output',
+  }
+  await mkdir(item.home)
+  host.resource('instance', () => new Map([[item.id, item]]))
+  let previews!: PreviewsService
+  const extension = instance({
+    ...host,
+    want: () => undefined,
+    need: () => ({}),
+    implement: (_token: unknown, service: PreviewsService) => {
+      previews = service
+    },
+    onClose: () => {},
+    onOpen: () => {},
+  } as never)
+  const logs = () =>
+    extension.tools![0].execute({ action: 'logs', id: item.id }, {} as never, BACKGROUND_CONTEXT)
+  const stop = () => previews.stop([item.conversationId], BACKGROUND_CONTEXT)
+
+  const storage = new DatabaseSync(join(item.home, 'storage.lock.db'))
+  try {
+    storage.exec('BEGIN EXCLUSIVE')
+    await expect(stop()).rejects.toThrow('not cleaned')
+    expect(existsSync(item.home)).toBe(true)
+    expect(stopped(host).size).toBe(0)
+    expect((await logs()).output).toEqual([{ type: 'text', text: '"preview output"' }])
+  } finally {
+    storage.close()
+  }
+
+  expect(await stop()).toEqual([item.id])
+  expect(existsSync(item.home)).toBe(false)
+  expect((await logs()).isError).toBe(true)
+  expect([...stopped(hostOver(home)).values()]).toEqual([preview(40000)])
 })
 
 it('remembers stopped previews across restarts, one per port, the last 50', async () => {
