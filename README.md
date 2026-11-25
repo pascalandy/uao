@@ -1,6 +1,6 @@
 # Ultimate
 
-![Isometric drawing of a lakeside tower-house whose roof crane lifts a new top floor into place while the lit rooms below keep running](docs/assets/hero-v2b.png)
+![Isometric drawing of a lakeside tower-house whose rooftop crane lifts a pergola-covered terrace into place above the lit library and gym](docs/assets/hero-v2b.png)
 
 > [!NOTE]
 > **A personal project, shared as inspiration.** Ultimate is not a library or a product with users to support. Copy
