@@ -1,5 +1,7 @@
 # Ultimate
 
+![Isometric drawing of a lakeside tower-house whose roof crane lifts a new top floor into place while the lit rooms below keep running](docs/assets/hero-v2b.png)
+
 > [!NOTE]
 > **A personal project, shared as inspiration.** Ultimate is not a library or a product with users to support. Copy
 > what you like, fork it, do whatever you want with it. To make it work your way, ask Ultimate to change itself; it
