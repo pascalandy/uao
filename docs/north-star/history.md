@@ -2,19 +2,19 @@
 
 This file says how upstream reached the [snapshot](upstream.md#snapshot): its eras, the life of a change unit, and how the rules and the team changed. [upstream.md](upstream.md#differences) records uao's additions since the fork. The [bricks](bricks/README.md) say what each part does, and the [decisions](decisions/README.md) say why.
 
-Each date is an author date, as `git log --date=short` shows it. Each count is for upstream at `6b6d88b6`.
+Each date is an author date, as `git log --date=short` shows it. Each count is for upstream at `e8abe7f1`.
 
 ## Summary
 
-- Upstream has 2,766 commits from 2026-10-01 to 2026-11-18 (`git rev-list --count 6b6d88b6`). Of these commits, 726 are merges (`git rev-list --count --merges 6b6d88b6`). The other 2,040 are work commits (`git rev-list --count --no-merges 6b6d88b6`)
-- Daniel Griesser authored 2,608 commits, Juan 20, James Groat 19, Tobi Lütke 17, Juliano Julio Costa 13, and the agent identity `Ultimate` 12 (`git shortlog -sne 6b6d88b6`)
-- 25 other author names have one to nine commits each. They include the agent identity `CI` (1) (`git shortlog -sne 6b6d88b6`)
-- 1,683 work commits carry Ultimate's conversation trailer (`git log --no-merges --grep='^Ultimate-Conversation:' --oneline 6b6d88b6 | wc -l`). Thus, Ultimate's agents made most of the work (inferred)
-- A change unit is the work of one conversation. The trailers name 863 change units, and 557 have one commit (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' 6b6d88b6 | sed '/^$/d' | sort | uniq -c`)
+- Upstream has 3,927 commits from 2026-10-01 to 2026-11-25 (`git rev-list --count e8abe7f1`). Of these commits, 951 are merges (`git rev-list --count --merges e8abe7f1`). The other 2,976 are work commits (`git rev-list --count --no-merges e8abe7f1`)
+- Daniel Griesser authored 3,709 commits, James Groat 21, Juan 21, Tobi Lütke 17, Juliano Julio Costa 16, Maros 13, Yasuhito Takamiya 13, manueldarveau 13, and the agent identity `Ultimate` 12 (`git shortlog -sne e8abe7f1`)
+- 36 other author names have one to nine commits each. They include the agent identity `CI` (1) (`git shortlog -sne e8abe7f1`)
+- 2,575 work commits carry Ultimate's conversation trailer (`git log --no-merges --grep='^Ultimate-Conversation:' --oneline e8abe7f1 | wc -l`). Thus, Ultimate's agents made most of the work (inferred)
+- A change unit is the work of one conversation. The trailers name 1,096 change units, and 669 have one commit (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' e8abe7f1 | sed '/^$/d' | sort | uniq -c`)
 
 ## Eras
 
-Upstream went through eleven eras. An era is a span of days with one main theme. `git log --format=%ad --date=short 6b6d88b6 | sort | uniq -c` gives the commits of each day. A landing merge puts a change unit on `main` ([Life of a change unit](#life-of-a-change-unit)). A change unit counts in the era of its first work commit. `git log --no-merges --format='%ad %(trailers:key=Ultimate-Conversation,valueonly)' --date=short 6b6d88b6` gives each unit and its dates. Commits before 2026-10-14 have no trailer, so the table counts no change unit for them. `git log --merges --format='%ad %s' --date=short 6b6d88b6` gives the dates of the landing shapes defined below.
+Upstream went through twelve eras. An era is a span of days with one main theme. `git log --format=%ad --date=short e8abe7f1 | sort | uniq -c` gives the commits of each day. A landing merge puts a change unit on `main` ([Life of a change unit](#life-of-a-change-unit)). A change unit counts in the era of its first work commit. `git log --no-merges --format='%ad %(trailers:key=Ultimate-Conversation,valueonly)' --date=short e8abe7f1` gives each unit and its dates. Commits before 2026-10-14 have no trailer, so the table counts no change unit for them. `git log --merges --format='%ad %s' --date=short e8abe7f1` gives the dates of the landing shapes defined below.
 
 | Era                      | Dates (2026)   | Commits | Landing merges | Change units | Decisions              |
 | ------------------------ | -------------- | ------: | -------------: | -----------: | ---------------------- |
@@ -28,13 +28,16 @@ Upstream went through eleven eras. An era is a span of days with one main theme.
 | 8 Recoverable work       | 10-22 to 10-24 |     398 |             56 |          130 | D030, D031, D036, D037 |
 | 9 Ordinary work          | 10-25 to 11-01 |     465 |             77 |          184 | D038 to D044           |
 | 10 Outside contributions | 11-02 to 11-13 |     417 |             83 |          174 | none                   |
-| 11 Enforced rules        | 11-14 to 11-18 |     299 |             39 |           81 | D045                   |
+| 11 Enforced rules        | 11-14 to 11-18 |     366 |             42 |           92 | D045                   |
+| 12 Solid interface       | 11-19 to 11-25 |   1,094 |             90 |          222 | D046                   |
 
 The sync of 2026-11-09 adds 177 work commits and 105 merges (`git rev-list --count --no-merges d0a2e17b..32e45c95`, `git rev-list --count --merges d0a2e17b..32e45c95`). Its commits dated up to 2026-11-01 go to era 9. Some author dates precede the old snapshot date because those commits reached upstream later (`8db6c877`, `01d0a9ed`, `db1d8d12`). Era 10 starts on 2026-11-02, when outside pull requests began to land in large numbers ([Outside contributions in the November 9 sync](#outside-contributions-in-the-november-9-sync)).
 
 The sync of 2026-11-11 adds 32 work commits and 17 merges (`git rev-list --count --no-merges 32e45c95..11c89136`, `git rev-list --count --merges 32e45c95..11c89136`). All 49 commits are dated 2026-11-09 or 2026-11-10, so they go to era 10 (`git log --format=%ad --date=short 32e45c95..11c89136 | sort | uniq -c`).
 
 The sync of 2026-11-18 adds 270 work commits and 156 merges (`git rev-list --count --no-merges 11c89136..6b6d88b6`, `git rev-list --count --merges 11c89136..6b6d88b6`). Its commits dated up to 2026-11-13 go to era 10, and the later ones start era 11 (`git log --format=%ad --date=short 11c89136..6b6d88b6 | sort | uniq -c`). Four of them have author dates of 2026-11-10 or earlier, because their pull requests landed later (`1ccebc60`, `bc938b06`, `e4a143e3`, `e59a9873`). Era 11 starts on 2026-11-14, when upstream put its rules for code into lint and a rule table ([Era 11](#era-11-enforced-rules)).
+
+The sync of 2026-11-25 adds 936 work commits and 225 merges (`git rev-list --count --no-merges 6b6d88b6..e8abe7f1`, `git rev-list --count --merges 6b6d88b6..e8abe7f1`). Its 67 commits dated 2026-11-16 to 2026-11-18 go to era 11, and the later ones start era 12 (`git log --format=%ad --date=short 6b6d88b6..e8abe7f1 | sort | uniq -c`). Era 12 starts on 2026-11-19, when upstream began to move its interface from React to Solid ([Era 12](#era-12-solid-interface)).
 
 ### Era 1: Foundation
 
@@ -524,6 +527,105 @@ Upstream moves its rules for code into lint. `AGENTS.md` gets a table of each ru
 
 Other numbers from #125 to #220 have no merge in this sync's history.
 
+### The November 25 sync in era 11
+
+The November 25 sync adds the commits of 2026-11-16 to 2026-11-18 to this era. These are the main changes:
+
+- Added:
+  - a reel of a branch's screenshots beside its question (`3abdf324`, [B12](bricks/B12-human-in-the-loop.md))
+  - a side chat that talks a question through in a read-only copy of its asker (`ad3bf0c5`, [B12](bricks/B12-human-in-the-loop.md))
+  - a capped cgroup for the work of each branch (`f00dd1b6`, [B05](bricks/B05-agent-tools.md))
+  - a report for a run that a restart cut off (`e600a47f`, [B09](bricks/B09-coordinators-and-subagents.md))
+- Reworked:
+  - an answer card comes with its picks chosen, and a hold on Send sends at once (`ecfc6e96`, [B12](bricks/B12-human-in-the-loop.md))
+  - the supervisor stops after three crashes in a row soon after `ready` (`8ca81954`, [B02](bricks/B02-self-change-while-running.md))
+  - a resumed branch hears only of new commits that overlap its checkout (`607dd8ca`, [B07](bricks/B07-conversation-tree.md))
+  - a served request follows one durable owner (`a28ff5c0`, [B11](bricks/B11-notes-and-messages.md))
+  - one full test suite runs at a time on a shared host (`72637fb4`)
+
+### Era 12: Solid interface
+
+Upstream moves its whole interface from React to Solid in four days ([D046](decisions/D046-solid-interface.md)). The work starts with the toolchain and a measured baseline (`f06ad003`, `0f7f8d3e`). The shell becomes Solid on 2026-11-21 (`0dea5af2`). On 2026-11-22, the React layer for outside facets goes too (`256f9cee`). Controls of the new component kit report their names and states, so agents operate them by name (`0fd21054`). Outside pull requests continue to land through 2026-11-24 ([table below](#outside-contributions-in-the-november-25-sync)).
+
+- Added:
+  - the agent bridge, UI steps in the browser tool, and the `ui.changed` log of stored UI changes (`fa9a3b6e`, `0fd21054`, `45b6719e`, [B05](bricks/B05-agent-tools.md), [B14](bricks/B14-everything-on-record.md))
+  - the `antigravity` provider for the models of the Antigravity CLI login (`76280bf9`, [B04](bricks/B04-models-and-providers.md))
+  - voice mode, a push-to-talk fork of @ultimate (`1401d351`, `a6d74768`, `1e6c09e5`, `553717c9`, [B12](bricks/B12-human-in-the-loop.md))
+  - videos in the prompt box, the screen recorder, and `video_ask` (`604927c2`, `9538d3e2`, `107f68a8`, [B12](bricks/B12-human-in-the-loop.md))
+  - goal proposals as cards (`1b9c842a`, [B12](bricks/B12-human-in-the-loop.md))
+  - `pnpm test:affected`, which the lander runs (`1e9f8a23`, [B10](bricks/B10-isolates-previews-lander.md))
+  - a Jev judge for the reports of branches (`161901f2`, [D041](decisions/D041-state-based-waking.md))
+  - the adversarial reviewer of this repository (`2fcc3bfe`, [B09](bricks/B09-coordinators-and-subagents.md))
+- Reworked:
+  - Pi 1.6.0 (`2f6ef78f`, [B01](bricks/B01-durable-conversations.md))
+  - codemode runs on Pi Durable's code mode tool, and scripts write through `tools.action` and `tools.tell` (`3603c530`, [D005](decisions/D005-codemode-sandbox.md))
+  - a submission enters its target conversation in the commit that decides it (`96414844`, [B01](bricks/B01-durable-conversations.md))
+  - the watchdog tries a temporary failure four times over about 50 minutes (`0d0516d0`, [B09](bricks/B09-coordinators-and-subagents.md))
+  - any conversation except a subagent can message the user (`3aed7ab8`, [D044](decisions/D044-branches-ask-the-user.md))
+  - previews get a private copy of the user extensions (`4360a446`, [B10](bricks/B10-isolates-previews-lander.md))
+  - a model call ends after the request timeout of silence (`34e001bd`, [B04](bricks/B04-models-and-providers.md))
+- Removed:
+  - React, its compat layer, and React facets (`256f9cee`, `b8657b86`, [D046](decisions/D046-solid-interface.md))
+  - the Voice standing agent and its GPT-Live relay (`1401d351`, [D019](decisions/D019-standing-agents.md))
+  - the redraws extension and the dashboard of the migration (`b4de946d`, `2d387ede`)
+
+### Outside contributions in the November 25 sync
+
+`git log --merges --format='%h %s' 6b6d88b6..e8abe7f1` lists the merges. Most land through a `Merge branch 'pr-<n>'` merge into a coordinator's Git branch, or through a `Merge PR #<n>` merge. A follow-up commit names the pull request when a coordinator changed it, such as `55743512` for #267:
+
+| PR                                                 | Change                                                                                                | Work commit and merge                                      |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| [#230](https://github.com/HazAT/ultimate/pull/230) | The background test boots its server in each test                                                     | `b814dd0b`, `e810cc93`                                     |
+| [#231](https://github.com/HazAT/ultimate/pull/231) | The trace origin of a branch starts at its fork point                                                 | `eb1f501c`, `22ec7d70`                                     |
+| [#233](https://github.com/HazAT/ultimate/pull/233) | A resumed branch hears only of commits that overlap its checkout                                      | `607dd8ca`, `9f79d8da`, `f4b43a67`, `e34161d2`             |
+| [#234](https://github.com/HazAT/ultimate/pull/234) | A standing agent's own failure shows as a card in its transcript                                      | `39bf0a76`, `0078dfc1`                                     |
+| [#236](https://github.com/HazAT/ultimate/pull/236) | The supervisor stops a crash loop after `ready`, and the watchdog reports runs that a restart cut off | `e600a47f`, `8ca81954`, `9df5ffc9`                         |
+| [#242](https://github.com/HazAT/ultimate/pull/242) | A pause or a delete of a script stops its watcher. `21567137` narrows its guards                      | `c04f973e`, `7a26eb9f`                                     |
+| [#244](https://github.com/HazAT/ultimate/pull/244) | Agent shells start without the host's `NODE_ENV`                                                      | `cfc41b52`, `5d8d2a0a`                                     |
+| [#249](https://github.com/HazAT/ultimate/pull/249) | A refused request (400) never marks its provider as failing                                           | `6b81df67`, `31621e20`                                     |
+| [#255](https://github.com/HazAT/ultimate/pull/255) | Fall asleep also waits for busy branches                                                              | `7236a8a7`, `97721b70`                                     |
+| [#256](https://github.com/HazAT/ultimate/pull/256) | The user drags an edge to resize the sidebar or the right panel                                       | `0a9d0d60`, `7ecce865`                                     |
+| [#259](https://github.com/HazAT/ultimate/pull/259) | The automation receipt names the next fire in UTC and from now                                        | `820aa283`, `7ca4d3fa`                                     |
+| [#261](https://github.com/HazAT/ultimate/pull/261) | A test fix for the Solid plugins line                                                                 | `6ff3aed1`, `b4c25810`                                     |
+| [#264](https://github.com/HazAT/ultimate/pull/264) | MCP refuses a call without its required arguments and shows the input schema. `6f34630f` trims it     | `0986250e`, `02a90927`                                     |
+| [#265](https://github.com/HazAT/ultimate/pull/265) | An invalid `modelFamilies` layer warns in setup                                                       | `b17a405f`, `69456744`                                     |
+| [#267](https://github.com/HazAT/ultimate/pull/267) | Watchers start in the project root. `55743512` drops one rule                                         | `70b39ce3`, `1a0384a5`                                     |
+| [#273](https://github.com/HazAT/ultimate/pull/273) | The web UI builds again when the settings change during a build                                       | `ffa27dae`, `ca3e65a7`                                     |
+| [#276](https://github.com/HazAT/ultimate/pull/276) | An automation update keeps its subscribers                                                            | `896f4c45`, `bb9b695d`                                     |
+| [#277](https://github.com/HazAT/ultimate/pull/277) | A prompt run delivers its answer to its subscribers                                                   | `d2e7683e`, `c302f67d`                                     |
+| [#278](https://github.com/HazAT/ultimate/pull/278) | MCP sends a rate-limited call once more after 5 s. `6f34630f` trims it                                | `680befed`, `fda2777b`                                     |
+| [#279](https://github.com/HazAT/ultimate/pull/279) | A model call ends after the request timeout of silence, with one visible retry                        | `34e001bd`, `553d8ee2`                                     |
+| [#284](https://github.com/HazAT/ultimate/pull/284) | The links of a to-do open, and only its checkbox ticks it                                             | `b5000d1e`, `8acf35d1`                                     |
+| [#287](https://github.com/HazAT/ultimate/pull/287) | Three e2e suites share one server                                                                     | `36f726e0`, `3e90eca3`, `b6441046`, `fdde30df`, `81911eae` |
+| [#288](https://github.com/HazAT/ultimate/pull/288) | The watchdog backs off over four continuations before it reports a temporary failure                  | `0d0516d0`, `12e2eafc`, `9a2ae5e0`, `9db3ba80`, `52ec29bb` |
+| [#292](https://github.com/HazAT/ultimate/pull/292) | An automation run keeps `subagent` when its definition lists it                                       | `1d0597f3`, `d4194ae6`                                     |
+| [#294](https://github.com/HazAT/ultimate/pull/294) | The project registers only after it takes the storage lock                                            | `aac6681b`, `162831d8`                                     |
+| [#298](https://github.com/HazAT/ultimate/pull/298) | The browser takes a viewport width and height                                                         | `64dc9d81`, `b6eefd26`                                     |
+| [#301](https://github.com/HazAT/ultimate/pull/301) | A checkout that Git cannot count no longer stops a release                                            | `ee39e668`, `6ff6cfe9`                                     |
+| [#307](https://github.com/HazAT/ultimate/pull/307) | Each answer goes with `keepalive`, so a page exit cannot drop it                                      | `3c0f9aab`, `436d9644`                                     |
+| [#309](https://github.com/HazAT/ultimate/pull/309) | The e2e run builds the web UI once for the browser tests                                              | `e04e9137`, `101b6f5f`                                     |
+| [#311](https://github.com/HazAT/ultimate/pull/311) | The browser names each match of an ambiguous selector                                                 | `29432615`, `14e16a63`                                     |
+| [#320](https://github.com/HazAT/ultimate/pull/320) | Inbox titles render inline Markdown                                                                   | `103d36c4`, `f0942904`                                     |
+| [#322](https://github.com/HazAT/ultimate/pull/322) | A trace reads forward from `since` and takes `until`                                                  | `79b8f49a`, `37f9ee62`                                     |
+| [#326](https://github.com/HazAT/ultimate/pull/326) | This repository no longer turns on `voice-live` for each clone                                        | `6e3fa5df`, `1ccb4c9e`                                     |
+| [#329](https://github.com/HazAT/ultimate/pull/329) | `ultimate --help` prints the usage                                                                    | `9482c4ac`, `0c224fbf`                                     |
+| [#331](https://github.com/HazAT/ultimate/pull/331) | The first rows of a side chat are no longer under the pinned prompt                                   | `960a03be`, `5c6b3fd6`                                     |
+| [#333](https://github.com/HazAT/ultimate/pull/333) | Raw HTML in Markdown cannot hide `document` or `window`                                               | `fa0be5a8`, `a1f050e1`                                     |
+| [#334](https://github.com/HazAT/ultimate/pull/334) | Source frames refuse redirects                                                                        | `6d21d14b`, `4191e172`                                     |
+| [#336](https://github.com/HazAT/ultimate/pull/336) | An inline code renderer knows when it is in a link                                                    | `427655f9`, `d659f73f`                                     |
+| [#337](https://github.com/HazAT/ultimate/pull/337) | The Get ready e2e test opens the palette on each platform                                             | `d146f56d`, `a5a44411`                                     |
+| [#338](https://github.com/HazAT/ultimate/pull/338) | The Pi coupling check accepts unstaged deletions                                                      | `dd795314`, `2ff9afee`                                     |
+| [#339](https://github.com/HazAT/ultimate/pull/339) | Preview cleanup and stop results stay correct                                                         | `89e64e20`, `ea7846c0`                                     |
+| [#346](https://github.com/HazAT/ultimate/pull/346) | Review leaves the cards of other specs to their own renderers                                         | `55b76606`, `db679d2d`, `18fa1f3f`                         |
+| [#347](https://github.com/HazAT/ultimate/pull/347) | Codemode clamps a limit into 1 to 1000                                                                | `76c40731`, `b1e18770`                                     |
+| [#348](https://github.com/HazAT/ultimate/pull/348) | The store test captures only the flush of the store                                                   | `e138f10b`, `4f8028a5`                                     |
+| [#352](https://github.com/HazAT/ultimate/pull/352) | pi-ai replays a tool call whose arguments failed to parse                                             | `ec526b76`, `82d9c169`                                     |
+| [#354](https://github.com/HazAT/ultimate/pull/354) | Saves in the overlay editor work again                                                                | `b3f585ff`, `45bd6132`                                     |
+| [#361](https://github.com/HazAT/ultimate/pull/361) | A macOS machine keeps its name when the network changes                                               | `d9ff45c8`, `045c7886`                                     |
+| [#364](https://github.com/HazAT/ultimate/pull/364) | Markdown highlights with the Oniguruma engine                                                         | `64f8d914`, `0aed47b8`                                     |
+
+Other numbers from #230 to #364 have no merge in this sync's history.
+
 ## Life of a change unit
 
 At the snapshot, a change unit reaches `main` in these steps:
@@ -537,33 +639,33 @@ At the snapshot, a change unit reaches `main` in these steps:
 7. The lander notes the submitter and concludes it unless work remains under way. Only a concluded branch wakes its starter ([D042](decisions/D042-model-free-landing.md))
 8. Lineage records the landing in the tally. A concluded branch releases its eligible checkout (`extensions/lineage/server.ts`, `extensions/workspaces/workspaces.ts`)
 
-The landing queue uses `git merge` defaults (`extensions/workspaces/lander.ts`). Git makes a landing merge only if it cannot fast-forward. Its message is `Merge <sha> from #<n> into main` (`extensions/workspaces/lander.ts`). Since `9a79b7f9`, the message also carries the trailer `Ultimate-Conversation: <n>`, so the catch-up can label the merge.
+The landing queue uses `git merge` defaults (`extensions/workspaces/lander.ts`). Git makes a landing merge only if it cannot fast-forward. Its message is `Merge <sha> from #<n> into main` (`extensions/workspaces/lander.ts`). Since `9a79b7f9`, the message also carries the trailer `Ultimate-Conversation: <n>`, so the overlap note of a resumed branch can name its conversation (`607dd8ca`).
 
-The 312 landing merges with `#<n>` name 305 conversations (`git log --merges --format=%s 6b6d88b6`). Of these conversations, 245 appear in the work trailers, and the other 60 do not (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' 6b6d88b6`). Their landings contain work from other conversations, as `0eb16c0` shows below. The other units reached `main` by a fast-forward or through another unit, given those merge subjects and trailers (inferred).
+The 405 landing merges with `#<n>` name 396 conversations (`git log --merges --format=%s e8abe7f1`). Of these conversations, 316 appear in the work trailers, and the other 80 do not (`git log --no-merges --format='%(trailers:key=Ultimate-Conversation,valueonly)' e8abe7f1`). Their landings contain work from other conversations, as `0eb16c0` shows below. The other units reached `main` by a fast-forward or through another unit, given those merge subjects and trailers (inferred).
 
 Landings and their commit trailers can name different conversations. `0eb16c0` names `#209732`. Its commit `8c44921` has trailer `216060`.
 
 ### Commit shapes
 
-`git log --merges --format=%s 6b6d88b6` shows 726 merges in six shapes:
+`git log --merges --format=%s e8abe7f1` shows 951 merges in six shapes:
 
 | Shape                         | Subject                                       | Merges |
 | ----------------------------- | --------------------------------------------- | -----: |
-| Landing merge                 | `Merge <sha> from #<n> into main`             |    312 |
+| Landing merge                 | `Merge <sha> from #<n> into main`             |    405 |
 | Landing merge, old name       | `Merge <sha> from W<n> into main`             |     15 |
-| Merge of `main` into a branch | `Merge branch 'main' into ultimate/...`       |    120 |
-| Merge of a child              | `Merge branch 'ultimate/<hash>-<m>' into ...` |     84 |
+| Merge of `main` into a branch | `Merge branch 'main' into ultimate/...`       |    169 |
+| Merge of a child              | `Merge branch 'ultimate/<hash>-<m>' into ...` |    104 |
 | Merge by hand                 | `chore(integration): ...`                     |     24 |
-| Other                         | Free text                                     |    171 |
+| Other                         | Free text                                     |    234 |
 
-The row for merges of `main` also counts subjects that start with `Merge main`, and remote-tracking merges of `origin/main` or `coord/main`. Of the 327 landing merges of both shapes, 226 have no trailer (`git log --merges --format='%s %(trailers:key=Ultimate-Conversation,valueonly)' 6b6d88b6`). The other 101 carry trailers. Five name conversation 30726, including conflict repair in `23f26ba` (inferred from its body). Two name conversation 377718. The 94 landing merges after `9a79b7f9` name their own conversation. The Other row includes pull request merges and merges of `pr-*` or satellite branches. Its share of all merges grew most in the November 9 sync, from 11.8 to 17.7 percent (53 of 448, then 98 of 553), because outside pull requests land through such merges ([Era 10](#era-10-outside-contributions)). At `11c89136`, the share was 17.9 percent (102 of 570). At `6b6d88b6`, it is 23.6 percent (171 of 726), because the November 18 sync lands 60 outside pull requests. The six shapes partition all merges, as the command below checks.
+The row for merges of `main` also counts subjects that start with `Merge main`, and remote-tracking merges of `origin/main` or `coord/main`. Of the 420 landing merges of both shapes, 226 have no trailer (`git log --merges --format='%s %(trailers:key=Ultimate-Conversation,valueonly)' e8abe7f1`). The other 194 carry trailers. Five name conversation 30726, including conflict repair in `23f26ba` (inferred from its body). Two name conversation 377718. The 187 landing merges after `9a79b7f9` name their own conversation. The Other row includes pull request merges and merges of `pr-*` or satellite branches. Its share of all merges grew most in the November 9 sync, from 11.8 to 17.7 percent (53 of 448, then 98 of 553), because outside pull requests land through such merges ([Era 10](#era-10-outside-contributions)). At `11c89136`, the share was 17.9 percent (102 of 570). At `6b6d88b6`, it was 23.6 percent (171 of 726), because the November 18 sync landed 60 outside pull requests. At `e8abe7f1`, it is 24.6 percent (234 of 951). The November 25 sync lands 48 outside pull requests ([table](#outside-contributions-in-the-november-25-sync)). The six shapes partition all merges, as the command below checks.
 
 ### Reproduce the merge shapes
 
 These patterns are disjoint. The remaining subjects are Other:
 
 ```sh
-git log --merges --format=%s 6b6d88b6 | awk '
+git log --merges --format=%s e8abe7f1 | awk '
 	/^Merge [0-9a-f]+ from #[0-9]+ into main$/ { landing++; next }
 	/^Merge [0-9a-f]+ from W[0-9]+ into main$/ { old++; next }
 	/^Merge branch '\''main'\''/ || /^Merge main/ ||
@@ -575,15 +677,16 @@ git log --merges --format=%s 6b6d88b6 | awk '
 '
 ```
 
-Output: `312 15 120 84 24 171`.
+Output: `405 15 169 104 24 234`.
 
 ### How the process changed
 
 - Eras 1 and 2: each commit went to `main` directly. No merge predates 2026-10-12
 - Era 3: on 2026-10-12, 20 `chore(integration)` merges, such as `d37887a`, put work on `main`. Git does not show which agent made them. The landing queue began on 2026-10-13 (`5c36dcd`). `1d94cbc6` is the first landing merge, and it names `W25966`
 - Era 4: `2166faa` is the first work commit with a trailer, on 2026-10-14. `19f960d` changed the label `W<n>` to `#<n>`, and `930d33e` is the first `#<n>` landing merge. 32 work commits on 2026-10-14 and 2026-10-15 have no trailer
-- Eras 5 to 11: 42 work commits have no trailer (`git log --no-merges --format='%ad %h %(trailers:key=Ultimate-Conversation,valueonly)' --date=short 6b6d88b6`). The exceptions to 2026-11-01 are `ce2d46ab`, `d3c39fd`, `d0afb3e1`, `61b25245`, `2affc7ad`, `61a3f990`, `73d018f4`, `7849a479`, `b2b46f1c`, `741ec0da`, `81a29ea1`, `5edd9810`, `fc77dee5`, `5b4de93a`, and `751b5e44`. The November 9 sync adds `dbe9bb50`, `c21f2d6d`, `c99fc625`, `526412e5`, `29b5223d`, `f46c0050`, and `baeece3d`. All of them come from outside pull requests (inferred from the [table](#outside-contributions-in-the-november-9-sync)). The November 18 sync adds 20 more, all from outside pull requests: `e4a143e3`, `e59a9873`, `23d2f511`, `46bdb0dd`, `865d214b`, `8030aac9`, `5015bf60`, `c4b6f915`, `3b6fb3f2`, `439487f2`, `051cf3cb`, `ef16ed0c`, `934c0817`, `debca6f4`, `7b2c18d8`, `8a951c93`, `e8035d0e`, `06bec5e5`, `569ccc43`, and `ceeaae56` ([table](#outside-contributions-in-the-november-18-sync)). @ultimate starts branches (`c685a27`)
+- Eras 5 to 12: 86 work commits have no trailer (`git log --no-merges --format='%ad %h %(trailers:key=Ultimate-Conversation,valueonly)' --date=short e8abe7f1`). The exceptions to 2026-11-01 are `ce2d46ab`, `d3c39fd`, `d0afb3e1`, `61b25245`, `2affc7ad`, `61a3f990`, `73d018f4`, `7849a479`, `b2b46f1c`, `741ec0da`, `81a29ea1`, `5edd9810`, `fc77dee5`, `5b4de93a`, and `751b5e44`. The November 9 sync adds `dbe9bb50`, `c21f2d6d`, `c99fc625`, `526412e5`, `29b5223d`, `f46c0050`, and `baeece3d`. All of them come from outside pull requests (inferred from the [table](#outside-contributions-in-the-november-9-sync)). The November 18 sync adds 20 more, all from outside pull requests: `e4a143e3`, `e59a9873`, `23d2f511`, `46bdb0dd`, `865d214b`, `8030aac9`, `5015bf60`, `c4b6f915`, `3b6fb3f2`, `439487f2`, `051cf3cb`, `ef16ed0c`, `934c0817`, `debca6f4`, `7b2c18d8`, `8a951c93`, `e8035d0e`, `06bec5e5`, `569ccc43`, and `ceeaae56` ([table](#outside-contributions-in-the-november-18-sync)). The November 25 sync adds 44 more. All 44 have outside authors, from 18 author names (`git log --no-merges --format='%h %an %(trailers:key=Ultimate-Conversation,valueonly)' 6b6d88b6..e8abe7f1`). @ultimate starts branches (`c685a27`)
 - Era 10: since `9a79b7f9` on 2026-11-07, each landing merge carries the trailer of its conversation. Outside pull requests reach a coordinator's Git branch through `Merge branch 'pr-<n>'` or `Merge PR #<n>`, and then land through the queue (inferred from `fcf7585d` and `9d77dced`)
+- Era 12: since `1e9f8a23` on 2026-11-22, the lander runs `pnpm test:affected` instead of both whole suites. The commit says that the two suites took about 3.2 minutes of each landing ([B10](bricks/B10-isolates-previews-lander.md))
 
 ### Find the commits of one conversation
 
@@ -598,12 +701,12 @@ Change unit 59981 has both landing shapes. Landing merge `a03d554` put its first
 
 ## How the rules and the team changed
 
-Up to era 5, most rule changes went to `AGENTS.md`. After era 5, most went to the agent definitions. `git log --no-merges --format=%ad --date=short 6b6d88b6 -- <path>` gives these counts:
+Up to era 5, most rule changes went to `AGENTS.md`. After era 5, most went to the agent definitions. `git log --no-merges --format=%ad --date=short e8abe7f1 -- <path>` gives these counts:
 
-| Path                              |   1 |   2 |   3 |   4 |   5 |   6 |   7 |   8 |   9 |  10 |  11 |
-| --------------------------------- | --: | --: | --: | --: | --: | --: | --: | --: | --: | --: | --: |
-| `AGENTS.md`                       |  21 |  12 |  21 |  29 |  23 |   4 |   7 |   9 |  13 |   5 |   5 |
-| `agents/` and `.ultimate/agents/` |   3 |   0 |   7 |   9 |  22 |  12 |  21 |  38 |  32 |  14 |  12 |
+| Path                              |   1 |   2 |   3 |   4 |   5 |   6 |   7 |   8 |   9 |  10 |  11 |  12 |
+| --------------------------------- | --: | --: | --: | --: | --: | --: | --: | --: | --: | --: | --: | --: |
+| `AGENTS.md`                       |  21 |  12 |  21 |  29 |  23 |   4 |   7 |   9 |  13 |   5 |   6 |   3 |
+| `agents/` and `.ultimate/agents/` |   3 |   0 |   7 |   9 |  22 |  12 |  21 |  38 |  32 |  14 |  15 |  18 |
 
 Behavior rules live in prompts ([Principle 11](principles.md), `6b8477d`). These are the main changes:
 
@@ -619,5 +722,6 @@ Behavior rules live in prompts ([Principle 11](principles.md), `6b8477d`). These
 - Also in era 9: `741ec0da` replaces shipped model pins with families. `d6f3657a` commits project family assignments. `e34af09d` makes branches ask after @ultimate weighs in. `08d193b3` derives projects and agent models instead of storing them in memory. `b2f7043f` gives Sketch a model-only definition, and `17157665` adds standing agent marks. `e6909945` removes Sketch and its definition. `6b0fb859` lets a parent make a subagent without a definition file. `fb03c2c7` trims prompt and tool text that repeats itself
 - Era 10: `924a0b0c` requires a comment that names the origin of workaround code. `c387c88b` puts each extension's tests in its own folder. `47c08a50` changes the layer table for the production web bundle. `729f493c` splits the extension guide into topic files. `995c52d4` tells @ultimate that open questions wait in the user's Inbox
 - Era 11: `b4f0474f` replaces the origin comment of `924a0b0c` with a reason in the commit message and a regression test, and adds the rule table ([D045](decisions/D045-code-explains-itself.md)). `85b68619` and `3f1ca441` give definitions a skills list. `cd77dc1e` tells @ultimate to remember only what a branch would get wrong without it. `af4f768e`, `07399ebb`, and `739cfda7` keep the facts of outside pull requests and drop their new rules, because prompts carry facts, not rules for failures that did not occur
+- Era 12: `3aed7ab8` lets any conversation except a subagent message the user, and `52054fd9` sends a branch's question pointer to the standing agent that started the branch ([D044](decisions/D044-branches-ask-the-user.md)). `a7719a89` tells a coordinator to ask the user directly when the user talks to it. `161901f2` adds a Jev judge that decides whether a branch's final answer wakes its starter ([D041](decisions/D041-state-based-waking.md)). `2fcc3bfe` adds an adversarial reviewer for this repository, which checks blocking review findings against the code. `f145e979` puts it on a project family. `1401d351` replaces the Voice standing agent with a voice fork of @ultimate ([D019](decisions/D019-standing-agents.md))
 
 [Subagents](../subagents.md) describes the team at the snapshot. Families select agent and feature models ([D043](decisions/D043-model-families.md)). New conversations can keep a configured default without a login ([D038](decisions/D038-models-follow-logins.md)). [D036](decisions/D036-previews-on-instance-model.md) records the preview override.

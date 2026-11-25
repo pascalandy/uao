@@ -8,7 +8,9 @@ Automation grants and the `act` operation are removed ([D039](../decisions/D039-
 
 Event filters and subscribers can name a standing agent across chapters (`extensions/automations/triggers.ts`, `extensions/automations/server.ts`). Context conditions can require a period without user input (`6c37a236`). Dream ships two context automations ([B15](B15-dreams-and-chapters.md)).
 
-Automations are now in the core tier, so settings cannot turn them off ([Core tier](../../../docs/extensions/core-tier.md), `4601a36c`). A skipped fire no longer counts toward the hourly cap (`bc938b06`, `985124ae`). `$AUTOMATION_STATE` is a folder, and a watcher script keeps its state in files inside it (`ef16ed0c`, `agents/watcher.md`). Code waits through the named helpers of `lib/timers.ts`, and signals replace polls where a signal already exists (`8e5b688c`).
+Automations are now in the core tier, so settings cannot turn them off ([Core tier](../../../docs/extensions/core-tier.md), `4601a36c`). A skipped fire no longer counts toward the hourly cap (`bc938b06`, `985124ae`). `$AUTOMATION_STATE` is a folder, and a watcher script keeps its state in files inside it (`ef16ed0c`, `agents/watcher.md`). Code waits through the named helpers of `lib/timers.ts`, and signals replace polls where a signal already exists (`8e5b688c`). Keep warm and idle automations sleep as tasks instead of a loop each minute (`81a178cb`).
+
+Watchers start in the project root, not in the worktree of the branch that created them (`70b39ce3`). A pause or a delete of a script stops its watcher (`c04f973e`). A prompt run delivers its answer to its subscribers, and an update keeps them (`d2e7683e`, `896f4c45`). The receipt of the tool names the next fire in UTC and from now (`820aa283`). An automation run keeps `subagent` when its definition lists it (`1d0597f3`).
 
 ## Where it lives
 

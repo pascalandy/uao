@@ -9,7 +9,8 @@ import type { KeptWork, OverviewState, SummaryRecord } from './types.ts'
 
 /**
  * Pi compacted conversation `conversation`: its summary is entry `entry`; `reason` is Pi's (`threshold`, `overflow`,
- * `manual`). Emitted in a commit of its own right after Pi's, which has no hook (`compactions.ts`).
+ * `manual`). Emitted in a commit of its own right after Pi's, which has no hook; opening announces any a stop missed
+ * (`compactions.ts`).
  */
 export const Compacted = defineEvent<{
   conversation: ConversationId
@@ -18,11 +19,15 @@ export const Compacted = defineEvent<{
 }>('conversations.compacted')
 
 /**
- * Top-level conversations were concluded: `conversations` lists them with every conversation they own, ascending.
+ * Top-level conversations were concluded: `conversations` includes their owned descendants, ascending.
+ * `by` is the caller's conversation, `landing`, or `user` for a UI conclusion.
  * Emitted in the commit that concludes them (the Conclude action, a landing, a side chat ending), so whatever a
  * conversation held outside the store can be freed exactly when it ends.
  */
-export const Concluded = defineEvent<{ conversations: ConversationId[] }>('conversations.concluded')
+export const Concluded = defineEvent<{
+  conversations: ConversationId[]
+  by: ConversationId | 'landing' | 'user'
+}>('conversations.concluded')
 
 /**
  * How full conversation `id`'s context is: `tokens` its next request carries (the latest answer's prompt, or after a
@@ -82,6 +87,14 @@ export const ResumeAction = actionRef<{ ids: ConversationId[] }, { resumed: Conv
   'conversations',
   'resume',
 )
+/**
+ * `{ ids }` → `{ [id]: { turns, calls, cost, lastAt? } }`: each conversation's own input and tool call counts,
+ * cost in dollars and latest model message timestamp (Unix milliseconds). Unknown ids are omitted.
+ */
+export const ActivityAction = actionRef<
+  { ids: ConversationId[] },
+  Record<string, { turns: number; calls: number; cost: number; lastAt?: number }>
+>('conversations', 'activity')
 /** `{ id }` → conversation `id`'s summaries, newest first, at most 50: what the sidebar's history popover shows. */
 export const SummariesAction = actionRef<{ id: ConversationId }, SummaryRecord[]>(
   'conversations',

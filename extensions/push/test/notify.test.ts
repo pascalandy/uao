@@ -6,7 +6,7 @@ import { context, prepareHarness } from '../../../server/harness.ts'
 import type { OpenHost } from '../../../server/harness.ts'
 import type { PushService } from '../api.ts'
 import type { Push } from '../rules.ts'
-import { temp, until } from '../../../test/helpers.ts'
+import { openers, temp, until } from '../../../test/helpers.ts'
 
 const sending = vi.hoisted(() => ({
   sent: [] as { endpoint: string; payload: object }[],
@@ -28,7 +28,10 @@ vi.mock('../push.ts', () => ({
     return { status: 201, gone: false }
   },
 }))
-vi.mock('../../../lib/secrets.ts', () => ({ readSecret: () => Promise.resolve('private-key') }))
+vi.mock('../../../lib/secrets.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../lib/secrets.ts')>()),
+  readSecret: () => Promise.resolve('private-key'),
+}))
 
 const opened: OpenHost[] = []
 afterEach(async () => {
@@ -49,17 +52,14 @@ async function fixture() {
   let service: PushService | undefined
   let current: OpenHost
   const resources = new Map<string, unknown>()
-  const openers: (() => Promise<void>)[] = []
+  const lifecycle = openers()
   const host = {
     ...prepared,
     harness: () => current.harness,
     need: () => ({}),
     implement: (_api: unknown, value: PushService) => (service = value),
     react: () => {},
-    onOpen: (callback: () => Promise<void>) => openers.push(callback),
-    onRelease: () => {},
-    onClose: () => {},
-    doc: () => undefined,
+    onOpen: lifecycle.onOpen,
     notice: (message: string) => {
       throw new Error(message)
     },
@@ -70,9 +70,10 @@ async function fixture() {
   } as unknown as ExtensionHost
   prepared.registry.install(pushExtension(host))
   const open = async () => {
+    await lifecycle.close()
     current = await prepared.open()
     opened.push(current)
-    for (const opener of openers) await opener()
+    await lifecycle.open()
   }
   await open()
   return {

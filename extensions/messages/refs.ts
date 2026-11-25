@@ -6,9 +6,9 @@
 import type { ConversationId, EntryId } from '@earendil-works/pi-durable'
 import { actionRef, docRef } from '../../shared/extension-api.ts'
 import { defineEvent } from '../../shared/events.ts'
-import type { Remote } from '../entries/refs.ts'
+import type { Judged, Remote } from '../entries/refs.ts'
 
-export type { DeliveredMessage, Remote, Serves } from '../entries/refs.ts'
+export type { DeliveredMessage, Judged, Remote, Serves } from '../entries/refs.ts'
 
 /**
  * One question an agent asks the user with a message, as the `message` tool's `questions` argument declares it: the
@@ -63,6 +63,8 @@ export type Message = {
   questions?: Question[]
   /** A user answer or dismissal that @ultimate settled for the user, not their own click. */
   via?: Via
+  /** How the judge weighed this branch's final answer before it went to the starter. */
+  judged?: Judged
 }
 /** Where @ultimate settled a question for the user: its conversation, and the user's input it read the answer from. */
 export type Via = { conversation: ConversationId; entry?: EntryId }
@@ -96,6 +98,9 @@ export const StartedDoc = docRef<{ by?: ConversationId }>('board.started')
 /** Every message between conversations and the user, oldest first, on conversation 1. */
 export const MessagesDoc = docRef<MessagesData>('board')
 
+/** The judge's verdict on each of a branch's final answers, by answer entry, on the branch. */
+export const JudgementsDoc = docRef<{ answers: Record<number, Judged> }>('board.judged')
+
 /**
  * `{ conversation, call }` → `{ entry }`: the response in `conversation`'s history that made tool call `call` (a
  * message's `call`), however old; no `entry` when the history has none.
@@ -109,7 +114,8 @@ export const CallerAction = actionRef<
  * `{ messageId, text, dismiss? }` → `{ id }`: @ultimate (or its side chat) settles the user's open question
  * `messageId` for them, from what they said in its chat: `text` is their answer, in their words or the picks read
  * from them, sent to the asker as the user's reply; with `dismiss`, `text` says why it no longer matters and the
- * asker gets a note. The answer records `via`, so the card shows @ultimate settled it. Refused from anyone else.
+ * asker gets a note. The answer records `via`, so the card shows @ultimate settled it. With `dismiss`, it also closes
+ * @ultimate's own open request to another project, `text` as the reason. Refused from anyone else.
  */
 export const SettleAction = actionRef<
   { messageId: number; text: string; dismiss?: boolean },

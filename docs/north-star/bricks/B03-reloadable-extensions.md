@@ -16,6 +16,8 @@ A web facet can put a badge on any right-panel tab with `panelBadges` (`a99235ce
 
 Automations joined the core tier. The new core extension `entries` holds the entry kinds that extensions on the two sides of a dependency read, so a reader does not import the writer ([Core tier](../../../docs/extensions/core-tier.md), `4601a36c`, `0e27be80`). The Extensions panel shows core-tier extensions in an Always on section without a switch (`1fb18e43`). A surface can show a badge after its title (`7b2c18d8`). The web SDK adds `ComposerPlaceholder` and `EmptyTranscript` (`f2f72298`, `8504f1e2`). The `diagrams` extension draws `mermaid` code blocks as Unicode box diagrams (`c23dd36a`). A streamed update no longer makes the app and the sidebar draw everything again (`fa11fd0c`).
 
+Web facets are Solid files, `web.solid.tsx`, and they import the web SDK as `@/sdk/solid` ([D046](../decisions/D046-solid-interface.md)). A leftover `web.tsx` loads as an error card that asks for the move (`256f9cee`). The UI kit wraps the controls of `@ui-sdk/solid`, so agents see each control by its name ([B05](B05-agent-tools.md), `ae61fc9c`). Lint requires the kit's Button in a Solid file (`3ef4bcc4`). Markdown has its own streaming Solid renderer (`5d8adac1`). The user drags an edge to resize the sidebar or the right panel (`0a9d0d60`).
+
 Lint now enforces more rules on extension code: no comments except contract documentation ([D045](../decisions/D045-code-explains-itself.md)), timers only through `lib/timers.ts` (`b4f0474f`), and a case for each member of a union in a switch (`5d652bb5`). The rules and their checks are in a table in `AGENTS.md` (`b4f0474f`).
 
 ## Where it lives
@@ -25,7 +27,9 @@ Lint now enforces more rules on extension code: no comments except contract docu
 - `lib/discovery.ts` and `server/extensions.ts`: find and load server facets
 - `server/web.ts` and `server/web-build.ts`: build and serve the web bundle
 - `server/vite-extensions.ts` and `web/src/extensions.ts`: map and load each web facet
-- `web/src/sdk/`: the SDK that web facets import as `@/sdk`
+- `web/src/sdk/`: the SDK that web facets import as `@/sdk/solid`
+- `web/src/components/ui/`: the UI kit
+- `skills/solid-ui/SKILL.md`: the rules for Solid code
 - `lint/ultimate.ts` and `scripts/deps.ts`: enforce the boundaries
 - `extensions/entries/`: entry kinds that core extensions share
 
@@ -36,6 +40,7 @@ Lint now enforces more rules on extension code: no comments except contract docu
 - [D024](../decisions/D024-typed-contracts-core-tier.md) Connect extensions through typed contracts
 - [D031](../decisions/D031-resource-built-ins-off.md) Disable by default the built-ins that need resources
 - [D045](../decisions/D045-code-explains-itself.md) Let product code explain itself
+- [D046](../decisions/D046-solid-interface.md) Build the interface on Solid
 
 ## Evidence
 
@@ -59,3 +64,4 @@ Lint now enforces more rules on extension code: no comments except contract docu
 - `4601a36c` moves automations into the core tier and adds `extensions/entries`
 - `b4f0474f` adds the timer helpers, the lint rule `ultimate/no-raw-timer`, and the rule table
 - `1fb18e43` puts core-tier extensions in an Always on section
+- `f06ad003` adds the Solid toolchain, `0dea5af2` makes the shell Solid, and `256f9cee` removes React facets

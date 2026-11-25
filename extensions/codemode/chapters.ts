@@ -13,9 +13,8 @@ import { shortTitle } from '../../lib/title.ts'
 
 export const limit = (value: unknown, fallback = 100) => {
   const n = value ?? fallback
-  if (typeof n !== 'number' || !Number.isInteger(n) || n < 1 || n > 1000)
-    throw new Error('limit must be an integer between 1 and 1000')
-  return n
+  if (typeof n !== 'number' || Number.isNaN(n)) throw new Error('limit must be a number')
+  return Math.min(Math.max(1, Math.trunc(n)), 1000)
 }
 export const id = (value: unknown): ConversationId => {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 1)
@@ -124,7 +123,7 @@ export async function closedChapter(home: string, active: string, options: unkno
   return chapter === active ? undefined : chapterFiles(home, chapter).database
 }
 
-// Pi upstream: @earendil-works/pi-durable@1.5.2 src/storage/sqlite/migrations.ts — conversation/entry JSON records and document revisions; fork cutoffs follow src/storage/sqlite/storage.ts. Drop when Pi's SQLite storage opens over a read-only connection: 1.5.2's readOnly Harness still sets WAL mode, runs migrations and checkpoints the file on close.
+// Pi upstream: @earendil-works/pi-durable@1.6.0 src/storage/sqlite/migrations.ts — conversation/entry JSON records and document revisions; fork cutoffs follow src/storage/sqlite/storage.ts. Drop when Pi's SQLite storage opens over a read-only connection: 1.6.0's readOnly Harness still sets WAL mode, runs migrations and checkpoints the file on close.
 export function readChapter(database: string, op: HistoryRead, args: unknown[]) {
   const db = new DatabaseSync(database, { readOnly: true })
   try {

@@ -8,7 +8,7 @@ Dream before compaction fires at 70% context by default (`1353fb6b`). Dream afte
 
 Approved proposals become ordinary branches or memory writes (`extensions/dream/DREAM.md`). The dream's memory pass proposes changes to project memory, and @ultimate applies the approved ones with `remember`. Outside a dream, a memory-review branch proposes changes, and @ultimate applies the approved ones with `remember` ([B07](B07-conversation-tree.md), `cd77dc1e`, `agents/ultimate.md`). @ultimate can prepare a fresh chapter, but only the user can press Fall asleep ([D040](../decisions/D040-dream-as-ordinary-work.md)). The switch preserves memory and open work through a seed, backups, and a journaled restart (`extensions/dream/server.ts`, `extensions/dream/seed.ts`).
 
-Old chapters remain readable, and the user can switch back (`extensions/dream/README.md`). A seeded chapter starts its first backup when cloud backups are available (`ef1883dc`, `5704358d`). A new chapter keeps the conditions that the user edited on the built-in triggers (`34dcbea1`). The [chapter mechanics](../../../extensions/dream/README.md#chapters) own the checks and recovery rules.
+Old chapters remain readable, and the user can switch back (`extensions/dream/README.md`). A seeded chapter starts its first backup when cloud backups are available (`ef1883dc`, `5704358d`). A new chapter keeps the conditions that the user edited on the built-in triggers (`34dcbea1`). Fall asleep also waits for busy branches (`7236a8a7`). The [chapter mechanics](../../../extensions/dream/README.md#chapters) own the checks and recovery rules.
 
 ## Where it lives
 

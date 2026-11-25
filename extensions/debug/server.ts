@@ -1,3 +1,4 @@
+import { formatDuration } from '../../lib/format.ts'
 import { parseEntryId } from '../../lib/ids.ts'
 import type { ConversationId } from '@earendil-works/pi-durable'
 import { parseConversationId } from '../../lib/ids.ts'
@@ -11,14 +12,8 @@ import type { CallRow, CallTree } from '../../server/trace.ts'
 import { readOnly } from '../../lib/replay.ts'
 
 const MAX_RETURNED_TEXT_CHARS = 16_000
+const age = (at: string) => formatDuration(Date.now() - Date.parse(at))
 
-export function age(at: string, now = Date.now()) {
-  const seconds = Math.max(0, Math.round((now - Date.parse(at)) / 1000))
-  if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`
-  return `${Math.floor(seconds / 86400)}d`
-}
 const cut = (text: string, length: number) =>
   text.length > length ? `${text.slice(0, length - 1)}…` : text
 const json = (value: unknown, length: number) => cut(JSON.stringify(value) ?? '', length)
@@ -62,6 +57,7 @@ export default function debug(host: ExtensionHost) {
     call: 'events' | 'reactors' | 'catalogue' | 'trace' | 'apis' | 'api'
     events?: string[]
     since?: number | string
+    until?: string
     limit?: number
     trace?: string
     conversation?: ConversationId
@@ -79,7 +75,7 @@ export default function debug(host: ExtensionHost) {
         })
         const lines = events.map((event) =>
           [
-            age(event.at).padEnd(4),
+            age(event.at).padEnd(6),
             `#${event.id}`,
             event.name,
             json(event.data, 160),
@@ -138,12 +134,13 @@ export default function debug(host: ExtensionHost) {
           .query({
             ...(args.conversation === undefined ? {} : { conversation: args.conversation }),
             ...(args.since === undefined ? {} : { since: args.since }),
+            ...(args.until === undefined ? {} : { until: args.until }),
             limit,
           })
           .toReversed()
         const lines = rows.map((row) =>
           [
-            age(row.at).padEnd(4),
+            age(row.at).padEnd(6),
             call(row),
             ids({ trace: row.trace, conversation: row.conversation, entry: row.entry }),
           ].join('  '),
@@ -179,7 +176,7 @@ export default function debug(host: ExtensionHost) {
           'call: `events` lists durable events newest first (filter `events` by name like `workspaces.landed`, `since` an event id); ' +
           '`reactors` shows each reactor with its cursor, lag (pending events), whether it runs, and its last failure; ' +
           '`catalogue` lists each extension API with its provider, needs and wants, plus missing providers and cycles; ' +
-          '`trace` lists recorded service, action, reactor, tool and model calls newest first (filter by `conversation` or ISO `since`), or with `trace` set the whole call tree of that trace id, indented; ' +
+          '`trace` lists recorded service, action, reactor, tool and model calls newest first (filter by `conversation`, ISO `since`, or ISO `until`; `since` reads forward from that time, otherwise the newest calls before `until` or now), or with `trace` set the whole call tree of that trace id, indented; ' +
           "`apis` lists extension contracts (api.ts, refs.ts) with summaries and `api` returns one extension's by `name`, each file under a header. " +
           'Start from an event or a call, take its trace id and read the tree. Read-only; one line per row, ages relative; `limit` defaults to 20 events or 50 rows.',
         parameters: obj({
@@ -191,9 +188,11 @@ export default function debug(host: ExtensionHost) {
           ),
           since: opt(
             union([int({ minimum: 0 }), str({ minLength: 1 })], {
-              description: 'events: an event id to read after; trace: an ISO time.',
+              description:
+                'events: an event id to read after; trace: an ISO time to read forward from.',
             }),
           ),
+          until: opt(str({ minLength: 1, description: 'trace: an ISO time to read before.' })),
           trace: opt(str({ minLength: 1, description: 'trace: a trace id.' })),
           conversation: opt(int({ minimum: 1, description: 'trace: calls of this conversation.' })),
           name: opt(str({ minLength: 1, description: 'api: extension name.' })),

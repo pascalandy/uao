@@ -19,6 +19,8 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Pi Durable**: the library `@earendil-works/pi-durable`. It stores each conversation and its tasks, and it resumes them after a crash (`docs/durability.md`)
 - **Model family**: a named model role with a model, a thinking level, and a color. Agent definitions and features use families (`741ec0da`, `lib/families.ts`). Not: a group of related models from a provider
 - **Model pin**: a model set directly in an agent definition or a feature setting. A model pin takes precedence over a family (`lib/agents.ts`, `extensions/conversations/summary-model.ts`)
+- **Antigravity**: the provider that runs the models of the user's Antigravity CLI login as ordinary models (`76280bf9`)
+- **Jev**: the TypeSafe model that gives typed judgments, through the optional `classify` extension (`extensions/classify/`)
 
 ## Work model
 
@@ -33,10 +35,10 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Branch**: a conversation that forks from the root or from a branch to do one feature, fix, or experiment. Its prompt is its first input (`extensions/lineage/README.md`). Not: a subagent
 - **Intent**: the one line that names a branch in the tally. The full prompt stays in the branch (`ad1b2dd`)
 - **Abstract**: the summary of one conversation in the tally. The abstract changes with the work. A landing keeps the abstract unchanged (`fc99691`)
-- **Project memory**: the decisions, facts, and lessons that a root keeps by slug. A new branch starts from a brief of this memory. A landing no longer writes it (`cd77dc1e`). Code: `lineage.memory`, tool `remember` (`4c1b652`)
+- **Project memory**: the decisions, facts, and lessons that a root keeps by slug. A branch that forks directly from a root with memories starts from a brief of this memory ([D029](decisions/D029-branches-start-from-memory.md)). A landing no longer writes it (`cd77dc1e`). Code: `lineage.memory`, tool `remember` (`4c1b652`)
 - **Memory surface**: the full-screen view of project memory. The sidebar's Memory row opens it (`21669aa1`)
 - **Recall**: an input hook that adds relevant project memories to @ultimate's context. It uses the optional `classify` extension (`48f2f2e6`)
-- **Catch-up**: the update that a branch receives when it resumes. It holds the new tally events of its tree, then the new commits on its target (`extensions/lineage/README.md`)
+- **Overlap note**: the note that a branch receives when it resumes and new target commits touch files that it changed. It names each commit with its trailer and paths (`607dd8ca`, `extensions/lineage/README.md`). Not: the catch-up, its retired form
 - **Conclude**: to close a conversation when its work is done. A concluded conversation stays readable and can resume. Roots and standing agents are never concluded (`AGENTS.md`)
 - **Compaction**: a summary of old messages that replaces them in the model context. The old messages stay in storage ([Pi Durable](https://earendil.com/posts/pi-durable/), `docs/settings.md`)
 - **Self-compaction**: a conversation's request to compact its own context. Code: `compact`, a deferred tool for top-level conversations (`extensions/lineage/server.ts`). Not: automatic compaction
@@ -52,9 +54,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Skill**: instructions that an agent reads for a task, stored in `SKILL.md`. A `/skill:name` command adds the named skill to user input (`server/skills.ts`)
 - **Top-level agent**: the agent of a conversation that is not a subagent, such as @ultimate or a coordinator (inferred). Only a top-level agent pushes (`docs/worktrees.md`). Not: a subagent
 - **@ultimate**: the standing agent that the user talks to. It starts and steers branches. It weighs in on their decisions, and the branches then ask the user directly (`agents/ultimate.md`, [D044](decisions/D044-branches-ask-the-user.md)). Code: definition `ultimate`
-- **Standing agent**: an agent with one permanent conversation in a project. Nobody concludes it, so it keeps what it learned (`8a1c100`). Code: `resident: true`. Examples: @ultimate and Voice (`f3b257b6`). Not: the model-free lander (`cfd0e93b`)
-- **Voice**: the standing agent that answers spoken status questions and forwards work to @ultimate. GPT-Live carries its audio (`f3b257b6`, `26c21a52`)
-- **GPT-Live**: the audio model that hears and speaks in a live voice session. Voice decides which requests reach @ultimate (`extensions/voice-live/README.md`)
+- **Standing agent**: an agent with one permanent conversation in a project. Nobody concludes it, so it keeps what it learned (`8a1c100`). Code: `resident: true`. Example: @ultimate (`agents/ultimate.md`). Not: the model-free lander (`cfd0e93b`)
 - **Coordinator**: the agent that runs a branch. It plans, decides, and verifies. It delegates execution but never judgment (`agents/coordinator.md`). UI: `branch · coordinator`
 - **Subagent**: a child conversation that a tool call starts for bounded work. The parent conversation owns the subagent (`extensions/subagents/README.md`). Not: a branch, which has no owner
 - **Worker**: a subagent that does one bounded task in its own isolate and makes one focused commit (`agents/worker.md`)
@@ -62,6 +62,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Designer**: a subagent for front-end work (`agents/designer.md`)
 - **Watcher**: the agent that owns one automation with a script trigger, and writes and repairs its script (`agents/watcher.md`)
 - **Reviewer**: a read-only subagent that reviews one fixed commit range. Here, it leads three specialist reviewers (`.ultimate/README.md`)
+- **Adversarial reviewer**: in this repository, a reviewer that the review lead starts when a reviewer blocks. It checks each blocking finding against the code (`2fcc3bfe`)
 - **Landing queue**: the durable queue of submissions. Its code lands them one at a time, in order ([D042](decisions/D042-model-free-landing.md))
 - **Lander**: the code that processes the landing queue. Its conversation records the log, refuses input, and runs no model (`cfd0e93b`). UI: @lander
 
@@ -70,6 +71,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Isolate**: a git worktree that belongs to one conversation (`extensions/subagents/README.md`). Code: the extension `workspaces` and the tool `workspace`
 - **Submission**: a request to land the tip of an isolate, made with `workspace submit`. The landing queue takes submissions one at a time (`docs/worktrees.md`)
 - **Landing**: a submission that passed every check and reached the target branch. The tally records each landing (`extensions/lineage/README.md`)
+- **Affected tests**: the tests that a change reaches. `pnpm test:affected` runs them, and the lander runs that command (`1e9f8a23`)
 - **Change unit**: the work of one conversation in Git. Its commits carry the trailer `Ultimate-Conversation: <n>`. Its isolate uses the Git branch `ultimate/<hash>-<n>` (`extensions/workspaces/workspaces.ts`). See [history.md](history.md#life-of-a-change-unit)
 - **Work commit**: a commit that is not a merge
 - **Trailer**: a `Key: value` line at the end of a commit message. The `bash` tool of Ultimate adds `Ultimate-Conversation: <n>` (`extensions/coding-tools/server.ts`)
@@ -85,7 +87,11 @@ This file defines the names in uao. Each thing has one name, and each name has o
 
 - **Extension**: a folder that adds agent behavior, UI, or both. A later folder with the same name replaces an earlier one (`extensions/README.md`)
 - **Built-in**: an extension in the `extensions/` folder of the clone (`docs/settings.md`)
-- **Facet**: one side of an extension. `server.ts` holds agent behavior, and `web.tsx` holds UI. Each facet loads and fails independently (`fff6d4b`)
+- **Facet**: one side of an extension. `server.ts` holds agent behavior, and `web.solid.tsx` holds UI. Each facet loads and fails independently (`fff6d4b`, `256f9cee`)
+- **Solid**: the UI framework of the web core and of every web facet. It replaced React ([D046](decisions/D046-solid-interface.md))
+- **UI kit**: the Solid controls in `web/src/components/ui/` over `@ui-sdk/solid`. Each control reports its name and state to the agent bridge (`ae61fc9c`)
+- **Agent bridge**: the one place on each page where the controls of the UI kit list their names and states for agents (`fa9a3b6e`)
+- **UI step**: a step of the browser tool that operates a control by its name through the agent bridge (`0fd21054`)
 - **Core tier**: the extensions that settings cannot turn off. A core-tier extension depends only on other core-tier extensions (`docs/extensions/core-tier.md`). Code: `tier = 'core'` in `api.ts`
 - **Extension API**: a typed contract that one extension provides and another uses. The second extension uses `need` for a required contract or `want` for an optional contract (`docs/extensions/contracts.md`)
 - **Point**: a contract that a lower extension declares and a higher extension fills, so that dependencies go one way (`docs/extensions/contracts.md`)
@@ -96,12 +102,14 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Slot**: a named place in the shell where a web facet adds UI, such as the sidebar or the status line (`docs/extensions/slots.md`)
 - **Panel**: a tab in the right panel (`docs/extensions/slots.md`)
 - **Surface**: a full-screen app that the user switches to. The Agent surface is the conversation. The agent is accessible with one keystroke on every surface (`790c34e`)
-- **Codemode**: a tool that runs one JavaScript script in a QuickJS sandbox. The script can call tools and read Ultimate's state (`extensions/codemode/README.md`)
+- **Codemode**: Pi Durable's code mode tool. It runs one JavaScript script in a QuickJS sandbox. The script can call tools and read Ultimate's state, and Pi Durable records each nested result (`3603c530`, `extensions/codemode/README.md`)
+- **Script-only tool**: a tool that only a codemode script can call, such as `tools.action` and `tools.tell`. Code: `callers: ['tools']` (`3603c530`)
 - **Entries extension**: the core extension that holds the entry kinds that extensions on the two sides of a dependency read (`4601a36c`, `extensions/entries/README.md`)
 - **Projects rail**: the switcher at the left edge of the window. It lists each Ultimate that runs on this machine (`f5e963f1`, `extensions/projects/README.md`)
 - **MCP**: Model Context Protocol. Ultimate connects external tool servers and exposes them through one `mcp` tool (`5eae312d`, `extensions/mcp/server.ts`)
 - **Web bundle**: the production build of `web/` and the enabled web facets that the browser runs. A child process builds it, and open pages switch to a new bundle after a change (`47c08a50`, `server/web.ts`). Not: the Vite dev server, which the browser no longer uses
 - **Wire**: an optional System tab that keeps the raw request and response of a conversation's recent model calls. It ships off by default (`9b8f1866`, `c16450c9`, `extensions/wire/README.md`)
+- **UI change log**: the UI tab of the System surface. It shows the `ui.changed` events: changes to stored UI state by a person or an agent, except `shell.*` keys, with values other than flags, numbers, and null redacted (`45b6719e`, `server/events.ts`)
 
 ## Messages and the user
 
@@ -109,10 +117,11 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Note**: context that starts no turn. The `note` tool writes context for the recipient's next input (`extensions/lineage/README.md`). Upward one-way messages reach its next model request, also during a run (`extensions/messages/README.md`). Not: the comment field on an answer card, whose reply wakes the sender (`extensions/questions/README.md`)
 - **Starter**: the conversation that called `branch`. Code: a branch's `board.started` document (`extensions/messages/branch.ts`)
 - **Report**: a branch's final answer that wakes its starter when no work remains under way. Code: `report: true` (`136d9c01`)
+- **Report judge**: the Jev choice that decides whether a would-be report wakes the starter or stays a note. Code: the `messages.judge` point, which `classify` provides (`161901f2`)
 - **Notify**: a request to know when another conversation finishes. Code: the tool `notify` (`AGENTS.md`)
 - **Steer**: a message that enters a run in progress, after the current tool calls (`extensions/messages/README.md`)
 - **Question**: one structured request for a user answer, carried by a message (`extensions/messages/questions.ts`). Its answer card stays open until the user answers or dismisses the message (`extensions/questions/README.md`)
-- **Question pointer**: a card in @ultimate's conversation that opens a branch's question and retains its answer summary (`5014cc55`, `ae0d4fc2`)
+- **Question pointer**: a card in the conversation of the standing agent that started a branch, usually @ultimate. It opens the branch's question and retains its answer summary (`5014cc55`, `ae0d4fc2`, `52054fd9`)
 - **Inbox**: the surface that lists each item that waits on the user, oldest first, with its answer card (`995c52d4`, `extensions/inbox/README.md`)
 - **Settle**: to answer or dismiss an open question through @ultimate from the user's words in its chat. Code: `messages.settle` (`7b09649d`)
 - **Hands-off goal**: a user-granted goal during which @ultimate decides what it would otherwise ask the user (`extensions/goal/README.md`). Code: the extension `goal`. Chapter changes still require the user (`ef738270`)
@@ -120,7 +129,12 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Goal report**: the card that records a hands-off goal's outcome, criteria, summary, and goal decisions (`extensions/goal/README.md`). UI: **Hands-off report**. Code: `goal.report`
 - **To-do**: an open item for the user or for @ultimate, in one short list for each project (`extensions/todos/README.md`)
 - **Side chat**: a temporary fork of @ultimate for a tangent. The user discards it, or injects a summary into the main conversation (`extensions/side-chat/README.md`)
-- **Voice input**: microphone recording that becomes unsent text at the composer's cursor. Not: a live voice session (`a0608d3f`)
+- **Prompt box**: the box that holds a draft, its attachments, and dictation. The composer is a layer around it, with steer, queue, and stop (`72db8020`)
+- **Voice input**: microphone recording that becomes unsent text at the cursor of the prompt box. Not: voice mode (`a0608d3f`, `72db8020`)
+- **Voice mode**: a push-to-talk conversation with a fork of @ultimate. The fork speaks its answers and hands an agreed outcome back as a card. Code: the `voice-live` extension (`1401d351`)
+- **Reel**: a full-screen slideshow of the screenshots of a branch, beside its question or its landing (`3abdf324`)
+- **Video ask**: the tool `video_ask`, which asks Gemini about a video that the user attached (`604927c2`)
+- **Goal proposal**: a card from @ultimate that the user presses to start a hands-off goal (`1b9c842a`)
 - **Read aloud**: a speaker button on agent messages that plays the whole answer, lightly rewritten for listening (`e78fefa8`, `extensions/read-aloud/README.md`). Not: the narrator
 - **Wait label**: the label on a sidebar row or a System lane that says what a conversation waits on: work, the user, an agent, a remote project, a timer, or its starter (`900c96cc`, `lib/waits.ts`)
 - **Narrator**: optional speech for questions, failures, landings, and new branches. It uses OpenAI audio when a key is present, or browser speech otherwise (`451ac392`)
@@ -135,6 +149,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Epic**: a plan record for a piece of work, its approach, and its acceptance criteria. An epic can have no plan tasks (`extensions/plan/README.md`, `34624b5d`)
 - **Effect task**: a durable task for an effect outside the store, such as a post or a push. The commit that decides the effect creates it, and it runs at least once (`4dfe1142`, `lib/effect.ts`)
 - **Background group**: a process group that `bash` starts with `background: true`. Ultimate records it and stops it after its conversation concludes (`5abd5a39`, `extensions/coding-tools/README.md`)
+- **Work cgroup**: the cgroup of one group of work, such as a `bash` call or a preview, under `work/`. `work.memoryMax` caps `work/` as a whole (`f00dd1b6`, `lib/cgroup.ts`)
 - **Replay-safe**: a tool that can run again after a crash with no harm. Pi Durable runs an interrupted tool again only when it has this mark (`docs/durability.md`)
 - **Automation**: a rule for background work that acts when its trigger fires. Code: the tool `automation` (`extensions/automations/README.md`)
 - **Trigger**: the condition that fires an automation. A trigger uses a schedule, a script, a domain event, or a context threshold (`extensions/automations/README.md`)
@@ -173,7 +188,10 @@ Do not use these names for current things:
 - **Exclusive commands**: an extension that `89676a2` removed
 - **Subscription**: the old name for a script trigger. `e099781` replaced subscriptions with script triggers in automations. Not: a subscription login
 - **Automation grant**: approval for an automation's dream, compaction, or chapter action. `ef738270` removed grants and the `act` operation
-- **Triage**: the model's former decision about whether a message should wake @ultimate. `136d9c01` replaced it with state-based waking
+- **Triage**: the model's former decision about whether a message should wake @ultimate. `136d9c01` replaced it with state-based waking. The report judge weighs only reports ([D041](decisions/D041-state-based-waking.md))
+- **Catch-up**: the former note that told a resumed branch what its siblings did and which target commits were new. `607dd8ca` replaced it with the overlap note
+- **Voice** and **GPT-Live**: the former standing agent of live voice and its audio model. `1401d351` replaced both with voice mode
+- **React facet**: a `web.tsx` facet. `256f9cee` removed the compat layer that ran it
 - **Graveyard**: the short-lived folder for rejected ideas. `63f87af5` replaced it with tombstones in project memory
 - **Emergency terminal agent**: the former server-independent recovery agent. `17d186bf` removed `pnpm cli` and `ultimate --cli`
 - **Sketch**: a tool that asked a model to draw a small UI and forms. `e6909945` removed it and the `subagent: false` definition field

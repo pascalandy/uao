@@ -22,9 +22,8 @@ import type { OpenHost } from '../../../server/harness.ts'
 import type { ActionContext } from '../../../server/actions.ts'
 import type { ExtensionHost } from '../../../server/extensions.ts'
 import pauseExtension, { actions, autoPlay, passive, userActions } from '../server.ts'
-import { lasted } from '../lasted.ts'
 import { PauseApi } from '../api.ts'
-import { apis, removeTemp, temp, until } from '../../../test/helpers.ts'
+import { apis, openers, removeTemp, temp, until } from '../../../test/helpers.ts'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Standing } from '../../subagents/api.ts'
@@ -101,7 +100,7 @@ async function fixture(home?: string, retry: { maxRetries?: number } = {}) {
   )
   let opened: OpenHost | undefined
   const services = apis()
-  const openers: (() => Promise<void>)[] = []
+  const lifecycle = openers()
   const host = {
     ...services,
     harness: () => opened!.harness,
@@ -112,17 +111,16 @@ async function fixture(home?: string, retry: { maxRetries?: number } = {}) {
         return resources.get(key) as T
       }
     })(),
-    onOpen: (callback: () => Promise<void>) => void openers.push(callback),
-    onClose: () => {},
-    onRelease: () => {},
+    onOpen: lifecycle.onOpen,
     conversations: () => [],
   } as unknown as ExtensionHost
   prepared.registry.install(pauseExtension(host))
   /** Open as the server does: the openers settle first, then scheduling resumes. */
   const open = async () => {
+    await lifecycle.close()
     opened = await prepared.open(false)
     hosts.push(opened)
-    for (const callback of openers) await callback()
+    await lifecycle.open()
     opened.harness.resume()
     return opened
   }
@@ -204,7 +202,9 @@ it('lets a running tool finish, starts no generation after it while paused, and 
   expect(responses).toBeGreaterThanOrEqual(2)
   const notes = (await root.context(context)).entries.filter((entry) => entry.kind === 'pause.note')
   expect(notes).toHaveLength(1)
-  expect(notes[0].model?.[0]?.content).toMatch(/^Paused for \d+s; the run continued after Play\.$/)
+  expect(notes[0].model?.[0]?.content).toMatch(
+    /^Paused for \d+(ms|\.\ds); the run continued after Play\.$/,
+  )
 })
 
 it('reopens paused: nothing starts until play', async () => {
@@ -325,7 +325,9 @@ it('notes a run whose last answer arrived while the pause drained', async () => 
   const notes = (await root.context(context)).entries.filter((entry) => entry.kind === 'pause.note')
   expect(notes).toHaveLength(1)
   expect(notes[0].data).toMatchObject({ finished: true })
-  expect(notes[0].model?.[0]?.content).toMatch(/^Paused for \d+s after this run's last answer\.$/)
+  expect(notes[0].model?.[0]?.content).toMatch(
+    /^Paused for \d+(ms|\.\ds) after this run's last answer\.$/,
+  )
 })
 
 it('leaves no note when the run handed over during the drain and its successor was stopped', async () => {
@@ -423,7 +425,7 @@ it('pauses on the first rate-limited answer: the run waits in its retry, fails n
   expect(notes).toHaveLength(1)
   // The held run's model learns why it was paused.
   expect(notes[0].model?.[0]?.content).toMatch(
-    /^Paused for \d+s \(faux rate limited [\w-]+\); the run continued after Play\.$/,
+    /^Paused for \d+(ms|\.\ds) \(faux rate limited [\w-]+\); the run continued after Play\.$/,
   )
   expect(await cards()).toHaveLength(1)
 })
@@ -554,7 +556,7 @@ it('records a limit into a pause the user started, so it still shows', async () 
   expect((await submission.wait(context)).status).toBe('done')
 })
 
-it('plays a rate-limit pause by itself once, N minutes in, only when the user switched it on', async () => {
+it('plays a rate-limit pause by itself once, 30 minutes in, with no setting recorded', async () => {
   const f = await fixture()
   let responses = 0
   f.prepared.faux!.setResponses([
@@ -575,14 +577,7 @@ it('plays a rate-limit pause by itself once, N minutes in, only when the user sw
   const submission = await root.submit({ type: 'input', content: 'go' }, context)
   await until(async () => (await f.action('state')).limit !== undefined)
   const { since } = await f.action('state')
-  // Off by default: no time ever plays it.
-  expect((await f.action('state')).autoPlay).toBeUndefined()
-  expect(await f.autoPlay(since! + 365 * 86_400_000)).toBe(false)
-  expect(f.paused()).toBe(true)
-
-  const set = await f.setAutoPlay(30)
-  expect(set).toMatchObject({ autoPlay: 30, autoPlayAt: since! + 30 * 60_000 })
-  // Not yet due.
+  expect(await f.action('state')).toMatchObject({ autoPlay: 30, autoPlayAt: since! + 30 * 60_000 })
   expect(await f.autoPlay(since! + 29 * 60_000)).toBe(false)
   expect(f.paused()).toBe(true)
   expect(await f.autoPlay(since! + 30 * 60_000)).toBe(true)
@@ -599,8 +594,24 @@ it('plays a rate-limit pause by itself once, N minutes in, only when the user sw
   const notes = (await root.context(context)).entries.filter((entry) => entry.kind === 'pause.note')
   expect(notes[0].data).toMatchObject({ auto: true })
   expect(notes[0].model?.[0]?.content).toMatch(/continued after Ultimate played by itself\.$/)
-  // The setting stays for the next limit.
-  expect((await f.action('state')).autoPlay).toBe(30)
+})
+
+it('holds a rate-limit pause until Play once the user turned playing by itself off', async () => {
+  const f = await fixture()
+  f.prepared.faux!.setResponses([
+    () => fauxAssistantMessage('', { stopReason: 'error', errorMessage: limit }),
+    () => fauxAssistantMessage([fauxText('done')]),
+  ])
+  const { root } = await f.open()
+  expect((await f.setAutoPlay(null)).autoPlay).toBeUndefined()
+  const submission = await root.submit({ type: 'input', content: 'go' }, context)
+  await until(async () => (await f.action('state')).limit !== undefined)
+  const { since, autoPlayAt } = await f.action('state')
+  expect(autoPlayAt).toBeUndefined()
+  expect(await f.autoPlay(since! + 365 * 86_400_000)).toBe(false)
+  expect(f.paused()).toBe(true)
+  await f.action('play')
+  expect((await submission.wait(context)).status).toBe('done')
 })
 
 it('never plays a pause the user pressed, also when a rate limit joins it', async () => {
@@ -640,11 +651,10 @@ it('keeps Pause, Play and the play-by-itself setting from agents, and checks the
 /** A task record as `running()` reads it: it decides by task kind and checkpoint phase only. */
 const at = (kind: string, phase: string) => ({ kind, state: { checkpoint: { phase } } })
 
-it('treats message deliveries and routes as passive waiters', () => {
+it('treats message deliveries as passive waiters', () => {
   expect(passive(at('board.delivery', 'deliver'))).toBe(true)
   expect(passive(at('board.delivery', 'reply'))).toBe(true)
   expect(passive(at('ultimate.subagent-reporter', 'deliver'))).toBe(true)
-  expect(passive(at('board.route', 'observe'))).toBe(true)
   expect(passive(at('conversations.summary', 'generate'))).toBe(false)
 })
 
@@ -669,10 +679,4 @@ it('stays Pausing… while a background task executes, not for passive waiters',
   expect(pausing.running.map((task) => task.what)).toEqual(['pause-test.stream'])
   f.background.resolve()
   await until(async () => (await f.action('state')).running.length === 0)
-})
-
-it('words how long a pause lasted', () => {
-  expect(lasted(40_000)).toBe('40s')
-  expect(lasted(5 * 60_000)).toBe('5m')
-  expect(lasted((2 * 60 + 14) * 60_000)).toBe('2h 14m')
 })

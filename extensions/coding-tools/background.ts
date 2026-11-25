@@ -2,7 +2,7 @@ import type { ConversationId } from '@earendil-works/pi-durable'
 import { defineDoc, ROOT_CONVERSATION_ID } from '@earendil-works/pi-durable'
 import type { Tx } from '@earendil-works/pi-durable'
 import { randomUUID } from 'node:crypto'
-import { writeFileSync } from 'node:fs'
+import { appendFileSync, writeFileSync } from 'node:fs'
 import { mkdir, readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { isMissing, inProcess } from '../../lib/errors.ts'
@@ -25,6 +25,7 @@ const groups = (home: string) => join(home, 'background')
 const conversationGroups = (home: string, id: string) => join(groups(home), id)
 const startedByThisProcess = (name: string) => name.startsWith(`${process.pid}-`)
 const quoted = (text: string) => `'${text.replaceAll("'", `'\\''`)}'`
+export const dropHostNodeEnv = 'unset NODE_ENV'
 
 export async function startBackground(
   host: Pick<ExtensionHost, 'home' | 'notice'>,
@@ -40,14 +41,24 @@ export async function startBackground(
   const pidFile = join(directory, `${name}.pid`)
   const log = join(directory, `${name}.log`)
   writeFileSync(log, '')
-  const group = spawnGroup('bash', ['-c', `exec </dev/null >>${quoted(log)} 2>&1\n${command}`], {
-    cwd,
-    pidFile,
-  })
+  const group = spawnGroup(
+    'bash',
+    ['-c', `exec </dev/null >>${quoted(log)} 2>&1\n${dropHostNodeEnv}\n${command}`],
+    { cwd, pidFile },
+  )
   const { pid } = group.child
   if (pid === undefined) throw new Error('The background command did not start')
   group.child.stdout.resume()
-  group.child.stderr.resume()
+  let logFailed = false
+  group.child.stderr.on('data', (data: Buffer) => {
+    if (logFailed) return
+    try {
+      appendFileSync(log, data)
+    } catch (error) {
+      logFailed = true
+      host.notice(`Background group ${pid}: ${String(error)}`)
+    }
+  })
   inProcess(
     'this process owns the group until it exits; a restart sweeps what it recorded',
     group.ended

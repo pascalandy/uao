@@ -17,18 +17,13 @@ vi.mock('../../web/src/sdk/actions.ts', () => ({
   currentContext: (scoped?: number) => ({ conversationId: scoped ?? 1 }),
   applies: (command: { when?: () => boolean }) => command.when?.() !== false,
 }))
-vi.mock('../../web/src/sdk/conversation-scope.tsx', () => ({
+vi.mock('../../web/src/sdk/scope.ts', () => ({
   scopeOf: (target: { scope?: number }) => target.scope,
 }))
 vi.mock('../../web/src/sdk/client.ts', () => ({
   store: { getState: () => ({ ui }), setUi: (change: object) => Object.assign(ui, change) },
 }))
-vi.mock('react', () => ({
-  useEffect: (effect: () => () => void) => {
-    cleanup = effect()
-  },
-}))
-import { useShortcuts } from '../../web/src/app/keyboard.ts'
+import { installShortcuts } from '../../web/src/app/keyboard.ts'
 
 let cleanup: (() => void) | undefined
 afterEach(() => {
@@ -44,6 +39,12 @@ it('respects typing, dialogs, sequences, timeout, composition and listener teard
     id = ''
     isContentEditable = false
     scope?: number
+    target?: 'conversation' | 'draft'
+    closest(selector: string) {
+      if (selector === '[data-composer-target]') return this.target ? {} : null
+      if (selector === '[data-composer-target="draft"]') return this.target === 'draft' ? {} : null
+      return null
+    }
   }
   class Input extends Element {
     override tagName = 'INPUT'
@@ -51,10 +52,6 @@ it('respects typing, dialogs, sequences, timeout, composition and listener teard
   }
   class Textarea extends Element {
     override tagName = 'TEXTAREA'
-    composer = false
-    closest(selector: string) {
-      return selector === '[data-composer-target]' && this.composer ? {} : null
-    }
   }
   const window = new EventTarget()
   const dialog = vi.fn<() => object | null>(() => null)
@@ -73,7 +70,7 @@ it('respects typing, dialogs, sequences, timeout, composition and listener teard
       { id: 'hidden', keys: 'y', when: () => false },
     ].map((command) => ({ extension: 'test', title: command.id, run() {}, ...command })),
   )
-  useShortcuts()
+  cleanup = installShortcuts()
   const send = (key: string, target: Element = new Element(), extra = {}) => {
     const event = new Event('keydown', { cancelable: true })
     Object.defineProperty(event, 'target', { value: target })
@@ -107,13 +104,13 @@ it('respects typing, dialogs, sequences, timeout, composition and listener teard
   expect(runCommand).toHaveBeenCalledTimes(calls)
   const composer = new Textarea()
   expect(send('Tab', composer, { shiftKey: true })).toBe(false)
-  composer.composer = true
+  composer.target = 'conversation'
   composer.id = 'composer-input'
   expect(send('Tab', composer, { shiftKey: true })).toBe(true)
   expect(runCommand).toHaveBeenLastCalledWith('thinking', { conversationId: 1 })
   // Escape in a side chat's composer, or on any focused button of its pane, stops the side chat, never main.
   const side = new Textarea()
-  side.composer = true
+  side.target = 'conversation'
   side.scope = 17
   expect(send('Escape', side)).toBe(true)
   expect(runCommand).toHaveBeenLastCalledWith('stop', { conversationId: 17 })
@@ -121,6 +118,15 @@ it('respects typing, dialogs, sequences, timeout, composition and listener teard
   sideButton.scope = 17
   expect(send('Escape', sideButton)).toBe(true)
   expect(runCommand).toHaveBeenLastCalledWith('stop', { conversationId: 17 })
+  // A composer for a conversation that does not exist yet (cold voice) stops nothing, from its field or its buttons.
+  const stops = runCommand.mock.calls.length
+  const cold = new Textarea()
+  cold.target = 'draft'
+  expect(send('Escape', cold)).toBe(false)
+  const coldButton = new Element()
+  coldButton.target = 'draft'
+  expect(send('Escape', coldButton)).toBe(false)
+  expect(runCommand).toHaveBeenCalledTimes(stops)
   expect(send('Escape')).toBe(true)
   expect(runCommand).toHaveBeenLastCalledWith('stop', { conversationId: 1 })
   dialog.mockReturnValue({})
@@ -140,7 +146,7 @@ it('respects typing, dialogs, sequences, timeout, composition and listener teard
   await vi.advanceTimersByTimeAsync(1200)
   expect(send('m', input)).toBe(false)
   const count = runCommand.mock.calls.length
-  cleanup!()
+  cleanup()
   cleanup = undefined
   send('x')
   expect(runCommand).toHaveBeenCalledTimes(count)

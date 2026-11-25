@@ -9,7 +9,7 @@ flowchart LR
   accTitle: Processes of Ultimate
   accDescr: The browser talks to the supervisor, which forwards to one generation. The generation owns the storage of the home. A restart prepares the next generation next to the current one.
 
-  browser["Browser<br/>web core and web facets"]
+  browser["Browser<br/>Solid web core and web facets"]
   sup["Supervisor<br/>bin/ultimate.ts"]
   gen["Generation<br/>server/main.ts with the web bundle,<br/>server facets, and Pi Durable"]
   next["Next generation<br/>prepared on restart"]
@@ -26,7 +26,8 @@ flowchart LR
 - Each browser tab uses one `/api/events` connection for all subscriptions (`27e615d0`, `70f56ce5`). The SDK manages this stream and sends actions to `server/api.ts` (`web/src/sdk/store.ts`)
 - A preview runs `server/main.ts` on its own port and uses its own home. It has no supervisor, so it cannot restart (`docs/running.md`)
 - `17d186bf` removes the unused emergency terminal agent. Supervisor diagnostics remain in `bin/ultimate.ts` ([Running the server](../running.md))
-- Script triggers, lander checks, and previews run as child process groups (`lib/process-group.ts`, `extensions/automations/supervisor.ts`)
+- Script triggers, lander checks, and previews run as child process groups (`lib/process-group.ts`, `extensions/automations/supervisor.ts`). When the service delegates a cgroup, each group of work gets its own cgroup under `work/`. `work.memoryMax` caps `work/` as a whole, so the kernel stops that work, not the core, when memory runs out (`f00dd1b6`, [Discovery and settings](../settings.md))
+- The supervisor stops restarting a core that crashed three times in a row, each within 60 seconds of `ready` (`8ca81954`)
 - MCP servers use child processes for stdio or remote HTTP connections (`5eae312d`, `extensions/mcp/server.ts`)
 - The supervisor no longer displays a service report (`6e9cd78d`). It displays the Tailscale URL above the local URL (`fc77dee5`)
 - One small helper process starts the host's child processes, so a launch does not copy the host's memory map (`4b314408`, `lib/spawn.ts`)
@@ -37,7 +38,7 @@ The layers go from the foundation up. A layer depends only on the layers below i
 
 1. **Pi and Pi Durable.** Durable conversations, tasks, hooks, and providers. The packages are pinned, and `patches/` holds local patches ([Borrowed from Pi](../pi-upstream.md))
 2. **Core.** `server/` holds the harness, the storage, the HTTP API, and the web bundle. Discovery and project setup moved to `lib/` (`4c6ef265`). `shared/protocol.ts` holds the contracts between server and browser
-3. **Web core.** `web/` holds the surface host and its primitives, the SDK, the transcript, the composer, and the palette
+3. **Web core.** `web/` holds the surface host and its primitives, the SDK, the UI kit, the transcript, the composer, and the palette. All of it is Solid ([D046](decisions/D046-solid-interface.md))
 4. **Core tier.** The extensions that are always on. Each depends only on the core tier. [Core tier](../extensions/core-tier.md) names them
 5. **Optional built-ins.** The other built-ins. They reach the core tier through points or events
 6. **Personal and project extensions.** Folders in `~/.ultimate/extensions/`, and in `<project>/.ultimate/extensions/` for a trusted project. A later folder with the same name replaces an earlier one
@@ -53,11 +54,11 @@ Three folders sit beside the layers. `lib/` holds helpers that extensions share 
   - `project.json` and `conversations.json`: the manifest that other projects read (`docs/durability.md`)
   - `chapters.json`, `chapters/`, and `pending-chapter.json`: the other chapters and a pending switch (`lib/chapters.ts`)
   - `lander/` and `worktrees/`: integration and conversation checkouts, unless project settings choose another path (`2affc7ad`, `extensions/workspaces/README.md`)
-  - `web/`: the built web bundles (`47c08a50`), `attachments/`: uploaded files for 30 days (`80016496`), and `wire/`: raw model calls when Wire is on (`9b8f1866`)
+  - `web/`: the built web bundles (`47c08a50`), `attachments/`: uploaded files for 30 days (`80016496`), `wire/`: raw model calls when Wire is on (`9b8f1866`), `voice/`: the recordings of a voice session (`extensions/voice-live/README.md`), and `videos/`: uploaded videos (`extensions/video/README.md`)
 - **The user layer**, `~/.ultimate/`: `settings.json`, `trust.json`, `secrets.json`, `health.json`, `AGENTS.md`, `skills/`, `agents/`, `extensions/`, and `automations/`, which holds user script triggers and the state of all script triggers (`docs/settings.md`, `extensions/automations/README.md`, `extensions/secrets/README.md`, `extensions/health/README.md`). `model-families.json` holds project family choices and recent choices (`741ec0da`, `lib/families-settings.ts`)
 - **Pi**, `~/.pi/agent/`: logins, models, and settings that Ultimate shares with Pi. Each machine logs in separately (`README.md`)
 - **The project**, `.ultimate/` in the repository: committed settings, extensions, agents, and skills (`docs/settings.md`). Project script triggers live in `<project>/.ultimate/automations/<slug>/` (`extensions/automations/README.md`)
-- **The UI**: `ultimate.ui` stores durable UI state (`docs/durability.md`). Drafts, images, and scroll positions stay in browser storage (`docs/durability.md`, `4eb6a626`)
+- **The UI**: `ultimate.ui` stores durable UI state, and `ultimate.ui-writers` keeps the newest write of each tab, so a late request never rolls a key back (`docs/durability.md`). Drafts, images, and scroll positions stay in browser storage (`docs/durability.md`, `4eb6a626`)
 
 ## How a change goes live
 
@@ -71,13 +72,13 @@ These flows connect the parts at the snapshot. The linked files hold the mechani
 - **A change goes live.** The loader loads each server facet through Vite (`server/extensions.ts`). A change to a web facet or to `web/` rebuilds the production bundle, and open pages switch to it (`server/web.ts`). Loads wait for the checkout and its packages after a landing (`1441b930`). A change to `server/` or `shared/` goes live through a checked swap of the generation ([the layer table](../../AGENTS.md#layers-and-how-they-reload)). Update compares the core files with its boot commit to report an owed restart (`fe5907cd`)
 - **A feature lands.** [Life of a change unit](history.md#life-of-a-change-unit) gives the steps from @ultimate to `main`
 - **A crash.** The supervisor starts a new generation (`bin/ultimate.ts`). The generation opens the storage of the active chapter, and the harness resumes (`server/harness.ts`). A reactor commits its writes and its cursor in one transaction (`server/events.ts`). Messages and the lander keep receipts and checkpoints, so a second run does no harm (`extensions/messages/send.ts`, `extensions/workspaces/lander.ts`). [Durability](../durability.md) holds the rules
-- **A question to the user.** Branches ask after @ultimate weighs in ([D044](decisions/D044-branches-ask-the-user.md)). The `message` tool validates structured questions (`extensions/messages/questions.ts`). Answer cards render them without a model (`extensions/questions/README.md`). A branch's question creates a pointer in @ultimate's chat, and the answer reaches it as a note (`5014cc55`, `extensions/messages/notice.ts`). @ultimate can settle the card from the user's words in its chat (`7b09649d`). During a hands-off goal, @ultimate decides most questions itself ([D037](decisions/D037-goals-delegate-approvals.md))
+- **A question to the user.** Branches ask after @ultimate weighs in ([D044](decisions/D044-branches-ask-the-user.md)). The `message` tool validates structured questions (`extensions/messages/questions.ts`). Answer cards render them without a model (`extensions/questions/README.md`). A branch's question creates a pointer in the chat of the standing agent that started the branch, usually @ultimate, and the answer reaches it as a note (`5014cc55`, `52054fd9`, `extensions/messages/send.ts`). @ultimate can settle the card from the user's words in its chat (`7b09649d`). During a hands-off goal, @ultimate decides most questions itself ([D037](decisions/D037-goals-delegate-approvals.md))
 - **An answer to a branch.** @ultimate's answer wakes each eligible branch whose reply or report was an input of its run, also when the run had other inputs (`dce7b5cf`, `b015f0fa`). The next answer does not repeat that exchange ([D041](decisions/D041-state-based-waking.md))
 - **A compaction.** The deferred `compact` tool commits a compaction with its wake-up for a non-subagent conversation (`extensions/lineage/server.ts`). @ultimate's manual compaction uses its own hook (`extensions/lineage/server.ts`). Automatic compaction continues the current run (`extensions/lineage/server.ts`). Dreams start from separate context automations ([B15](bricks/B15-dreams-and-chapters.md))
 - **A hands-off goal.** The user's start action commits the goal and its delivery task (`extensions/goal/server.ts`). Each input reads the current goal into a note before @ultimate runs (`extensions/goal/server.ts`). @ultimate records goal decisions and ends with a goal report ([B12](bricks/B12-human-in-the-loop.md)). A queued start after the goal ends grants nothing (`65a251f`)
 - **A dream.** @ultimate starts an ordinary branch and weighs in on its proposals ([D040](decisions/D040-dream-as-ordinary-work.md)). The dream branch asks the user (`e34af09d`). @ultimate can prepare a chapter, and the user authorizes the switch (`extensions/dream/server.ts`)
-- **Another instance.** Codemode reads and `tell` share `lib/remote.ts`. Discovery tries local instances, user remotes, then the optional cloud register (`2a6d9e51`, `197a3e3f`)
-- **Live voice.** Browser WebRTC carries GPT-Live audio (`extensions/voice-live/README.md`). The standing Voice agent answers status or forwards work to @ultimate (`extensions/voice-live/agents/voice.md`)
+- **Another instance.** Codemode reads and `tools.tell` share `lib/remote.ts`. Discovery tries local instances, user remotes, then the optional cloud register (`2a6d9e51`, `197a3e3f`)
+- **Voice mode.** The page records a turn and sends it to the server, which transcribes it in a durable task. A fork of @ultimate answers, and the page speaks the answer. The fork hands an agreed outcome to @ultimate or to the branch on screen (`1401d351`, `extensions/voice-live/README.md`)
 - **An MCP call.** One tool lists or calls an external server's tools. Trusted settings select servers, and secrets substitute named placeholders (`5eae312d`, `90fa141d`). A transport failure reconnects without resending the call (`16a71d81`)
 
 ## Code map
@@ -96,11 +97,12 @@ These flows connect the parts at the snapshot. The linked files hold the mechani
 | `shared/extension-api.ts`  | Extension API tokens, the core-tier reader, and `defaultOff`                   | [Contracts](../extensions/contracts.md)                            |
 | `lib/`                     | Shared helpers: exec, git, JSON files, settings, secrets, and chapters         | `AGENTS.md`                                                        |
 | `lib/agents.ts`            | Agent definitions, overlay saves, and deferred tools                           | [Subagents](../subagents.md)                                       |
-| `lib/ago.ts`               | The relative-time formatter that server code and the web SDK share             | `0104d7a`                                                          |
+| `lib/format.ts`            | The time and duration formatters that server code and the web SDK share        | `cac7fcda`                                                         |
 | `lib/effect.ts`            | Durable effect tasks for effects outside the store                             | [Durability](../durability.md)                                     |
 | `lib/timers.ts`            | The named timer helpers that lint requires                                     | `b4f0474f`                                                         |
 | `web/src/`                 | The app shell, the surface host, and the extension registry                    | [Writing extensions](../../extensions/README.md)                   |
-| `web/src/sdk/`             | The SDK that web facets import as `@/sdk`, including `Card` and `formatAgo`    | [SDK](../extensions/sdk.md)                                        |
+| `web/src/sdk/`             | The SDK that web facets import as `@/sdk/solid`, including `Card`              | [SDK](../extensions/sdk.md)                                        |
+| `web/src/components/ui/`   | The UI kit over `@ui-sdk/solid`, whose controls agents operate by name         | `skills/solid-ui/SKILL.md`                                         |
 | `extensions/`              | The built-ins, each with a README                                              | [Writing extensions](../../extensions/README.md)                   |
 | `agents/`                  | Built-in agent definitions                                                     | [Subagents](../subagents.md)                                       |
 | `skills/`                  | Built-in skills for setup, walkthroughs, extensions, and UI checks             | [Discovery and settings](../settings.md)                           |
@@ -115,12 +117,16 @@ These flows connect the parts at the snapshot. The linked files hold the mechani
 | `extensions/plan/`         | Durable epics, plan tasks, and the Plan panel                                  | [Plan](../../extensions/plan/README.md)                            |
 | `extensions/goal/`         | Hands-off goals, goal decisions, and goal reports                              | [Goals](../../extensions/goal/README.md)                           |
 | `extensions/dream/`        | Dream instructions, context triggers, and user-only chapter changes            | [Dreams](../../extensions/dream/README.md)                         |
-| `extensions/keep-warm/`    | Idle cache pings, outside the task scheduler                                   | [Keep warm](../../extensions/keep-warm/README.md)                  |
-| `extensions/voice-live/`   | WebRTC sessions and durable Voice-to-@ultimate delivery                        | [Live voice](../../extensions/voice-live/README.md)                |
+| `extensions/keep-warm/`    | Idle cache pings from a sleeping `keep-warm.ping` task                         | [Keep warm](../../extensions/keep-warm/README.md)                  |
+| `extensions/voice-live/`   | Voice mode: a push-to-talk fork of @ultimate and its handoffs                  | [Voice mode](../../extensions/voice-live/README.md)                |
 | `extensions/status/`       | Read-only instance summary for dashboards                                      | [Status](../../extensions/status/README.md)                        |
 | `extensions/entries/`      | Entry kinds that core extensions on both sides of a dependency read            | [Entries](../../extensions/entries/README.md)                      |
 | `extensions/projects/`     | The projects rail for each Ultimate on this machine                            | [Projects](../../extensions/projects/README.md)                    |
 | `extensions/read-aloud/`   | Spoken agent answers                                                           | [Read aloud](../../extensions/read-aloud/README.md)                |
+| `extensions/antigravity/`  | Models of the Antigravity CLI login                                            | [Antigravity](../../extensions/antigravity/README.md)              |
+| `extensions/video/`        | Video uploads and `video_ask`                                                  | [Video](../../extensions/video/README.md)                          |
+| `extensions/ui/`           | The log of changes to stored UI state                                          | [UI](../../extensions/ui/README.md)                                |
+| `extensions/reel/`         | The reel of a branch's screenshots                                             | [Reel](../../extensions/reel/README.md)                            |
 | `.ultimate/`               | The project setup of this repository: checks, push target, review team         | [.ultimate/README.md](../../.ultimate/README.md)                   |
 | `scripts/`                 | Dependency graph check, reset, restore, and machine setup                      | `package.json`                                                     |
 | `lint/`                    | Custom lint rules for boundaries, durability, timers, comments, and fast tests | [Review quality](../../AGENTS.md#review-quality)                   |

@@ -6,10 +6,10 @@ This file says how uao relates to `HazAT/ultimate`: the snapshot, the fork point
 
 Each status in the north-star is true at the snapshot:
 
-- Upstream: `HazAT/ultimate` at `6b6d88b6`, 2026-11-18 (author date)
-- Fork: `pascalandy/uao` at `09b162a4`, 2026-11-18, the merge of this snapshot
+- Upstream: `HazAT/ultimate` at `e8abe7f1`, 2026-11-25 (author date)
+- Fork: `pascalandy/uao` at `6059a4c6`, 2026-11-25, the merge of this snapshot
 
-`git log --oneline 6b6d88b6..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
+`git log --oneline e8abe7f1..$(git merge-base HEAD upstream/main)` lists the upstream commits that the map does not cover. No output means the map is current. The command needs the `upstream` remote.
 
 The [changelog review](changelog.md) compares the public entries with this snapshot and records later upstream changes. Read that review when you assess a sync. Later upstream entries do not change a brick's status until their code reaches uao.
 
@@ -22,6 +22,7 @@ The [changelog review](changelog.md) compares the public entries with this snaps
 - 2026-11-09: upstream `32e45c95` (2026-11-10), merged into uao by `e683f686`, the first merge of the job `uao-sync`, run by hand before its first Wednesday
 - 2026-11-11: upstream `11c89136` (2026-11-10), merged into uao by `b3aef5f4`, the first Wednesday run of the job `uao-sync`
 - 2026-11-18: upstream `6b6d88b6` (2026-11-18), merged into uao by `09b162a4`, the second Wednesday run of the job `uao-sync`
+- 2026-11-25: upstream `e8abe7f1` (2026-11-25), merged into uao by `6059a4c6`, the third Wednesday run of the job `uao-sync`. The sync has 936 work commits and 225 merges, the largest sync so far
 
 ## Fork point
 
@@ -72,9 +73,9 @@ These upstream texts disagree with the code at the snapshot. uao records these d
 - `extensions/models/README.md` still describes model selection for the lander. The lander runs no model (`cfd0e93b`, `extensions/workspaces/lander.ts`). That README also says that new conversations avoid defaults without a login. The code preserves a configured default when no configured choice has a login (`4497cb74`, `lib/agents.ts`)
 - `extensions/instance/README.md` gives one fixed default preview model. The preview uses its assigned family when no model pin is set (`741ec0da`, `extensions/instance/server.ts`)
 - `extensions/workspaces/README.md` says that the starter wakes after each landing, also when the branch still has work under way. The code wakes the starter only for a concluded branch, and otherwise writes the report as a note (`extensions/workspaces/lander.ts`)
+- `docs/subagents.md` lists `voice` among the shipped definitions on the `tiny` family. `1401d351` removed that definition with the Voice agent
 - `docs/settings.md` says Update checks hourly. The timer compares every five minutes; only fetches have an hourly gate (`extensions/update/server.ts`, `extensions/update/README.md`)
-- `extensions/onboarding/README.md` lists seven default-off built-ins. `defaultOff` has ten: it adds `voice-live`, `push`, and `wire` (`ab959a36`, `ff44988c`, `c16450c9`, `shared/extension-api.ts`)
 
-The old pinned-model list is fixed in `docs/subagents.md`. Shipped definitions now name families (`741ec0da`, `b2f7043f`). The event-history description in [Events](../extensions/events.md) does not claim exclusivity, so event triggers do not contradict it (`a7f32b5`). The README now says that some built-ins start off, so it agrees with [D031](decisions/D031-resource-built-ins-off.md) (`464697b3`).
+The old list of seven default-off built-ins in `extensions/onboarding/README.md` is gone. The README now names the choices that `extensions/onboarding/choices.ts` offers (`5b561d69`). The old pinned-model list is fixed in `docs/subagents.md`. Shipped definitions now name families (`741ec0da`, `b2f7043f`). The event-history description in [Events](../extensions/events.md) does not claim exclusivity, so event triggers do not contradict it (`a7f32b5`). The README now says that some built-ins start off, so it agrees with [D031](decisions/D031-resource-built-ins-off.md) (`464697b3`).
 
 The former health-backup claim is fixed in settings and health docs (`f6a7d570`, `e766c96e`). The former mismatch around automation `act` is gone because grants and `act` were removed (`ef738270`).

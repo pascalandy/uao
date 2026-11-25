@@ -16,6 +16,8 @@ This repository runs its review family on GPT-6.2 Astra and its fast family on G
 
 A 402 response is a billing limit, not a broken login, and old provider failures expire (`446d54c6`). Claude Code turns no longer expand `@` mentions into file contents (`33ba31a1`). The host no longer calls `undici.install()`, so Node's built-in fetch stays in place. The host still sets the undici global dispatcher (`09c45130`, `server/http.ts`). A test now holds the dual-stack connection timeout of `630b6940` (`6cde269a`).
 
+The `antigravity` extension runs the models of the user's Antigravity CLI login as ordinary models, through a relay on loopback. It is on by default and shows no models without the CLI (`76280bf9`, `extensions/antigravity/README.md`). A model call ends after the request timeout of silence (`34e001bd`). The watchdog treats that stall as a temporary failure and continues the run up to four times ([B09](B09-coordinators-and-subagents.md), `0d0516d0`). A refused request (400) never marks its provider as failing (`6b81df67`). An invalid `modelFamilies` layer stays empty and shows a warning in setup (`b17a405f`, `77c60f97`). The composer toolbar has one chip for the model and the thinking level (`0296a5a8`).
+
 Keep warm renews idle @ultimate's existing Claude Code cache, without transcript entries (`f9d91e85`). The user controls these billable pings (`extensions/keep-warm/README.md`).
 
 ## Where it lives
@@ -29,7 +31,8 @@ Keep warm renews idle @ultimate's existing Claude Code cache, without transcript
 - `extensions/models/fallback.ts`: model changes after a confirmed missing login
 - `extensions/keep-warm/`: cache pings and their usage
 - `lib/families.ts` and `lib/families-settings.ts`: family definitions, precedence, and storage
-- `extensions/subagents/overview.tsx`: the Agents panel's family groups
+- `extensions/subagents/overview.solid.tsx`: the Agents panel's family groups
+- `extensions/antigravity/`: the provider for the Antigravity CLI
 
 ## Decisions
 
@@ -63,3 +66,5 @@ Keep warm renews idle @ultimate's existing Claude Code cache, without transcript
 - `9a0d2931` moves this repository's review and fast families to GPT-6.2 and adds Refresh model catalog
 - `db80d3fa` adds user-level `modelFamilies`
 - `446d54c6` reports a 402 response as a billing limit
+- `76280bf9` adds the Antigravity provider
+- `34e001bd` ends a silent model call after the request timeout
