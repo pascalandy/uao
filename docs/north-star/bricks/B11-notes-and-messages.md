@@ -4,7 +4,7 @@ Status: shipped, at the snapshot. Source: upstream.
 
 Conversations exchange information without the user (`extensions/messages/README.md`). A note starts no turn (`extensions/lineage/README.md`). A message can wake or steer its recipient and expect a reply (`extensions/messages/delivery.ts`).
 
-One-way updates to a subagent's parent or a branch's starter become notes (`136d9c01`). A branch reports when no work remains under way ([D041](../decisions/D041-state-based-waking.md)). This rule uses state and no triage model (`136d9c01`).
+One-way updates to a subagent's parent or a branch's starter become notes (`136d9c01`). Work status decides when a branch's final answer can report: only when no work remains under way ([D041](../decisions/D041-state-based-waking.md), `136d9c01`). When `classify` is on, the report judge then decides whether that report wakes the starter or stays a note (`161901f2`).
 
 One project's @ultimate can tell another project's @ultimate what changed (`extensions/messages/remote.ts`). Remote reads and messages share instance discovery ([B16](B16-remote-backup-update.md), `lib/remote.ts`).
 

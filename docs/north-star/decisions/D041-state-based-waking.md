@@ -6,7 +6,7 @@ One-way messages to a subagent's parent or a branch's starter are notes (`136d9c
 
 @ultimate's final answer also wakes each eligible branch whose reply or report was an input of its run (`dce7b5cf`, `aaa55768`). The other inputs of the run, such as a user input or a card, do not receive the answer and do not keep it from a branch (`b015f0fa`, [Messages](../../../extensions/messages/README.md)). An answer to a routed answer does not start another exchange (`extensions/messages/route.ts`).
 
-**Why.** The delivery decision follows state instead of a model's interpretation of the text (`136d9c01`). The judge came later, because rules on typed input missed cases in both directions. Its commit reports 39 of 41 real branch runs and 7 of 7 test cases as a match (`161901f2`).
+**Why.** Work status decides whether a final answer can report, instead of a model's interpretation of the text (`136d9c01`). The judge came later, because rules on typed input missed cases in both directions. Its commit reports 39 of 41 real branch runs and 7 of 7 test cases as a match (`161901f2`).
 
 **Rejected.** Model triage of every upward message (`136d9c01`). A rule that only typed input from the user turns a report into a note (`121e739c`, `161901f2`). This rule extends [D021](D021-updates-are-notes.md).
 

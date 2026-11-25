@@ -2,7 +2,7 @@
 
 Status: shipped, at the snapshot. Source: upstream.
 
-A project keeps one tree of conversations. The root keeps the project memory and the tally, the record of the tree. When its first branch starts, the root becomes a tally and runs no more turns ([D015](../decisions/D015-root-is-a-tally.md)). Each branch does one feature, fix, or experiment. The branch starts from a brief of the project memory. A branch that resumes hears only of new target commits that overlap the files it changed. What its siblings did stays in the root's tally (`607dd8ca`, `AGENTS.md`).
+A project keeps one tree of conversations. The root keeps the project memory and the tally, the record of the tree. When its first branch starts, the root becomes a tally and runs no more turns ([D015](../decisions/D015-root-is-a-tally.md)). Each branch does one feature, fix, or experiment. A branch that forks directly from a root with memories starts from a brief of the project memory ([D029](../decisions/D029-branches-start-from-memory.md)). A branch that resumes hears only of new target commits that overlap the files it changed. What its siblings did stays in the root's tally (`607dd8ca`, `AGENTS.md`).
 
 The sidebar's project path opens read-only History (`6ee7d47c`). Its Memory row opens the separate Memory surface (`21669aa1`). The view groups memories by kind and filters their text (`extensions/lineage/web.solid.tsx`). Each memory opens to show its content and source. The user can forget one memory there (`extensions/lineage/web.solid.tsx`).
 

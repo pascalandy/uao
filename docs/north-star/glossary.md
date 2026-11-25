@@ -35,7 +35,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Branch**: a conversation that forks from the root or from a branch to do one feature, fix, or experiment. Its prompt is its first input (`extensions/lineage/README.md`). Not: a subagent
 - **Intent**: the one line that names a branch in the tally. The full prompt stays in the branch (`ad1b2dd`)
 - **Abstract**: the summary of one conversation in the tally. The abstract changes with the work. A landing keeps the abstract unchanged (`fc99691`)
-- **Project memory**: the decisions, facts, and lessons that a root keeps by slug. A new branch starts from a brief of this memory. A landing no longer writes it (`cd77dc1e`). Code: `lineage.memory`, tool `remember` (`4c1b652`)
+- **Project memory**: the decisions, facts, and lessons that a root keeps by slug. A branch that forks directly from a root with memories starts from a brief of this memory ([D029](decisions/D029-branches-start-from-memory.md)). A landing no longer writes it (`cd77dc1e`). Code: `lineage.memory`, tool `remember` (`4c1b652`)
 - **Memory surface**: the full-screen view of project memory. The sidebar's Memory row opens it (`21669aa1`)
 - **Recall**: an input hook that adds relevant project memories to @ultimate's context. It uses the optional `classify` extension (`48f2f2e6`)
 - **Overlap note**: the note that a branch receives when it resumes and new target commits touch files that it changed. It names each commit with its trailer and paths (`607dd8ca`, `extensions/lineage/README.md`). Not: the catch-up, its retired form
@@ -109,7 +109,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **MCP**: Model Context Protocol. Ultimate connects external tool servers and exposes them through one `mcp` tool (`5eae312d`, `extensions/mcp/server.ts`)
 - **Web bundle**: the production build of `web/` and the enabled web facets that the browser runs. A child process builds it, and open pages switch to a new bundle after a change (`47c08a50`, `server/web.ts`). Not: the Vite dev server, which the browser no longer uses
 - **Wire**: an optional System tab that keeps the raw request and response of a conversation's recent model calls. It ships off by default (`9b8f1866`, `c16450c9`, `extensions/wire/README.md`)
-- **UI change log**: the UI tab of the System surface. It lists each change to stored UI state and who made it. Code: the `ui.changed` event (`45b6719e`)
+- **UI change log**: the UI tab of the System surface. It shows the `ui.changed` events: changes to stored UI state by a person or an agent, except `shell.*` keys, with values other than flags, numbers, and null redacted (`45b6719e`, `server/events.ts`)
 
 ## Messages and the user
 
@@ -149,7 +149,7 @@ This file defines the names in uao. Each thing has one name, and each name has o
 - **Epic**: a plan record for a piece of work, its approach, and its acceptance criteria. An epic can have no plan tasks (`extensions/plan/README.md`, `34624b5d`)
 - **Effect task**: a durable task for an effect outside the store, such as a post or a push. The commit that decides the effect creates it, and it runs at least once (`4dfe1142`, `lib/effect.ts`)
 - **Background group**: a process group that `bash` starts with `background: true`. Ultimate records it and stops it after its conversation concludes (`5abd5a39`, `extensions/coding-tools/README.md`)
-- **Work cgroup**: a capped cgroup under `work/` for one group of work, such as a `bash` call or a preview. Code: `work.memoryMax` (`f00dd1b6`)
+- **Work cgroup**: the cgroup of one group of work, such as a `bash` call or a preview, under `work/`. `work.memoryMax` caps `work/` as a whole (`f00dd1b6`, `lib/cgroup.ts`)
 - **Replay-safe**: a tool that can run again after a crash with no harm. Pi Durable runs an interrupted tool again only when it has this mark (`docs/durability.md`)
 - **Automation**: a rule for background work that acts when its trigger fires. Code: the tool `automation` (`extensions/automations/README.md`)
 - **Trigger**: the condition that fires an automation. A trigger uses a schedule, a script, a domain event, or a context threshold (`extensions/automations/README.md`)

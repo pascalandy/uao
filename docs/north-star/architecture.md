@@ -26,7 +26,7 @@ flowchart LR
 - Each browser tab uses one `/api/events` connection for all subscriptions (`27e615d0`, `70f56ce5`). The SDK manages this stream and sends actions to `server/api.ts` (`web/src/sdk/store.ts`)
 - A preview runs `server/main.ts` on its own port and uses its own home. It has no supervisor, so it cannot restart (`docs/running.md`)
 - `17d186bf` removes the unused emergency terminal agent. Supervisor diagnostics remain in `bin/ultimate.ts` ([Running the server](../running.md))
-- Script triggers, lander checks, and previews run as child process groups (`lib/process-group.ts`, `extensions/automations/supervisor.ts`). When the service delegates a cgroup, each group of work gets a capped cgroup under `work/`, so the kernel stops that work, not the core, when memory runs out (`f00dd1b6`, [Discovery and settings](../settings.md))
+- Script triggers, lander checks, and previews run as child process groups (`lib/process-group.ts`, `extensions/automations/supervisor.ts`). When the service delegates a cgroup, each group of work gets its own cgroup under `work/`. `work.memoryMax` caps `work/` as a whole, so the kernel stops that work, not the core, when memory runs out (`f00dd1b6`, [Discovery and settings](../settings.md))
 - The supervisor stops restarting a core that crashed three times in a row, each within 60 seconds of `ready` (`8ca81954`)
 - MCP servers use child processes for stdio or remote HTTP connections (`5eae312d`, `extensions/mcp/server.ts`)
 - The supervisor no longer displays a service report (`6e9cd78d`). It displays the Tailscale URL above the local URL (`fc77dee5`)
@@ -117,7 +117,7 @@ These flows connect the parts at the snapshot. The linked files hold the mechani
 | `extensions/plan/`         | Durable epics, plan tasks, and the Plan panel                                  | [Plan](../../extensions/plan/README.md)                            |
 | `extensions/goal/`         | Hands-off goals, goal decisions, and goal reports                              | [Goals](../../extensions/goal/README.md)                           |
 | `extensions/dream/`        | Dream instructions, context triggers, and user-only chapter changes            | [Dreams](../../extensions/dream/README.md)                         |
-| `extensions/keep-warm/`    | Idle cache pings, outside the task scheduler                                   | [Keep warm](../../extensions/keep-warm/README.md)                  |
+| `extensions/keep-warm/`    | Idle cache pings from a sleeping `keep-warm.ping` task                         | [Keep warm](../../extensions/keep-warm/README.md)                  |
 | `extensions/voice-live/`   | Voice mode: a push-to-talk fork of @ultimate and its handoffs                  | [Voice mode](../../extensions/voice-live/README.md)                |
 | `extensions/status/`       | Read-only instance summary for dashboards                                      | [Status](../../extensions/status/README.md)                        |
 | `extensions/entries/`      | Entry kinds that core extensions on both sides of a dependency read            | [Entries](../../extensions/entries/README.md)                      |
