@@ -545,7 +545,7 @@ The November 25 sync adds the commits of 2026-11-16 to 2026-11-18 to this era. T
 
 ### Era 12: Solid interface
 
-Upstream moves its whole interface from React to Solid in four days ([D046](decisions/D046-solid-interface.md)). The work starts with the toolchain and a measured baseline (`f06ad003`, `0f7f8d3e`). The shell becomes Solid on 2026-11-21 (`0dea5af2`). On 2026-11-22, the React layer for outside facets goes too (`256f9cee`). Controls of the new component kit report their names and states, so agents operate them by name (`0fd21054`). Outside pull requests continue to land each day ([table below](#outside-contributions-in-the-november-25-sync)).
+Upstream moves its whole interface from React to Solid in four days ([D046](decisions/D046-solid-interface.md)). The work starts with the toolchain and a measured baseline (`f06ad003`, `0f7f8d3e`). The shell becomes Solid on 2026-11-21 (`0dea5af2`). On 2026-11-22, the React layer for outside facets goes too (`256f9cee`). Controls of the new component kit report their names and states, so agents operate them by name (`0fd21054`). Outside pull requests continue to land through 2026-11-24 ([table below](#outside-contributions-in-the-november-25-sync)).
 
 - Added:
   - the agent bridge, UI steps in the browser tool, and the `ui.changed` log of stored UI changes (`fa9a3b6e`, `0fd21054`, `45b6719e`, [B05](bricks/B05-agent-tools.md), [B14](bricks/B14-everything-on-record.md))

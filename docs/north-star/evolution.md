@@ -115,7 +115,7 @@ These areas changed on 2026-11-23 and 2026-11-24, the last two full days of work
 
 | Area        | Path                    | Commits | Change and evidence                                                                                                |
 | ----------- | ----------------------- | ------: | ------------------------------------------------------------------------------------------------------------------ |
-| Voice mode  | `extensions/voice-live` |      78 | Collected recordings, tap to talk, and handoffs to the branch on screen (`1e6c09e5`, `553717c9`, `b924ca2b`)       |
+| Voice mode  | `extensions/voice-live` |      78 | Collected recordings, tap to talk, and handoffs to the branch on screen (`1e6c09e5`, `dbaaeb25`, `11e815c9`)       |
 | Web core    | `web/`                  |      46 | The prompt box apart from the composer, videos, and the screen recorder (`72db8020`, `a2ecf28c`, `9538d3e2`)       |
 | Codemode    | `extensions/codemode`   |      22 | Pi Durable's code mode tool and script-only tools (`3603c530`, `077b6715`)                                         |
 | Docs        | `docs/`                 |      21 | The prompt box, the screen recorder, and the adversarial reviewer (`72db8020`, `9538d3e2`, `2fcc3bfe`)             |
