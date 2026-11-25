@@ -6,6 +6,10 @@ A coordinator runs each branch. It assesses the request, plans, decides, and ver
 
 A coordinator continues unfinished work unless it is blocked or a child, the lander, or a reply will wake it (`agents/coordinator.md`). The watchdog no longer notes idle branches. Instead, the sidebar shows what each branch waits on ([B11](B11-notes-and-messages.md), `b5818c41`, `extensions/watchdog/README.md`). The watchdog reports a failure that a tally owns to @ultimate (`df9719c9`). Workers and coordinators run the project's own checks (`8efec082`). When a parent stops a child during its report, the child keeps the status that it settled with (`569ccc43`).
 
+A temporary provider failure gets up to four automatic continuations, over about 50 minutes, before the watchdog reports it (`0d0516d0`, [Subagents](../../../docs/subagents.md)). A run that a restart cut off gets a card and no retry, because its last step may have partly run (`e600a47f`). A coordinator asks the user directly when the user talks to it (`a7719a89`). A note before an input lists the running children, not a prompt section ([D026](../decisions/D026-stable-system-prompt.md), `a2215282`).
+
+In this repository, when a reviewer blocks, the review lead starts an adversarial reviewer. It checks each blocking finding against the code and argues against nitpicks (`2fcc3bfe`, [Subagents](../../../docs/subagents.md)). It runs on the project family `adversarial` (`f145e979`, `.ultimate/settings.json`).
+
 An overlay can give a coordinator deferred tools, even when its base inherits every tool (`lib/agents.ts`, `extensions/messages/branch.ts`).
 
 Shipped agent definitions name model families instead of pinned models (`741ec0da`, `06399140`). The branch tool can set the coordinator's family (`0c176481`). A parent can start a subagent from a label, a family or a model, and instructions, with no definition file (`6b0fb859`). A branch sends decisions to @ultimate before it asks the user ([D044](../decisions/D044-branches-ask-the-user.md)).
@@ -18,7 +22,8 @@ Shipped agent definitions name model families instead of pinned models (`741ec0d
 - `extensions/subagents/`: delegation
 - `extensions/messages/branch.ts`: the branch tool and the coordinator's model
 - `lib/agents.ts`: tool inheritance and deferred tools
-- `extensions/watchdog/`: failure reports
+- `extensions/watchdog/`: failure reports and continuations
+- `.ultimate/agents/adversarial-reviewer.md`: the adversarial reviewer of this repository
 
 ## Decisions
 

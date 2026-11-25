@@ -16,7 +16,7 @@ Extensions declare their required secrets for setup and the Secrets panel (`457c
 
 An agent definition can list the skills that its agent sees in `skills:`. An empty list gives no skills, and no list gives all skills. The Agent card shows the listed skills as pills (`85b68619`, [Discovery and settings](../../../docs/settings.md)). The shipped scout, dream-pass, watcher, and reviewer definitions have empty lists (`3f1ca441`).
 
-A project's `.ultimate/settings.json` can set the name and the icon of its installed app with `app`, and fix the port with `port` (`b1012b4f`, [Discovery and settings](../../../docs/settings.md)). A taken port then stops the start with its number (`docs/running.md`). While the project's `.ultimate/` is undecided, setup shows a warning (`a100d9ff`).
+A project's `.ultimate/settings.json` can set the name and the icon of its installed app with `app`, and fix the port with `port` (`b1012b4f`, [Discovery and settings](../../../docs/settings.md)). A taken port then stops the start with its number (`docs/running.md`). While the project's `.ultimate/` is undecided, setup shows a warning (`a100d9ff`). The first-run card recommends Jev and Parallel web search, and it asks for the keys that the chosen extensions still need (`5b561d69`). Saves in the overlay editor work again (`b3f585ff`).
 
 ## Where it lives
 

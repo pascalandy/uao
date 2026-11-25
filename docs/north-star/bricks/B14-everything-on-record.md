@@ -4,13 +4,13 @@ Status: shipped, at the snapshot. Source: upstream.
 
 Conversations stay on record, so Ultimate can study its own behavior (`docs/durability.md`). The user and the agents see tasks, events, traces, the model context, and failures. Call traces are diagnostics with a limit of seven days and 200,000 rows (`server/trace.ts`). "Everything on record" is the intent of the post, not a promise to keep each record without a limit. The post says that "The agent can read any action of any conversation of any subagent".
 
-Hands-off goals keep goal decisions and any attached screenshots in goal reports ([B12](B12-human-in-the-loop.md), `extensions/goal/cards.tsx`).
+Hands-off goals keep goal decisions and any attached screenshots in goal reports ([B12](B12-human-in-the-loop.md), `extensions/goal/cards.solid.tsx`).
 
 The status action gives dashboards a compact read-only summary of one instance (`ca5dec4c`). It includes discovered extensions and their source, state, and load error (`6b44de7b`).
 
 The optional Wire tab of the System surface keeps the raw request and response of a conversation's recent model calls (`9b8f1866`, `5c5dea51`). It ships off by default (`c16450c9`). Its diff shows where a request breaks the prompt cache (`5f3b8ef2`). The transcript shows prompt-cache rebuilds and their cause (`c30582af`, `64105303`).
 
-The status action carries the generation that the host serves (`06bec5e5`). The System lanes show what each conversation waits on (`900c96cc`, `8ffec6f7`).
+The status action carries the generation that the host serves (`06bec5e5`). The UI tab of the System surface lists each change to stored UI state, who made it, and the value before and after. A person shows with the device, and an agent shows as an agent. The server records each change in the commit that writes it, and it keeps no typed text (`45b6719e`, `extensions/ui/README.md`). A trace reads forward from `since` and takes `until` (`79b8f49a`). The System lanes show what each conversation waits on (`900c96cc`, `8ffec6f7`).
 
 Tasks group runs and deliveries by meaning and show open messages (`b3462787`, `03d967f4`). Upstream removed the conversation minimap (`6dfcf451`). Rejected ideas use tombstones in project memory, replacing the graveyard folder (`63f87af5`).
 
@@ -26,6 +26,7 @@ Tasks group runs and deliveries by meaning and show open messages (`b3462787`, `
 - `extensions/conversations/context.ts`: server records of each conversation's context use
 - `extensions/status/`: the dashboard summary
 - `extensions/wire/`: raw model calls on disk
+- `extensions/ui/`: the log of UI changes
 
 ## Evidence
 

@@ -4,7 +4,9 @@ Status: shipped, at the snapshot. Source: upstream.
 
 The agent has Pi's default coding tools: read, write, edit, and bash. Codemode lets it run one script that composes tools and reads Ultimate's state. A browser tool lets the agent view and control web pages, including Ultimate's own UI.
 
-The browser can send input and wait for Ultimate's state through `window.ultimate` (`c2a86cad`, `555ed54e`). Driven pages use the same SDK reads and actions as the app (`web/src/sdk/test-hook.ts`).
+The browser can send input and wait for Ultimate's state through `window.ultimate` (`c2a86cad`, `555ed54e`). Driven pages use the same SDK reads and actions as the app (`web/src/sdk/test-hook.ts`). Each page has one agent bridge, where the controls of the UI kit list their names and states. A UI step of the browser tool operates a control by its name, not by a selector or a screenshot (`fa9a3b6e`, `0fd21054`). A page that an agent opens writes UI state as the agent (`134703fb`).
+
+Codemode runs on Pi Durable's code mode tool ([D005](../decisions/D005-codemode-sandbox.md)). Reads stay `ultimate.*` globals. A script writes only through the script-only tools `tools.action` and `tools.tell`, and it can call Pi's `models.*`, such as `models.classify` (`3603c530`, `extensions/codemode/README.md`).
 
 MCP servers expose their tools through one `mcp` tool (`5eae312d`). Configuration merges user servers with trusted project servers (`extensions/mcp/server.ts`). Transport failures reconnect without resending the failed call (`16a71d81`). Interrupted calls do not replay (`extensions/mcp/README.md`). Configured secret placeholders appear in the Secrets panel (`90fa141d`). [MCP mechanics](../../../extensions/mcp/README.md) lists the transports and limits, including no OAuth or legacy SSE support.
 
@@ -14,7 +16,9 @@ The browser tool runs Chromium with its sandbox on by default (`dbe9bb50`). It k
 
 `bash` with `background: true` starts a command, such as a dev server, in its own process group. It records the group and returns the command that stops it (`5abd5a39`, `extensions/coding-tools/README.md`). Agents had stopped dev servers by name or port, and one such kill stopped the Ultimate core (`5abd5a39`). When a conversation concludes, a durable effect stops the groups that it started before the conclusion (`115c86e9`, `a9c6efb6`). The Git attribution hooks of `bash` apply only to their first worktree (`fe47d47f`). `ultimate.entries` in codemode returns a compact view, and `full: true` returns the stored records (`c9c1bb26`).
 
-The browser tool waits for a render before a screenshot (`b9cc436c`). A short `timeoutMs` no longer fails the launch (`d029734b`). A failed call names its error before the console errors (`1974900a`). A selector without a scope fails when it matches more than one element (`aa4f4917`, `bdbdac57`). The user can add a secret under a name of their choice from the Secrets panel (`29f05387`). A notice about a missing secret goes away when the user saves the secret (`a1abfdb3`).
+The browser tool waits for a render before a screenshot (`b9cc436c`). A short `timeoutMs` no longer fails the launch (`d029734b`). A failed call names its error before the console errors (`1974900a`). A selector without a scope fails when it matches more than one element (`aa4f4917`, `bdbdac57`). The user can add a secret under a name of their choice from the Secrets panel (`29f05387`). A notice about a missing secret goes away when the user saves the secret (`a1abfdb3`). The browser tool takes a viewport width and height (`64dc9d81`), and it names each match of an ambiguous selector (`29432615`). MCP refuses a call without its required arguments and shows the input schema. It sends a rate-limited call once more after 5 s (`0986250e`, `680befed`). Agent shells start without the host's `NODE_ENV` (`cfc41b52`).
+
+When the service runs with a delegated cgroup, `bash`, previews, lander checks, and automation scripts run in capped cgroups under `work/`. When that work uses too much memory, the kernel stops the work, not the core. `work.memoryMax` sets the cap, 70% of RAM by default (`f00dd1b6`, [Discovery and settings](../../../docs/settings.md)). `video_ask` lets an agent ask Gemini about a video that the user attached ([B12](B12-human-in-the-loop.md), `604927c2`).
 
 ## Where it lives
 
@@ -25,6 +29,7 @@ The browser tool waits for a render before a screenshot (`b9cc436c`). A short `t
 - `extensions/secrets/`: user-global secrets
 - `web/src/sdk/test-hook.ts`: state-based waits for driven pages
 - `extensions/mcp/`: MCP connections, secret declarations, and the single tool
+- `extensions/video/`: video uploads and `video_ask`
 
 ## Decisions
 
@@ -47,3 +52,6 @@ The browser tool waits for a render before a screenshot (`b9cc436c`). A short `t
 - `6cc90767` limits `images: "latest"` to the current turn
 - `5abd5a39` adds background process groups to `bash`, and `115c86e9` stops them after a conclusion
 - `fe47d47f` limits the Git attribution hooks to their first worktree
+- `0fd21054` adds UI steps that operate controls by name
+- `3603c530` moves codemode onto Pi Durable's code mode tool
+- `f00dd1b6` puts branch work in capped cgroups
